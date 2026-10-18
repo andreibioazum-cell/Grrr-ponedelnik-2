@@ -228,7 +228,13 @@ static void *gift_action_job(void *arg) {
              action, gift, esender, enick);
     code = http_ex("POST", NET_GIFT_ACTION_URL, body, resp, sizeof(resp), "Authorization", bearer, NULL, 0);
     if (code == 200 && strstr(resp, "\"result\"") && strstr(resp, "\"ok\":true")) result = 2;
-    else if (net_log_ok()) LOGERR("gift action: HTTP %d %.160s", code, resp);
+    else {
+        if (code == 404 || strstr(resp, "NOT_FOUND")) result = 4; /* function not deployed */
+        else if (strstr(resp, "not enough cups")) result = 5;
+        else if (strstr(resp, "no gift in inventory")) result = 6;
+        else if (strstr(resp, "sender identity mismatch") || strstr(resp, "bad action")) result = 7;
+        if (net_log_ok()) LOGERR("gift action: HTTP %d %.160s", code, resp);
+    }
     memset(body, 0, sizeof(body)); memset(bearer, 0, sizeof(bearer));
 gift_done:
     s_gift_status = result;

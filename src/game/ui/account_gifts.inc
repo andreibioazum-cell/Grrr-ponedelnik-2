@@ -104,14 +104,11 @@ static const char *acct_gift_row_label(double row) {
 static void draw_acct_gifts(void) {
     double top = acct_gift_list_top();
     double view_h = acct_gift_visible() * acct_gift_step() - 8;
-    ctext_scaled(language == 1 ? "СТИКЕРНАЯ" : "STICKER SHOP", acct_top() + 27, text_color, 0.58);
-    text_in_box(language == 1 ? "Листайте вниз до своих подарков" : "Scroll down to your collection",
-                acct_x(), acct_top() + 38, acct_w(), 18, text_color, 0.40);
     roundrect(acct_x(), top, acct_w(), view_h, 14, card_bg);
     double row = floor(acct_gift_scroll);
     while (row < 9 && row < ceil(acct_gift_scroll + acct_gift_visible())) {
         double y = acct_gift_y(row), h = acct_gift_card_h();
-        if (y >= top && y + h <= top + view_h) {
+        if (y + h > top && y < top + view_h) {
             if (row == 4) {
                 button_scaled(language == 1 ? "МОИ ПОДАРКИ" : "MY GIFTS", acct_x() + 8, y, acct_w() - 16, h, 0.62);
             } else {
@@ -125,6 +122,12 @@ static void draw_acct_gifts(void) {
         }
         row = row + 1;
     }
+    rect(0, acct_top() - 4, screen_w, top - acct_top() + 4, bg_screen);
+    rect(0, top + view_h, screen_w, screen_h - top - view_h, bg_screen);
+    ctext_scaled(language == 1 ? "Подарки" : "Gifts", acct_top(), text_color, fit_text_scale(language == 1 ? "Подарки" : "Gifts", fit_w(screen_w), 0.8));
+    ctext_scaled(language == 1 ? "СТИКЕРНАЯ" : "STICKER SHOP", acct_top() + 27, text_color, 0.58);
+    text_in_box(language == 1 ? "Листайте вниз до своих подарков" : "Scroll down to your collection",
+                acct_x(), acct_top() + 38, acct_w(), 18, text_color, 0.40);
     roundrect(acct_gift_bar_x(), top, 14, view_h, 7, 0x55303030);
     roundrect(acct_gift_bar_x(), acct_gift_thumb_y(), 14, acct_gift_thumb_h(), 7, ui_purple);
     draw_acct_field(language == 1 ? "Ник получателя" : "Recipient nickname", 0);

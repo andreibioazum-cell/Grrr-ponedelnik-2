@@ -347,8 +347,16 @@ static void acct_tick(void) {
                     acct_field = 0;
                 }
                 net_gift_refresh();
+            } else if (gift_status == 4) {
+                acct_msg = language == 1 ? "Сервер подарков не установлен: разверните giftAction" : "Gift server is not deployed: deploy giftAction";
+            } else if (gift_status == 5) {
+                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
+            } else if (gift_status == 6) {
+                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
+            } else if (gift_status == 7) {
+                acct_msg = language == 1 ? "Версия сервера подарков устарела" : "Gift server is out of date";
             } else {
-                acct_msg = language == 1 ? "Ошибка отправки. Проверьте ник и баланс." : "Could not send. Check nickname and cups.";
+                acct_msg = language == 1 ? "Не удалось отправить. Проверьте ник и подключение." : "Gift failed. Check nickname and connection.";
             }
         }
     }
