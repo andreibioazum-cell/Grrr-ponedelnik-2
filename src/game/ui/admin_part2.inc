@@ -27,10 +27,16 @@ static double admin_handle(const char *msg) {
         ds_log("admin: event 1 disco");
         return 1;
     }
-    if (str_eq(msg, "event 2") == 1 || str_eq(msg, "event 3") == 1) {
+    if (str_eq(msg, "event 2") == 1) {
         net_event_set(2);
         net_chat_send(ds_concat("СОБЫТИЕ «ПЛИТЫ» от ", by));
         ds_log("admin: event 2 plates");
+        return 1;
+    }
+    if (str_eq(msg, "event 3") == 1) {
+        net_event_set(3);
+        net_chat_send(ds_concat("СОБЫТИЕ «ДЕД МОРОЗ» от ", by));
+        ds_log("admin: event 3 santa");
         return 1;
     }
     if (str_eq(msg, "event 4") == 1) {

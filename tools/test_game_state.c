@@ -593,8 +593,9 @@ static double stub_flash_sale;
 static int stub_live_refreshes;
 double net_flash_sale(void) { return stub_flash_sale; }
 void net_live_flags_refresh(void) { stub_live_refreshes++; }
-double net_event(void) { return 0; }
-void net_event_set(double mode) { (void)mode; }
+static double stub_event_mode;
+double net_event(void) { return stub_event_mode; }
+void net_event_set(double mode) { stub_event_mode = mode; }
 double net_load_cups(void) { return 0; }
 double net_load_candies(void) { return 0; }
 double net_load_class(void) { return 0; }
@@ -1448,6 +1449,7 @@ static void test_dice_alone_and_bubbles(void) {
     assert(candies == candies_before + dice_prize_of(cube));
     assert(arr_get(dice_cubes, 0) == 0);
     event_mode = 0;
+    dt = 1.0; /* the cube round survives a short blink, then stops */
     update_dice_event();
     assert(dice_active == 0);
 
@@ -1512,6 +1514,110 @@ static void test_dice_alone_and_bubbles(void) {
     assert(strcmp(bubble_msg(1), "second") == 0);
     stub_chat_count = 0;
     puts("dice event + alone wait + chat bubbles: OK");
+}
+
+/* Ивенты: 2 - плиты, 3 - Дед Мороз, 4 - кубик. Раньше "event 3" включал те
+ * же плиты, а правило базы пускало только 0..3, поэтому запись кубика
+ * отклонялась и поллер возвращал предыдущий ивент (часто плиты). */
+static void test_battle_events(void) {
+    double saved_w = screen_w, saved_h = screen_h;
+    screen_w = 1280;
+    screen_h = 720;
+    game_reset();
+    stub_net_slot = 0;
+    player_class = CLASS_ORDINARY;
+    reset_battle();
+
+    /* Азум: на 2% меньше HP (13 -> 12.74). */
+    assert(fabs(azum_hp - 12.74) < 1e-9);
+    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74) < 1e-9);
+
+    /* Команды админа выбирают три РАЗНЫХ ивента. */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    stub_login_status = 2;
+    stub_event_mode = 0;
+    assert(admin_handle("event 2") == 1 && stub_event_mode == 2);
+    assert(admin_handle("event 3") == 1 && stub_event_mode == 3);
+    assert(admin_handle("event 4") == 1 && stub_event_mode == 4);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+    stub_login_status = 2;
+    stub_event_mode = 0;
+
+    /* Ивент 3: Дед Мороз появляется сразу, плиты не заряжаются. */
+    event_mode = 3;
+    plates_event_reset();
+    plates_prev_mode = 0;
+    plates_phase = 0;
+    dt = 0.05;
+    tick_plates_event();
+    assert(plates_phase == 3);
+    assert(plates_thrown == 0);
+    for (int i = 0; i < 40; i++) tick_plates_event();
+    assert(plates_thrown > 0);
+    draw_event_plates(); /* плит в режиме 3 нет */
+    draw_event_candies();
+    draw_event_santa();
+    draw_plates_hud();
+    /* Раунд заканчивается один раз: пока ивент включён, он не повторяется. */
+    plates_santa_gone = 1;
+    for (int i = 0; i < plates_candy_max; i++) arr_set(plates_candies, i * plates_candy_fields, 0);
+    tick_plates_event();
+    assert(plates_finished == 1 && plates_phase == 4);
+    for (int i = 0; i < 10; i++) tick_plates_event();
+    assert(plates_phase == 4);
+    /* Выключили и включили снова - новый раунд с самого начала. */
+    event_mode = 0;
+    tick_plates_event();
+    event_mode = 3;
+    tick_plates_event();
+    assert(plates_phase == 3);
+
+    /* Ивент 4: плиты под ним не тикают, а кубик переживает короткое
+     * мигание значения event (поллер ещё видит старый ивент). */
+    event_mode = 4;
+    tick_plates_event();
+    assert(plates_phase == 0 && plates_prev_mode == 4);
+    dice_event_reset();
+    dt = 0.1;
+    update_dice_event();
+    assert(dice_active == 1);
+    event_mode = 0;
+    for (int i = 0; i < 5; i++) update_dice_event();
+    assert(dice_active == 1);
+    dt = 1.0;
+    update_dice_event();
+    assert(dice_active == 0);
+
+    /* Ивент 2: обе плиты заняты -> заряд -> Санта и конфеты. */
+    event_mode = 2;
+    plates_prev_mode = 4;
+    dt = 0.05;
+    tick_plates_event();
+    assert(plates_phase == 0);
+    player->x = plate_ax();
+    player->y = plate_ay();
+    arr_set(remotes, remote_fields + 1, plate_bx());
+    arr_set(remotes, remote_fields + 2, plate_by());
+    arr_set(remotes, remote_fields + 5, 1);
+    tick_plates_event();
+    assert(plates_phase == 1);
+    for (int i = 0; i < 41; i++) tick_plates_event();
+    assert(plates_phase == 2);
+    for (int i = 0; i < 20; i++) tick_plates_event();
+    assert(plates_phase == 3);
+    for (int i = 0; i < 10; i++) tick_plates_event();
+    assert(plates_thrown > 0);
+    arr_set(remotes, remote_fields + 5, 0);
+    event_mode = 0;
+    tick_plates_event();
+    assert(plates_prev_mode == 0 && plates_phase == 0);
+    stub_net_slot = -1;
+    game_state = ST_LOBBY;
+    screen_w = saved_w;
+    screen_h = saved_h;
+    puts("events: plates 2, Santa 3, cube 4, Azum HP -2%");
 }
 
 static void test_eax229_and_rooms(void) {
@@ -1809,9 +1915,10 @@ int main(void) {
     assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp);
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
      * astra 18, ebuc 24) and the ability numbers scaled with them, while the
-     * basic attacks kept their old damage - that is what makes fights last. */
+     * basic attacks kept their old damage - that is what makes fights last.
+     * Azum then got a 2% nerf: 13 -> 12.74. */
     assert(player_max_hp_for(CLASS_ORDINARY) == 20 && player_max_hp_for(CLASS_SANTA) == 20);
-    assert(azum_hp == 13 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
+    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
     assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
     assert(ebuc_universe_damage >= ebuc_hp);
     azum_tex_ok = azum_punch_tex_ok = 1;
@@ -3238,6 +3345,7 @@ int main(void) {
     test_codecracker_fx();
     test_eax229_and_rooms();
     test_dice_alone_and_bubbles();
+    test_battle_events();
     test_overlay_transitions();
     test_gifts_page();
 

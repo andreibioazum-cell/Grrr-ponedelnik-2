@@ -18,8 +18,9 @@ static void draw_disco(void) {
 }
 
 static void update_event(void) {
+    /* Event numbering: 0 off, 1 disco, 2 plates, 3 Ded Moroz, 4 cube. */
     event_mode = net_event();
-    if (event_mode == 2 && candies_on() == 0) {
+    if (plates_round_on() == 1 && candies_on() == 0) {
         event_mode = 0;
     }
     event_t = event_t + dt;

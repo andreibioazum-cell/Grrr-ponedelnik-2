@@ -5,6 +5,9 @@ static void plates_event_reset(void) {
     }
     plates_save_cd = 0;
     plates_phase = 0;
+    /* Each activation of the candy event starts a fresh round; while the
+     * event stays on, plates_finished keeps the round from repeating. */
+    plates_finished = 0;
     plates_t = 0;
     plate_a_lit = 0;
     plate_b_lit = 0;
@@ -227,33 +230,49 @@ static void tick_event_santa(void) {
     }
 }
 
+/* Both candy rounds run on this state: event 2 is the plates one, event 3 is
+ * the standalone Ded Moroz round (Santa appears at once, no plates). */
+static double plates_round_on(void) {
+    return event_mode == 2 || event_mode == 3 ? 1 : 0;
+}
+
+/* A finished round is re-armed only while the event is OFF: turning the event
+ * off and on again starts a new round, but leaving it on never replays it.
+ * The old check looked at event 3 (a real event now), so the plates round
+ * could quietly re-arm underneath a running dice event. */
 static void plates_watch_cloud(void) {
-    if (net_event() == 3 || net_status() != net_st_playing) {
+    if (plates_round_on() == 1 || net_status() != net_st_playing) {
         plates_off_t = 0;
         return;
     }
     plates_off_t = plates_off_t + dt;
     if (plates_off_t >= plates_rearm_time) {
+        plates_off_t = 0;
         plates_finished = 0;
+        plates_phase = 0;
     }
 }
 
 static void tick_plates_event(void) {
     plates_watch_cloud();
-    if (event_mode != 2) {
-        if (plates_prev_mode == 3) {
+    if (plates_round_on() == 0) {
+        if (plates_prev_mode == 2 || plates_prev_mode == 3) {
             plates_event_reset();
         }
         plates_prev_mode = event_mode;
         return;
     }
-    if (plates_prev_mode != 3) {
+    if (plates_prev_mode != event_mode) {
         plates_event_reset();
     }
-    plates_prev_mode = 3;
+    plates_prev_mode = event_mode;
     if (plates_finished == 1) {
         plates_phase = 4;
         plates_lock_me = 0;
+        return;
+    }
+    if (event_mode == 3) {
+        tick_santa_event();
         return;
     }
     if (plates_phase == 0) {
@@ -279,15 +298,7 @@ static void tick_plates_event(void) {
     } else if (plates_phase == 2) {
         plates_t = plates_t + dt;
         if (plates_t >= plates_shrink_time) {
-            plates_phase = 3;
-            plates_santa_t = 0;
-            plates_santa_angle = 0;
-            plates_throw_cd = 0.3;
-            plates_collect_t = 0;
-            plates_thrown = 0;
-            plates_next_candy = 0;
-            plates_santa_out = 0;
-            plates_santa_gone = 0;
+            santa_event_begin();
             ds_log("plates event: Santa appeared");
         }
     } else {
@@ -333,94 +344,4 @@ static void draw_event_plates(void) {
     }
     draw_plate(plate_ax(), plate_ay(), k, plate_a_lit);
     draw_plate(plate_bx(), plate_by(), k, plate_b_lit);
-}
-
-static void draw_event_candies(void) {
-    if (event_mode != 2 || plates_phase != 3) {
-        return;
-    }
-    double i = 0;
-    double t = 0;
-    double k = 0;
-    double v = 1;
-    double e = 0;
-    double xx = 0;
-    double yy = 0;
-    double pt = 0;
-    double p = 0;
-    double pop = 0;
-    double sc = 0;
-    double hw = 0;
-    while (i < plates_candy_max) {
-        double b = i * plates_candy_fields;
-        if (arr_get(plates_candies, b) == 1) {
-            t = arr_get(plates_candies, b + 1);
-            k = t / plates_candy_flight;
-            if (k > 1) {
-                k = 1;
-            }
-            v = 1;
-            if (arr_get(plates_candies, b + 6) > 0) {
-                v = 1 - arr_get(plates_candies, b + 6) / plates_candy_vanish_time;
-            }
-            e = 1 - (1 - k) * (1 - k);
-            xx = arr_get(plates_candies, b + 2) + (arr_get(plates_candies, b + 4) - arr_get(plates_candies, b + 2)) * e;
-            yy = arr_get(plates_candies, b + 3) + (arr_get(plates_candies, b + 5) - arr_get(plates_candies, b + 3)) * e;
-            pt = arr_get(plates_candies, b + 7);
-            if (pt > 0) {
-            } else if (v > 0.02) {
-                p = clamp(t / plates_candy_pop_time, 0, 1);
-                pop = 1 - (1 - p) * (1 - p);
-                /* Появление - прозрачностью, исчезновение по-прежнему сжатием. */
-                sc = candy_scale * v;
-                if (sc > 0.02 && pop > 0.02) {
-                    hw = 25 * sc;
-                    if (candy_tex_ok == 1) {
-                        tex_alpha(xx - hw, yy - hw, CANDY_TEX, 0, sc, pop);
-                    } else {
-                        circle(xx, yy, hw, (((unsigned)(int)floor(pop * 254) + 1u) << 24) | 0x00FF4081);
-                    }
-                }
-            }
-        }
-        i = i + 1;
-    }
-}
-
-static void draw_event_santa(void) {
-    if (event_mode != 2 || plates_phase != 3 || plates_santa_gone == 1) {
-        return;
-    }
-    double cx = screen_w / 2;
-    double cy = screen_h / 2 + plates_santa_dy;
-    double pop = 1;
-    if (plates_santa_t < 0.4) {
-        double p = plates_santa_t / 0.4;
-        pop = 1 - (1 - p) * (1 - p);
-    }
-    double sc = plates_santa_size / 50 * pop;
-    if (sc <= 0.01) {
-        return;
-    }
-    double wob = 6 * pop * sin(plates_santa_t * 3) * (1 - plates_santa_up);
-    double hw = 25 * sc;
-    tex_tint(cx - hw + 10, cy - hw + wob + 12, SANTA_TEX, plates_santa_angle, sc, 0x55000000);
-    tex(cx - hw, cy - hw + wob, SANTA_TEX, plates_santa_angle, sc);
-}
-
-static void draw_plates_hud(void) {
-    if (event_mode != 2 || plates_phase != 3) {
-        return;
-    }
-    double left = plates_candies_left();
-    if (left == 0 && plates_santa_gone == 1) {
-        return;
-    }
-    double secs = floor(plates_time_left() + 0.999);
-    const char *s = ds_concat(ds_concat(tr_candy_timer(), ": "), ds_num_to_string((double)(secs)));
-    uint32_t c = 0xFFFFFFFF;
-    if (secs <= 10) {
-        c = 0xFFFF6E63;
-    }
-    ctext_scaled(s, back_y + btn_h + 6, c, 0.5);
 }

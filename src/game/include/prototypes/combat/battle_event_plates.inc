@@ -17,6 +17,3 @@ static void plates_watch_cloud(void);
 static void tick_plates_event(void);
 static void draw_plate(double cx, double cy, double k, double lit);
 static void draw_event_plates(void);
-static void draw_event_candies(void);
-static void draw_event_santa(void);
-static void draw_plates_hud(void);

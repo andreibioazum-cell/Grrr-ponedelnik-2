@@ -59,6 +59,7 @@ jobs:
           python3 tools/test_presence.py
           python3 tools/test_network_memory.py
           python3 tools/test_font_memory.py
+          python3 tools/test_db_rules.py
 
       - name: Setup Java for Android build tools
         uses: actions/setup-java@v5

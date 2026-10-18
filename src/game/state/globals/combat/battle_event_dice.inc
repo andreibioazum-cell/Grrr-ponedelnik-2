@@ -1,4 +1,5 @@
 double dice_active;
+double dice_off_t;
 double dice_throw_cd;
 double dice_next;
 double dice_throw_interval;
