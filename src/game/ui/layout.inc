@@ -261,6 +261,20 @@ static double hit_promo_corner(double px, double py) {
     return hit_button(px, py, promo_corner_x(), promo_corner_y(), promo_corner_w(), btn_h);
 }
 
+/* The battle pass lives in the bottom-right corner of the lobby, like the
+ * promo corner on the modes screen: it is an entry point, not a game mode,
+ * and keeps the central column for Play, Shop, Settings, Account and
+ * Achievements. */
+static double bpass_corner_w(void) { return fit_w(240); }
+
+static double bpass_corner_x(void) { return screen_w - screen_margin - bpass_corner_w(); }
+
+static double bpass_corner_y(void) { return screen_h - screen_margin - btn_h; }
+
+static double hit_bpass_corner(double px, double py) {
+    return hit_button(px, py, bpass_corner_x(), bpass_corner_y(), bpass_corner_w(), btn_h);
+}
+
 /* Под предупреждением два действия: «Документы» слева, согласие справа. */
 static double warn_row_w(void) { return fit_w(920); }
 

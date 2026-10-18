@@ -242,7 +242,8 @@ double net_change_password_status(void);
 #define NET_ADMIN_RESET_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/adminResetPassword"
 /* Gifts live in the Realtime Database (users/<nick>/gifts), so no Cloud
  * Function is involved: buy/send/grant are plain authenticated writes.
- * net_gift_action: grant 0 = send one owned sticker, 1 = admin grant,
+ * net_gift_action: grant 0 = send one owned sticker, 3 = sell one sticker
+ * back for half its price, 1 = admin grant,
  * 2 = buy for yourself. Statuses: 2 ok, 3 network/server error,
  * 4 recipient not found, 5 not enough cups, 6 no sticker in inventory,
  * 7 bad recipient (or gifting yourself), 8 collection full (999). */
@@ -250,8 +251,10 @@ double net_gift_count(double gift);
 void net_gift_refresh(void);
 void net_gift_action(double gift, const char *recipient, double grant);
 double net_gift_action_status(void);
-/* Catalogue price of a gift index 0..3 (rose/cake/bear/rocket). */
+/* Catalogue price of a gift index 0..3 (poop/cake/bear/rocket) and what
+ * selling one sticker back gives: half of that price. */
 double net_gift_price(double gift);
+double net_gift_refund(double gift);
 void net_admin_reset_password(const char *nick, const char *new_pass);
 double net_admin_reset_status(void);
 double net_chat_is_passwd(const char *msg);

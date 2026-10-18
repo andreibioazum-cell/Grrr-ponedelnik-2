@@ -34,8 +34,6 @@ public final class GameActivity extends NativeActivity {
         }
     }
 
-    private boolean alphaNoticeShown;
-
     private static final String POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
     private static final int REQUEST_NOTIFICATIONS = 4201;
 
@@ -100,8 +98,6 @@ public final class GameActivity extends NativeActivity {
         } catch (RuntimeException ignored) {
             // The background call is optional; the game must start regardless.
         }
-
-        if (state != null) alphaNoticeShown = state.getBoolean("alphaNoticeShown", false);
 
         chatEditor = new EditText(this);
         chatEditor.setSingleLine(true);
@@ -222,18 +218,6 @@ public final class GameActivity extends NativeActivity {
                         }
                     }
                 });
-    }
-
-    public void showAlphaNotice(final int russian) {
-        runOnUiThread(new Runnable() {
-            @Override public void run() {
-                if (alphaNoticeShown || isFinishing()) return;
-                alphaNoticeShown = true;
-                AlphaNotice.show(GameActivity.this, russian != 0, new Runnable() {
-                    @Override public void run() { enterImmersiveMode(); }
-                });
-            }
-        });
     }
 
     /**
@@ -368,12 +352,6 @@ public final class GameActivity extends NativeActivity {
                 requestShowWhenReady();
             }
         }
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle out) {
-        super.onSaveInstanceState(out);
-        out.putBoolean("alphaNoticeShown", alphaNoticeShown);
     }
 
     @Override

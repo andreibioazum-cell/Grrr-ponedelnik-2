@@ -48,7 +48,9 @@ static void draw_lobby(void) {
     draw_menu_button(2, tr_settings());
     draw_menu_button(3, tr_account());
     draw_menu_button(4, tr_achievements());
-    draw_menu_button(5, language == 1 ? "Баттл-пасс" : "Battle Pass");
+    /* The battle pass sits in the bottom-right corner, out of the column. */
+    button(language == 1 ? "Баттл-пасс" : "Battle Pass", bpass_corner_x(), bpass_corner_y(),
+           bpass_corner_w(), btn_h);
     draw_lobby_nick();
     draw_lobby_money();
     if (new_theme == 1) {

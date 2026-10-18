@@ -29,6 +29,10 @@ users/<nick>/gifts/poop    0..999 owned stickers (cake, bear, rocket likewise)
   recipient's. Each step is a single-child write, so the other counters are
   never rewritten. If the second write fails, the client puts the sticker back
   into the sender's counter.
+* **Sell** — one authenticated PATCH to `users/<nick>.json` that takes one
+  sticker from the player's own counter and adds **half of the shop price** to
+  the cups (12 / 50 / 125 / 250). The shop stays the cheaper way to get a
+  sticker, while a duplicate from an event is still worth something.
 * **Admin grant** — the CCP panel's Gifts tab performs the same `+1` write; it
   does not debit cups.
 
@@ -72,10 +76,13 @@ another player's profile.
   and is never asked for a symbol.
 * The collection shows a small **heap** of owned stickers instead of a `× N`
   counter. Three icons at most, so any amount reads as "a pile".
-* The list snaps to whole rows while scrolling: a half-visible row is never
-  drawn above the rounded card, which used to make buttons show through the
-  header.
+* The page has two columns and does not scroll at all: the shop is the left
+  column, the player's own stickers are the right one, four cards each, so
+  every sticker is always on screen and nothing can snap or jump.
+* There are no permanent buttons. Tapping a shop card shows a single
+  **Buy** button; tapping an owned card shows **Send** and **Sell**. The
+  recipient nickname field sits under the columns and is only needed for
+  Send.
 
-The signed-in Account screen contains the shop, inventory heaps, a
-buy-for-self action, a recipient field, and a send-owned-gift action. The
-in-game CCP panel has a Gifts tab for admin grants.
+The signed-in Account screen contains that two-column page; the in-game CCP
+panel has a Gifts tab for admin grants.

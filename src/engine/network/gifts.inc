@@ -7,9 +7,11 @@
  * Купить — одна запись users/<ник>.json: кубки минус цена и +1 стикер, так
  * покупка не рассыпается на две.
  * Подарить — сначала -1 у себя, затем +1 получателю; если вторая запись не
- * прошла, свой счётчик возвращается. firebase.rules.json разрешает чужому
- * игроку только +1 в gifts (и не даёт трогать остальной профиль или
- * удалять чужие стикеры).
+ * прошла, свой счётчик возвращается. Продать — одна запись: -1 стикер и
+ * +половина цены в кубки. firebase.rules.json разрешает чужому игроку
+ * только +1 в gifts (и не даёт трогать остальной профиль или удалять чужие
+ * стикеры); владелец может писать свои счётчики свободно, поэтому продажа
+ * проходит теми же правилами, что и покупка.
  * Статусы: 0 — ничего, 1 — идёт, 2 — готово, 3 — сеть или сервер,
  * 4 — получатель не найден, 5 — не хватает кубков, 6 — нет стикера
  * в инвентаре, 7 — плохой ник или подарок самому себе,
@@ -32,6 +34,10 @@ static int gift_price(int i) {
     static const int prices[4] = {25, 100, 250, 500};
     return i >= 0 && i < 4 ? prices[i] : 0;
 }
+
+/* Selling returns half of the shop price: the shop stays the cheaper way to
+ * get a sticker, while a duplicate from an event is still worth something. */
+static int gift_refund_for(int i) { return gift_price(i) / 2; }
 
 static int gift_nick_ok(const char *nick) {
     size_t i, n;
@@ -126,6 +132,31 @@ static int gift_buy(const char *nick, int id) {
     return 2;
 }
 
+static int gift_sell(const char *nick, int id) {
+    char url[URL], body[BODY], resp[1024];
+    int counts[4], cups, code;
+    snprintf(url, sizeof(url), "%s/users/%s/cups.json", net.base, nick);
+    if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
+        return 3;
+    cups = num_int(resp, "", 0);
+    if (!gift_get_counts(nick, counts))
+        return 3;
+    if (counts[id] < 1)
+        return 6;
+    counts[id]--;
+    snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
+    snprintf(body, sizeof(body), "{\"cups\":%d,\"gifts\":{\"%s\":%d}}", cups + gift_refund_for(id), gift_id(id),
+             counts[id]);
+    net_seal_body(body, sizeof(body));
+    code = fb_http("PATCH", url, body, NULL, 0);
+    if (code != 200) {
+        if (net_log_ok())
+            LOGERR("gift sell for '%s': HTTP %d", nick, code);
+        return 3;
+    }
+    return 2;
+}
+
 static int gift_send(const char *sender, const char *recipient, int id) {
     int mine[4], theirs[4];
     if (!gift_nick_ok(recipient) || gift_nick_same(sender, recipient))
@@ -194,6 +225,8 @@ static void *gift_action_job(void *arg) {
         result = gift_grant(nick, id);
     else if (mode == 2)
         result = gift_buy(sender, id);
+    else if (mode == 3)
+        result = gift_sell(sender, id);
     else
         result = gift_send(sender, nick, id);
 gift_done:
@@ -204,7 +237,7 @@ gift_done:
 void net_gift_action(double gift, const char *recipient, double grant) {
     DSThread t;
     int mode = (int)grant;
-    if (s_gift_status == 1 || gift < 0 || gift > 3 || (mode != 1 && mode != 2 && mode != 0) || !recipient ||
+    if (s_gift_status == 1 || gift < 0 || gift > 3 || (mode != 1 && mode != 2 && mode != 3 && mode != 0) || !recipient ||
         strlen(recipient) >= sizeof(s_gift_recipient) || (mode == 0 && !*recipient))
         return;
     snprintf(s_gift_recipient, sizeof(s_gift_recipient), "%s", recipient);
@@ -228,6 +261,10 @@ double net_gift_action_status(void) {
 
 double net_gift_price(double gift) {
     return (double)gift_price((int)gift);
+}
+
+double net_gift_refund(double gift) {
+    return (double)gift_refund_for((int)gift);
 }
 
 static void *gift_counts_job(void *arg) {

@@ -5,25 +5,6 @@ static const char *tr_top(void) {
     return "Top";
 }
 
-/* Admin panel tabs and the Players actions. */
-/* The panel calls itself a content-creator tool, and the orb wears the
- * short version of the same name. */
-static const char *tr_admin_title(void) {
-    return "CONTENT CREATOR PANEL";
-}
-
-static const char *tr_admin_ban_protected(void) {
-    if (language == 1) {
-        return "Администраторов нельзя банить";
-    }
-    return "Admin accounts cannot be banned";
-}
-
-static const char *tr_skins_note_for(double cls) {
-    (void)cls;
-    return tr_skins_need_legends();
-}
-
 /* Три прощания при выходе из игры. Третье собирается из двух частей, между
  * которыми подставляется ник игрока: "Пока, Дима, удачи!". */
 static const char *tr_bye_sorry(void) {
@@ -53,3 +34,23 @@ static const char *tr_bye_nick_post(void) {
     }
     return ", good luck!";
 }
+
+/* Admin panel tabs and the Players actions. */
+/* The panel calls itself a content-creator tool, and the orb wears the
+ * short version of the same name. */
+static const char *tr_admin_title(void) {
+    return "CONTENT CREATOR PANEL";
+}
+
+static const char *tr_admin_ban_protected(void) {
+    if (language == 1) {
+        return "Администраторов нельзя банить";
+    }
+    return "Admin accounts cannot be banned";
+}
+
+static const char *tr_skins_note_for(double cls) {
+    (void)cls;
+    return tr_skins_need_legends();
+}
+

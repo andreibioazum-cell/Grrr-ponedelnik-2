@@ -99,7 +99,19 @@ static double admin_handle(const char *msg) {
     return 0;
 }
 
+/* The panel owns a text field (gift recipient), so closing it any way -
+ * the X, a tap outside, the back button - must also drop the soft
+ * keyboard. Otherwise the keyboard stayed on screen over the lobby and
+ * swallowed touches after the panel was gone. */
+static void admin_keyboard_drop(void) {
+    if (keyboard_visible() == 1) {
+        keyboard_get_text_to(admin_gift_target, sizeof(admin_gift_target));
+        keyboard_hide();
+    }
+}
+
 static void admin_panel_close(void) {
+    admin_keyboard_drop();
     admin_panel_open = 0;
 }
 
@@ -122,6 +134,7 @@ static void admin_panel_press(double x, double y) {
     }
     double tab_y = admin_content_top();
     if (y >= tab_y && y <= tab_y + admin_row_h()) {
+        if (admin_tab == 1) admin_keyboard_drop();
         admin_tab = x < px + pw / 2 ? 0 : 1;
         play_button_click();
         return;

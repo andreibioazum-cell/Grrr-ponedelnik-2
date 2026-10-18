@@ -13,8 +13,6 @@ static void draw_warning(void);
 static void legal_accept(void);
 static void touch_warn(double x, double y, double action);
 static void start_gate_init(void);
-static void draw_start_screen(void);
-static void touch_start(double action);
 static double studio_rgb(double rgb);
 static double studio_bg_rgb(double rgb);
 static void draw_studio(void);

@@ -63,7 +63,6 @@ const char *str_sub(const char *s, double start, double len);
 const char *str_trim(const char *s);
 const char *str_upper(const char *s);
 void ds_set_activity(void *activity);
-void alpha_notice_show(double russian);
 void bye_notice_show(const char *text);
 void keyboard_show(void);
 void keyboard_hide(void);

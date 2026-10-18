@@ -730,6 +730,7 @@ double net_gift_price(double gift) {
     int i = (int)gift;
     return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 500 : 0;
 }
+double net_gift_refund(double gift) { return (double)((int)net_gift_price(gift) / 2); }
 double net_chat_is_passwd(const char *msg) {
     if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
     const char *t = msg + 7;
@@ -1000,9 +1001,9 @@ static void test_account_screen(void) {
     puts("account: menu, password change checks, sign-out, delete needs password + full swipe right");
 }
 
-/* Магазин подарков: строки всегда выровнены по целым карточкам, поэтому над
- * списком больше не просвечивает половинка кнопки; первый стикер - какашка,
- * а количество подарков рисуется кучкой значков, без цифр. */
+/* Подарки: две колонки без прокрутки, слева магазин, справа коллекция.
+ * Постоянных кнопок нет - тап по карточке выбирает её и показывает только
+ * те действия, которые она разрешает. */
 static void test_gifts_page(void) {
     double saved_w = screen_w, saved_h = screen_h;
     double saved_lang = language;
@@ -1010,46 +1011,42 @@ static void test_gifts_page(void) {
     screen_h = 1280;
     language = 1;
     acct_open = ACCT_GIFTS;
-    acct_gift_scroll = 0;
-    acct_gift_velocity = 0;
-    acct_gift_drag_id = -1;
-    acct_gift_bar_drag_id = -1;
-    assert(acct_gift_visible() >= 1);
+    acct_gifts_page();
+    assert(acct_gift_choice < 0);
     assert(str_eq(acct_gift_name(0), "Какашка") == 1);
     assert(net_gift_price(0) == 25);
-    /* Окно списка всегда начинается с целой строки. */
-    for (double s = 0; s <= acct_gift_scroll_max() + 1; s += 0.07) {
-        acct_gift_scroll = s;
-        double r0 = acct_gift_row0();
-        assert(r0 >= 0 && r0 <= acct_gift_scroll_max());
-        assert(fabs(acct_gift_y(r0) - acct_gift_list_top()) < 1e-9);
-        for (double i = 0; i < 9; i++) {
-            double y = acct_gift_y(i);
-            if (i >= r0 && i < r0 + acct_gift_visible()) {
-                assert(y >= acct_gift_list_top() - 1e-9);
-                assert(y + acct_gift_card_h() <=
-                       acct_gift_list_top() + acct_gift_visible() * acct_gift_step() - 8 + 1e-6);
-            }
-        }
+    /* Продажа возвращает половину цены, покупка остаётся дороже. */
+    assert(net_gift_refund(0) == 12 && net_gift_refund(1) == 50);
+    assert(net_gift_refund(2) == 125 && net_gift_refund(3) == 250);
+    /* Колонки стоят рядом и не наезжают друг на друга. */
+    assert(acct_gift_x(0) + acct_gift_col_w() < acct_gift_x(1));
+    assert(acct_gift_x(1) + acct_gift_col_w() <= acct_x() + acct_w() + 1e-9);
+    /* Четыре карточки каждой колонки целиком влезают над полем и кнопками. */
+    for (double i = 0; i < 4; i++) {
+        assert(acct_gift_y(i) >= acct_gift_cols_top());
+        assert(acct_gift_y(i) + acct_gift_card_h() < acct_gift_footer_top() + 1e-9);
     }
-    /* Касание выбирает ровно ту строку, которая видна. */
-    acct_gift_scroll = 2;
-    double y = acct_gift_y(5) + acct_gift_card_h() / 2;
-    acct_gift_drag_id = 11;
-    acct_gift_drag_start_y = y;
-    acct_gift_drag_y = y;
-    assert(touch_acct_gift_scroll(acct_x() + 20, y, 2, 11) == 1);
-    assert(touch_acct_gift_scroll(acct_x() + 20, y, 1, 11) == 1);
-    assert(acct_gift_choice == 0 && acct_gift_is_owned == 1);
-    /* Продажа и коллекция рисуются примитивами: ни одного значка из шрифта. */
+    /* Тап по магазинной карточке: выбран магазин, доступна только покупка. */
+    double y = acct_gift_y(1) + acct_gift_card_h() / 2;
+    assert(touch_acct_gift_cards(acct_gift_x(0) + 20, y, 0) == 1);
+    assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
+    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 0);
+    /* Тап по своему подарку: теперь есть и «подарить», и «продать». */
+    assert(touch_acct_gift_cards(acct_gift_x(1) + 20, y, 0) == 1);
+    assert(acct_gift_choice == 1 && acct_gift_is_owned == 1);
+    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 1);
+    /* Список рисуется примитивами: ни одного значка из шрифта. */
     draw_acct_gifts();
     acct_open = 0;
-    acct_gift_scroll = 0;
-    acct_gift_velocity = 0;
+    acct_gift_choice = -1;
     language = saved_lang;
     screen_w = saved_w;
     screen_h = saved_h;
-    puts("gifts: whole-row list, poop first, piles instead of counters");
+    puts("gifts: shop left, collection right, actions appear on a tap");
 }
 
 /* Правовая часть: фильтр чата, согласие при входе, вопрос в лобби, окно
@@ -1204,52 +1201,81 @@ static void test_legal(void) {
     puts("legal: chat filter, sign-in consent, lobby consent ask, documents window, account deletion");
 }
 
-/* Стартовый экран: предупреждение об эпилепсии только при первом заходе,
- * «нажми, чтобы начать» - при каждом, касание плавно уводит в лобби. */
+/* Запуск игры: предупреждение об эпилепсии, затем сразу лобби. Экрана
+ * «нажми, чтобы начать» больше нет, поэтому после предупреждения лобби
+ * живое с первого касания. */
 static void test_start_gate(void) {
     game_reset();
     game_state = ST_LOBBY;
     dt = 0.1;
 
-    /* First launch: no stored acceptance -> warning up, start screen armed. */
+    /* Каждый заход начинается с предупреждения и ничем его не накрывает. */
     stub_legal_ts = 0;
     start_gate_init();
-    assert(warn_open == 1 && start_open == 1 && start_closing == 0);
-    /* The warning owns touches while it is up: no tap-to-start yet. */
-    logic_touch(screen_w / 2, screen_h / 2, 0, 71);
-    assert(start_closing == 0 && start_open == 1);
-    warn_open = 0;
-    warn_a = 0;
-
-    /* Returning player: the warning is shown on EVERY launch again (the
-     * stored acceptance no longer skips it), start screen still up. */
-    stub_legal_ts = 1700000000;
-    start_gate_init();
-    assert(warn_open == 1 && start_open == 1);
-    warn_open = 0;
-    warn_a = 0;
-
-    /* A touch starts the fade but keeps the lobby covered until it ends. */
-    logic_touch(screen_w / 2, screen_h / 2, 0, 72);
-    assert(start_closing == 1 && start_open == 1 && game_state == ST_LOBBY);
-    for (int i = 0; i < 40 && start_open == 1; i++) {
-        update_start_screen();
-    }
-    assert(start_open == 0 && start_a == 0 && game_state == ST_LOBBY);
-
-    /* The lobby has appeared but is not tappable yet: the settle lock
-     * swallows the first taps, Play unlocks only after it runs out. */
-    assert(lobby_lock_t > 0);
-    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 73);
+    assert(warn_open == 1 && warn_closing == 0 && warn_a == 1);
+    /* Касание по предупреждению не проваливается в лобби. */
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 71);
     assert(t_dir == 0);
-    lobby_lock_t = 0;
-    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 74);
+    /* Кнопка «принять» ждёт, пока предупреждение дочитано, затем плавно
+     * уводит его и лобби открывается без всякой занавески. */
+    int i = 0;
+    while (i < 40 && warn_ready < 1) {
+        update_warning();
+        i = i + 1;
+    }
+    assert(warn_ready >= 1);
+    legal_accept();
+    while (i < 120 && warn_open == 1) {
+        update_warning();
+        i = i + 1;
+    }
+    assert(warn_open == 0 && warn_a == 0 && game_state == ST_LOBBY);
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 72);
     assert(t_dir == 1 && t_target == ST_CLASSES);
     t_dir = 0;
     t_target = 0;
+    t_fade = 0;
     press_new = 0;
     stub_legal_ts = 0;
-    puts("start gate: epilepsy warning and tap-to-start every launch, lobby unlocks after a settle");
+    puts("start gate: epilepsy warning only, the lobby is live right after it");
+}
+
+/* Админка: закрытие любой дорогой гасит клавиатуру. Раньше она оставалась
+ * висеть поверх лобби и съедала касания после закрытия панели. */
+static void test_admin_keyboard(void) {
+    double saved_stat = game_state;
+    double saved_open = admin_panel_open;
+    double saved_dir = t_dir;
+    t_dir = 0;
+    game_state = ST_LOBBY;
+
+    /* Кнопка «назад» на Android. */
+    admin_panel_open = 1;
+    admin_tab = 1;
+    keyboard_show();
+    assert(keyboard_visible() == 1);
+    logic_back();
+    assert(admin_panel_open == 0 && keyboard_visible() == 0);
+
+    /* Крестик в шапке панели. */
+    admin_panel_open = 1;
+    keyboard_show();
+    admin_panel_close();
+    assert(admin_panel_open == 0 && keyboard_visible() == 0);
+
+    /* Переключение на вкладку Players тоже не должно оставлять клавиатуру
+     * от поля подарков. */
+    admin_panel_open = 1;
+    admin_tab = 1;
+    keyboard_show();
+    admin_panel_press(admin_panel_x() + 4, admin_content_top() + 4);
+    assert(admin_tab == 0 && keyboard_visible() == 0);
+
+    admin_panel_open = saved_open;
+    game_state = saved_stat;
+    t_dir = saved_dir;
+    keyboard_hide();
+    puts("admin panel: every way of closing it also hides the keyboard");
 }
 
 /* Промокод 2027: сообщение об успехе - собственная копия текста, а не
@@ -1656,7 +1682,6 @@ static void test_eax229_and_rooms(void) {
     t_dir = 0;
     warn_open = 0;
     studio_open = 0;
-    start_open = 0;
     snprintf(stub_room_names[0], sizeof(stub_room_names[0]), "%s", "main");
     snprintf(stub_room_names[1], sizeof(stub_room_names[1]), "%s", "closed-club");
     stub_roomlist_count = 2;
@@ -3348,6 +3373,7 @@ int main(void) {
     test_battle_events();
     test_overlay_transitions();
     test_gifts_page();
+    test_admin_keyboard();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
      * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */
