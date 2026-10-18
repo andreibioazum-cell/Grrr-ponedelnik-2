@@ -23,7 +23,7 @@ static double admin_tab = 0;
 static double admin_gift_choice = 0;
 static double admin_gift_busy = 0;
 static char admin_gift_target[24];
-static const char *admin_gift_names[4] = {"Poop", "Cake", "Teddy", "Rocket"};
+static const char *admin_gift_names[5] = {"Poop", "Cake", "Teddy", "Rocket", "Emerald"};
 
 /* Chrome heights are measured from the screen, never from the panel, so the
  * panel height stays a plain function of the content. */
@@ -53,7 +53,7 @@ static double admin_row_h(void) { return clamp(screen_h * 0.066, 36, 76); }
 static double admin_grid_h(void) { return 3 * admin_row_h() + 2 * admin_gap(); }
 
 /* Вкладок больше нет: контент панели - это только сетка читов. */
-static double admin_content_h(void) { return admin_tab == 0 ? admin_grid_h() + admin_row_h() + admin_gap() : 7 * admin_row_h() + 6 * admin_gap(); }
+static double admin_content_h(void) { return admin_tab == 0 ? admin_grid_h() + admin_row_h() + admin_gap() : 8 * admin_row_h() + 7 * admin_gap(); }
 
 static double admin_cheat_row_h(void) {
     double h = (admin_content_h() - 2 * admin_gap()) / 3;

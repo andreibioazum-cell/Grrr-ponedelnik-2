@@ -21,7 +21,7 @@ def main() -> int:
         print(f"event rule rejects the cube event: {event}", file=sys.stderr)
         return 1
     gifts = rules["users"]["$nick"]["gifts"]
-    for key in ("poop", "cake", "bear", "rocket"):
+    for key in ("poop", "cake", "bear", "rocket", "emerald"):
         if key not in gifts:
             print(f"gift rule is missing: {key}", file=sys.stderr)
             return 1
@@ -32,7 +32,7 @@ def main() -> int:
     if gifts["$other"][".validate"] is not False:
         print("unknown gift keys must be rejected", file=sys.stderr)
         return 1
-    print("db rules: event 0..4, gift keys poop/cake/bear/rocket OK")
+    print("db rules: event 0..4, gift keys poop/cake/bear/rocket/emerald OK")
     return 0
 
 

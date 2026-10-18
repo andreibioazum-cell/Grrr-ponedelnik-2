@@ -93,12 +93,14 @@ static void check_gifts(void) {
     assert(strcmp(gift_id(1), "cake") == 0);
     assert(strcmp(gift_id(2), "bear") == 0);
     assert(strcmp(gift_id(3), "rocket") == 0);
-    assert(strcmp(gift_id(4), "") == 0);
+    assert(strcmp(gift_id(4), "emerald") == 0);
+    assert(strcmp(gift_id(5), "") == 0);
     assert(strcmp(gift_id(-1), "") == 0);
-    assert(gift_price(0) == 25 && gift_price(1) == 100 && gift_price(2) == 250 && gift_price(3) == 500);
-    assert(gift_price(9) == 0 && gift_price(-1) == 0);
-    assert(net_gift_price(0) == 25 && net_gift_price(3) == 500);
-    assert(net_gift_price(4) == 0 && net_gift_price(-2) == 0);
+    assert(gift_price(0) == 25 && gift_price(1) == 100 && gift_price(2) == 250 && gift_price(3) == 400);
+    assert(gift_price(4) == 500 && gift_price(5) == 0 && gift_price(-1) == 0);
+    assert(net_gift_price(0) == 25 && net_gift_price(3) == 400);
+    assert(net_gift_price(4) == 500 && net_gift_price(5) == 0 && net_gift_price(-2) == 0);
+    assert(net_gift_types() == 5);
 }
 static void check_bpx(void) {
     net_set_data_path(".");

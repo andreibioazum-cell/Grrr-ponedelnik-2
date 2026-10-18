@@ -3,23 +3,28 @@
 #define ACCT_DELETE 3
 #define ACCT_GIFTS 4
 #define ACCT_BUF 64
-static double acct_gift_choice = -1; /* какой стикер выбран, -1 - никакой */
+static double acct_gift_choice = -1; /* выбранный магазинный стикер, -1 - никакой */
+static double acct_gift_is_owned = 0; /* 1 - выбран стикер из коллекции */
+static double acct_gift_own_row = -1; /* какая строка коллекции выбрана */
+static double acct_gift_scroll = 0;
+static double acct_gift_vel = 0;
+static double acct_gift_drag = -1;
+static double acct_gift_drag_y = 0;
+static double acct_gift_drag_move = 0;
 static double acct_gift_busy = 0;
 static double acct_gift_busy_mode = 0;
-static double acct_gift_is_owned = 0; /* 1 - выбран стикер из коллекции */
 static double acct_gift_footer_top(void);
-static double acct_gift_price(double i);
+static double hit_acct_gift_any(double x, double y);
 static double hit_acct_gift_buy(double x, double y);
-static double hit_acct_gift_send(double x, double y);
-static double hit_acct_gift_sell(double x, double y);
-static double hit_acct_gift(double x, double y, double owned, double i);
-static double touch_acct_gift_cards(double x, double y, double action);
+static double hit_acct_gift_own_btn_any(double x, double y);
+static double touch_acct_gift_list(double x, double y, double action, double id);
 static void acct_gifts_page(void);
 static void acct_gift_buy(void);
 static void acct_gift_send(void);
 static void acct_gift_sell(void);
 static void draw_acct_gifts(void);
 static void acct_poll_gifts(void);
+static void acct_gift_scroll_tick(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -126,10 +131,8 @@ static double hit_acct_knob(double x, double y) {
 static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
-           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
-           hit_acct_gift_sell(x, y) == 1 || hit_acct_gift(x, y, 0, 0) == 1 || hit_acct_gift(x, y, 0, 1) == 1 ||
-           hit_acct_gift(x, y, 0, 2) == 1 || hit_acct_gift(x, y, 0, 3) == 1 || hit_acct_gift(x, y, 1, 0) == 1 ||
-           hit_acct_gift(x, y, 1, 1) == 1 || hit_acct_gift(x, y, 1, 2) == 1 || hit_acct_gift(x, y, 1, 3) == 1;
+           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_own_btn_any(x, y) == 1 ||
+           hit_acct_gift_any(x, y) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -227,6 +230,9 @@ static void touch_acct_menu(double x, double y) {
     }
 }
 static void touch_account(double x, double y, double action, double id) {
+    /* The collection scrolls with its own down/move/up machine, so it gets
+     * the move and up events before the usual press handling below. */
+    if (action != 0 && touch_acct_gift_list(x, y, action, id) == 1) return;
     if (action == 2) {
         if (id == acct_drag) {
             acct_knob = clamp((x - acct_grab - acct_x() - 4) / (acct_w() - acct_knob_w() - 8), 0, 1);
@@ -256,7 +262,7 @@ static void touch_account(double x, double y, double action, double id) {
     if (acct_busy != 0 || acct_done == 1 || acct_gift_busy != 0) {
         return;
     }
-    if (touch_acct_gift_cards(x, y, action) == 1) return;
+    if (touch_acct_gift_list(x, y, action, id) == 1) return;
     double i = 0;
     while (i < acct_fields()) {
         if (hit_acct_field(x, y, i) == 1) {
@@ -266,8 +272,6 @@ static void touch_account(double x, double y, double action, double id) {
         i = i + 1;
     }
     if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
-    if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
-    if (hit_acct_gift_sell(x, y) == 1) { acct_gift_sell(); return; }
     if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();
@@ -310,6 +314,7 @@ static void acct_poll_password(void) {
     }
 }
 static void acct_tick(void) {
+    acct_gift_scroll_tick();
     acct_poll_gifts();
     if (acct_busy == 1) {
         acct_poll_delete();
@@ -398,3 +403,4 @@ static void draw_account(void) {
 }
 
 #include "account_gifts.inc"
+#include "account_gifts_actions.inc"

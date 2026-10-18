@@ -66,6 +66,22 @@ static void gift_icon_rocket(double x, double y, double s) {
     circle(cx, y + s * 0.45, s * 0.055, glass);
 }
 
+/* Emerald: the most expensive sticker. A faceted green rhombus - a dark
+ * silhouette, the body, a light table facet on top and two glints - so it
+ * still reads as a jewel at list size 22. */
+static void gift_icon_emerald(double x, double y, double s) {
+    uint32_t deep = 0xFF0A4F27, body = 0xFF16A34A, light = 0xFF63E39A, glint = 0xFFF2FFF7;
+    double cx = x + s * 0.5, cy = y + s * 0.52;
+    double k = s * 0.707;
+    rect_rot(cx - k * 0.54, cy - k * 0.54, k * 1.08, k * 1.08, 0.785398, deep);
+    rect_rot(cx - k * 0.47, cy - k * 0.47, k * 0.94, k * 0.94, 0.785398, body);
+    /* Table facet: a smaller rhombus sitting high on the stone. */
+    rect_rot(cx - k * 0.30, cy - 0.14 * s - k * 0.30, k * 0.60, k * 0.60, 0.785398, light);
+    /* Sparkle: one short white streak and a dot on the lit edge. */
+    line(cx - s * 0.20, cy - s * 0.10, cx - s * 0.06, cy - s * 0.24, clamp(s * 0.035, 1, 3), glint);
+    circle(cx - s * 0.04, cy + s * 0.04, s * 0.045, glint);
+}
+
 static void gift_icon(double i, double x, double y, double s) {
     int k = (int)i;
     if (s <= 0) {
@@ -77,26 +93,10 @@ static void gift_icon(double i, double x, double y, double s) {
         gift_icon_cake(x, y, s);
     } else if (k == 2) {
         gift_icon_bear(x, y, s);
+    } else if (k == 4) {
+        gift_icon_emerald(x, y, s);
     } else {
         gift_icon_rocket(x, y, s);
     }
 }
 
-/* Width of the little heap: one icon per owned sticker, up to three, laid
- * out with a slight overlap so any amount reads as "a pile", never a number. */
-static double gift_pile_w(double s, double count) {
-    int n = count >= 3 ? 3 : (count >= 1 ? (int)count : 0);
-    return n > 0 ? s + (n - 1) * s * 0.34 : 0;
-}
-
-/* Draws the heap with its right edge at `right`. The back icons go first so
- * the front one is fully visible. */
-static void gift_pile(double i, double right, double y, double s, double count) {
-    int n = count >= 3 ? 3 : (count >= 1 ? (int)count : 0);
-    int k;
-    /* Back to front, each next sticker half a step lower and further right, so
-     * the heap grows downwards like a real stack instead of a row of stamps. */
-    for (k = n - 1; k >= 0; k--) {
-        gift_icon(i, right - s - k * s * 0.34, y + k * s * 0.17, s);
-    }
-}

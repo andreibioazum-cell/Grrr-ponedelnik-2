@@ -2,8 +2,9 @@
  * Инвентарь и покупки идут обычными запросами к Realtime Database:
  *   users/<ник>/gifts/<стикер> — счётчик 0..999;
  *   users/<ник>/cups           — кубки.
- * Первый стикер — poop («какашка»); старые счётчики rose остаются в базе,
- * но больше не показываются.
+ * Пять стикеров: poop («какашка»), cake, bear, rocket и самый дорогой —
+ * emerald (изумруд, 500 кубков); старые счётчики rose остаются в базе, но
+ * больше не показываются.
  * Купить — одна запись users/<ник>.json: кубки минус цена и +1 стикер, так
  * покупка не рассыпается на две.
  * Подарить — сначала -1 у себя, затем +1 получателю; если вторая запись не
@@ -17,22 +18,24 @@
  * в инвентаре, 7 — плохой ник или подарок самому себе,
  * 8 — коллекция переполнена (999). */
 
+#define GIFT_N 5
+
 static volatile int s_gift_status = 0;
 static char s_gift_recipient[24];
 static int s_gift_id = 0, s_gift_grant = 0;
-static int s_gift_counts[4] = {0, 0, 0, 0};
+static int s_gift_counts[GIFT_N] = {0, 0, 0, 0, 0};
 static volatile int s_gift_counts_loaded = 0;
 static volatile int s_gift_counts_requested = 0;
 
 static const char *gift_id(double gift) {
-    static const char *ids[] = {"poop", "cake", "bear", "rocket"};
+    static const char *ids[GIFT_N] = {"poop", "cake", "bear", "rocket", "emerald"};
     int i = (int)gift;
-    return i >= 0 && i < 4 ? ids[i] : "";
+    return i >= 0 && i < GIFT_N ? ids[i] : "";
 }
 
 static int gift_price(int i) {
-    static const int prices[4] = {25, 100, 250, 500};
-    return i >= 0 && i < 4 ? prices[i] : 0;
+    static const int prices[GIFT_N] = {25, 100, 250, 400, 500};
+    return i >= 0 && i < GIFT_N ? prices[i] : 0;
 }
 
 /* Selling returns half of the shop price: the shop stays the cheaper way to
@@ -68,10 +71,10 @@ static int gift_nick_same(const char *a, const char *b) {
 }
 
 /* Счётчики из users/<ник>/gifts.json; отсутствующий узел ("null") — нули. */
-static int gift_get_counts(const char *nick, int out[4]) {
+static int gift_get_counts(const char *nick, int out[GIFT_N]) {
     char url[URL], resp[2048];
     int i;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < GIFT_N; i++)
         out[i] = 0;
     snprintf(url, sizeof(url), "%s/users/%s/gifts.json", net.base, nick);
     if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
@@ -80,7 +83,8 @@ static int gift_get_counts(const char *nick, int out[4]) {
     out[1] = num_int(resp, "cake", 0);
     out[2] = num_int(resp, "bear", 0);
     out[3] = num_int(resp, "rocket", 0);
-    for (i = 0; i < 4; i++) {
+    out[4] = num_int(resp, "emerald", 0);
+    for (i = 0; i < GIFT_N; i++) {
         if (out[i] < 0)
             out[i] = 0;
         if (out[i] > 999)
@@ -108,7 +112,7 @@ static int gift_recipient_exists(const char *nick) {
 
 static int gift_buy(const char *nick, int id) {
     char url[URL], body[BODY], resp[1024];
-    int counts[4], cups, code, price = gift_price(id);
+    int counts[GIFT_N], cups, code, price = gift_price(id);
     snprintf(url, sizeof(url), "%s/users/%s/cups.json", net.base, nick);
     if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
         return 3;
@@ -134,7 +138,7 @@ static int gift_buy(const char *nick, int id) {
 
 static int gift_sell(const char *nick, int id) {
     char url[URL], body[BODY], resp[1024];
-    int counts[4], cups, code;
+    int counts[GIFT_N], cups, code;
     snprintf(url, sizeof(url), "%s/users/%s/cups.json", net.base, nick);
     if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
         return 3;
@@ -158,7 +162,7 @@ static int gift_sell(const char *nick, int id) {
 }
 
 static int gift_send(const char *sender, const char *recipient, int id) {
-    int mine[4], theirs[4];
+    int mine[GIFT_N], theirs[GIFT_N];
     if (!gift_nick_ok(recipient) || gift_nick_same(sender, recipient))
         return 7;
     if (!gift_recipient_exists(recipient))
@@ -190,7 +194,7 @@ static int gift_send(const char *sender, const char *recipient, int id) {
 }
 
 static int gift_grant(const char *recipient, int id) {
-    int theirs[4];
+    int theirs[GIFT_N];
     if (!gift_nick_ok(recipient))
         return 4;
     if (!gift_recipient_exists(recipient))
@@ -237,7 +241,7 @@ gift_done:
 void net_gift_action(double gift, const char *recipient, double grant) {
     DSThread t;
     int mode = (int)grant;
-    if (s_gift_status == 1 || gift < 0 || gift > 3 || (mode != 1 && mode != 2 && mode != 3 && mode != 0) || !recipient ||
+    if (s_gift_status == 1 || gift < 0 || gift > GIFT_N - 1 || (mode != 1 && mode != 2 && mode != 3 && mode != 0) || !recipient ||
         strlen(recipient) >= sizeof(s_gift_recipient) || (mode == 0 && !*recipient))
         return;
     snprintf(s_gift_recipient, sizeof(s_gift_recipient), "%s", recipient);
@@ -258,6 +262,10 @@ double net_gift_action_status(void) {
         s_gift_status = 0;
     return (double)s;
 }
+
+/* How many sticker kinds the catalogue has (poop, cake, bear, rocket,
+ * emerald). The shop and the collection both lay themselves out from this. */
+double net_gift_types(void) { return (double)GIFT_N; }
 
 double net_gift_price(double gift) {
     return (double)gift_price((int)gift);
@@ -281,6 +289,7 @@ static void *gift_counts_job(void *arg) {
             s_gift_counts[1] = num_int(resp, "cake", 0);
             s_gift_counts[2] = num_int(resp, "bear", 0);
             s_gift_counts[3] = num_int(resp, "rocket", 0);
+            s_gift_counts[4] = num_int(resp, "emerald", 0);
         }
     }
     s_gift_counts_loaded = 1;
@@ -304,5 +313,5 @@ double net_gift_count(double gift) {
             s_gift_counts_loaded = 1;
     }
     int i = (int)gift;
-    return i >= 0 && i < 4 ? s_gift_counts[i] : 0;
+    return i >= 0 && i < GIFT_N ? s_gift_counts[i] : 0;
 }

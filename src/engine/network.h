@@ -251,8 +251,10 @@ double net_gift_count(double gift);
 void net_gift_refresh(void);
 void net_gift_action(double gift, const char *recipient, double grant);
 double net_gift_action_status(void);
-/* Catalogue price of a gift index 0..3 (poop/cake/bear/rocket) and what
- * selling one sticker back gives: half of that price. */
+/* Catalogue of five stickers: 0 poop, 1 cake, 2 bear, 3 rocket, 4 emerald
+ * (the most expensive one). net_gift_types() is the list length; the price
+ * is what the shop charges, the refund is half of it. */
+double net_gift_types(void);
 double net_gift_price(double gift);
 double net_gift_refund(double gift);
 void net_admin_reset_password(const char *nick, const char *new_pass);

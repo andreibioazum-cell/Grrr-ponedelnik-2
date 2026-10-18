@@ -720,7 +720,12 @@ double net_admin_reset_status(void) {
     if (v >= 2) stub_admin_reset_status = 0;
     return v;
 }
-double net_gift_count(double gift) { (void)gift; return 0; }
+static double stub_gift_counts[8];
+double net_gift_count(double gift) {
+    int i = (int)gift;
+    return i >= 0 && i < 8 ? stub_gift_counts[i] : 0;
+}
+double net_gift_types(void) { return 5; }
 void net_gift_refresh(void) {}
 void net_gift_action(double gift, const char *recipient, double grant) {
     (void)gift; (void)recipient; (void)grant;
@@ -728,7 +733,7 @@ void net_gift_action(double gift, const char *recipient, double grant) {
 double net_gift_action_status(void) { return 0; }
 double net_gift_price(double gift) {
     int i = (int)gift;
-    return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 500 : 0;
+    return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 400 : i == 4 ? 500 : 0;
 }
 double net_gift_refund(double gift) { return (double)((int)net_gift_price(gift) / 2); }
 double net_chat_is_passwd(const char *msg) {
@@ -1001,52 +1006,133 @@ static void test_account_screen(void) {
     puts("account: menu, password change checks, sign-out, delete needs password + full swipe right");
 }
 
-/* Подарки: две колонки без прокрутки, слева магазин, справа коллекция.
- * Постоянных кнопок нет - тап по карточке выбирает её и показывает только
- * те действия, которые она разрешает. */
+/* Подарки: две колонки, магазин слева влезает целиком, коллекция справа
+ * прокручивается плавно, и на каждой своей карточке сразу две кнопки. */
 static void test_gifts_page(void) {
     double saved_w = screen_w, saved_h = screen_h;
     double saved_lang = language;
     screen_w = 720;
     screen_h = 1280;
     language = 1;
+    memset(stub_gift_counts, 0, sizeof(stub_gift_counts));
     acct_open = ACCT_GIFTS;
     acct_gifts_page();
-    assert(acct_gift_choice < 0);
+    assert(acct_gift_choice < 0 && acct_gift_own_row < 0);
     assert(str_eq(acct_gift_name(0), "Какашка") == 1);
-    assert(net_gift_price(0) == 25);
+    assert(str_eq(acct_gift_name(4), "Изумруд") == 1);
+    assert(net_gift_price(0) == 25 && net_gift_price(3) == 400 && net_gift_price(4) == 500);
     /* Продажа возвращает половину цены, покупка остаётся дороже. */
     assert(net_gift_refund(0) == 12 && net_gift_refund(1) == 50);
-    assert(net_gift_refund(2) == 125 && net_gift_refund(3) == 250);
+    assert(net_gift_refund(2) == 125 && net_gift_refund(3) == 200 && net_gift_refund(4) == 250);
     /* Колонки стоят рядом и не наезжают друг на друга. */
     assert(acct_gift_x(0) + acct_gift_col_w() < acct_gift_x(1));
     assert(acct_gift_x(1) + acct_gift_col_w() <= acct_x() + acct_w() + 1e-9);
-    /* Четыре карточки каждой колонки целиком влезают над полем и кнопками. */
-    for (double i = 0; i < 4; i++) {
-        assert(acct_gift_y(i) >= acct_gift_cols_top());
-        assert(acct_gift_y(i) + acct_gift_card_h() < acct_gift_footer_top() + 1e-9);
+    /* Весь каталог (пять стикеров) влезает в окно без прокрутки. */
+    for (double i = 0; i < 5; i++) {
+        double cy = acct_gift_view_top() + i * acct_gift_step();
+        assert(cy >= acct_gift_view_top());
+        assert(cy + acct_gift_card_h() <= acct_gift_view_bottom() + 1e-9);
+        assert(hit_acct_gift(acct_gift_x(0) + 10, cy + 5, i) == 1);
     }
-    /* Тап по магазинной карточке: выбран магазин, доступна только покупка. */
-    double y = acct_gift_y(1) + acct_gift_card_h() / 2;
-    assert(touch_acct_gift_cards(acct_gift_x(0) + 20, y, 0) == 1);
+    assert(acct_gift_own_h() >= acct_gift_card_h());
+    /* Пустая коллекция: ни строк, ни прокрутки. */
+    assert(acct_gift_own_total() == 0 && acct_gift_scroll_max() == 0);
+    draw_acct_gifts();
+
+    /* Две какашки - две отдельные карточки, изумруд - третья. */
+    stub_gift_counts[0] = 2;
+    stub_gift_counts[4] = 1;
+    assert(acct_gift_own_total() == 3);
+    assert(acct_gift_own_id(0) == 0 && acct_gift_own_id(1) == 0);
+    assert(acct_gift_own_id(2) == 4 && acct_gift_own_id(3) == -1);
+    draw_acct_gifts();
+
+    /* На каждой карточке «Подарить» и «Продать», обе внутри карточки. */
+    double sbx, sby, sbw, sbh, lbx, lby, lbw, lbh;
+    acct_gift_btn_rect(0, 0, &sbx, &sby, &sbw, &sbh);
+    acct_gift_btn_rect(0, 1, &lbx, &lby, &lbw, &lbh);
+    assert(sbx >= acct_gift_x(1) && sbx + sbw <= acct_gift_x(1) + acct_gift_col_w() + 1e-9);
+    assert(lbx >= sbx + sbw && lbx + lbw <= acct_gift_x(1) + acct_gift_col_w() + 1e-9);
+    assert(sby >= acct_gift_view_top() && sby + sbh <= acct_gift_view_top() + acct_gift_own_h() + 1e-9);
+    assert(hit_acct_gift_own_btn_any(sbx + 2, sby + 2) == 1);
+    assert(hit_acct_gift_own_btn_any(lbx + 2, lby + 2) == 1);
+
+    /* Магазинная карточка: выбор и «Купить» под колонками. */
+    double y = acct_gift_view_top() + 1 * acct_gift_step() + acct_gift_card_h() / 2;
+    assert(touch_acct_gift_list(acct_gift_x(0) + 20, y, 0, 11) == 1);
     assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
     assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 1);
-    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 0);
-    /* Тап по своему подарку: теперь есть и «подарить», и «продать». */
-    assert(touch_acct_gift_cards(acct_gift_x(1) + 20, y, 0) == 1);
-    assert(acct_gift_choice == 1 && acct_gift_is_owned == 1);
-    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 1);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 1);
-    /* Список рисуется примитивами: ни одного значка из шрифта. */
+
+    /* «Подарить» на карточке выбирает её и просит ник, не начиная скролл. */
+    acct_buf[0][0] = 0;
+    assert(touch_acct_gift_list(sbx + 2, sby + 2, 0, 12) == 1);
+    assert(acct_gift_own_sel() == 0 && acct_gift_sel_id() == 0);
+    assert(acct_gift_drag < 0 && acct_gift_busy == 0);
+    assert(str_eq(acct_msg, "Введите ник получателя") == 1);
+
+    /* «Продать» на карточке запускает продажу именно этой карточки. */
+    assert(touch_acct_gift_list(lbx + 2, lby + 2, 0, 13) == 1);
+    assert(acct_gift_own_sel() == 0 && acct_gift_busy == 1 && acct_gift_busy_mode == 3);
+    acct_gift_busy = 0;
+    acct_gift_busy_mode = 0;
+    acct_msg = "";
+    /* На узком экране карточка остаётся достаточно высокой для двух кнопок. */
+    screen_w = 360;
+    screen_h = 640;
+    assert(acct_gift_own_h() >= 104);
+    acct_gift_btn_rect(0, 1, &lbx, &lby, &lbw, &lbh);
+    assert(lbx + lbw <= acct_gift_x(1) + acct_gift_col_w() + 1e-9);
+    assert(lby + lbh <= acct_gift_view_top() + acct_gift_own_h() + 1e-9);
+    screen_w = 720;
+    screen_h = 1280;
+    draw_acct_gifts();
+
+    /* Коллекция прокручивается плавно: сдвиг остаётся дробным, без снапа. */
+    stub_gift_counts[0] = 9;
+    assert(acct_gift_scroll_max() > 0);
+    acct_gift_scroll = 0;
+    acct_gift_vel = 0;
+    double sy = acct_gift_view_top() + 40;
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy, 0, 14) == 1);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy - 60, 2, 14) == 1);
+    assert(fabs(acct_gift_scroll - 60) < 1e-9);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy - 60, 1, 14) == 1);
+    assert(acct_gift_drag < 0);
+    assert(fabs(acct_gift_scroll - 60) < 1e-9);
+    double before = acct_gift_scroll;
+    acct_gift_scroll_tick();
+    assert(acct_gift_scroll > before);
+    assert(fabs(fmod(acct_gift_scroll, acct_gift_own_step())) > 1e-6); /* не выровнено по строке */
+    /* Прокрутка не вылезает за пределы списка. */
+    acct_gift_scroll = 0;
+    acct_gift_vel = -500;
+    for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
+    assert(acct_gift_scroll == 0);
+    acct_gift_scroll = acct_gift_scroll_max();
+    acct_gift_vel = 500;
+    for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
+    assert(fabs(acct_gift_scroll - acct_gift_scroll_max()) < 1e-9);
+    /* После прокрутки тап выбирает именно ту строку, что под пальцем. */
+    acct_gift_scroll = acct_gift_own_step() * 3;
+    double ty = acct_gift_view_top() + acct_gift_own_step() / 2;
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, ty, 0, 15) == 1);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, ty, 1, 15) == 1);
+    assert(acct_gift_own_sel() == 3 && acct_gift_sel_id() == 0);
+
     draw_acct_gifts();
     acct_open = 0;
     acct_gift_choice = -1;
+    acct_gift_own_row = -1;
+    acct_gift_is_owned = 0;
+    acct_gift_scroll = 0;
+    acct_gift_vel = 0;
+    acct_gift_drag = -1;
+    acct_gift_busy = 0;
+    memset(stub_gift_counts, 0, sizeof(stub_gift_counts));
     language = saved_lang;
     screen_w = saved_w;
     screen_h = saved_h;
-    puts("gifts: shop left, collection right, actions appear on a tap");
+    puts("gifts: shop on the left, scrollable one-card-per-sticker collection on the right");
 }
 
 /* Правовая часть: фильтр чата, согласие при входе, вопрос в лобби, окно

@@ -4,12 +4,16 @@ Gifts work through the Realtime Database directly — there is no Cloud Function
 (`giftAction`) involved. The catalogue lives in the client
 (`src/engine/network/gifts.inc`; the UI reads the price via `net_gift_price`):
 
+The catalogue has five stickers; the emerald is the most expensive one
+(500 cups).
+
 | ID | Sticker | Cost |
 | --- | --- | ---: |
 | `poop` | Какашка / Poop | 25 |
 | `cake` | Торт / Cake | 100 |
 | `bear` | Мишка / Teddy Bear | 250 |
-| `rocket` | Ракета / Rocket | 500 |
+| `rocket` | Ракета / Rocket | 400 |
+| `emerald` | Изумруд / Emerald | 500 |
 
 The first sticker used to be `rose`; it is now `poop`. Old `rose` counters may
 still sit in profiles — the rules keep accepting them, but the game neither
@@ -31,7 +35,7 @@ users/<nick>/gifts/poop    0..999 owned stickers (cake, bear, rocket likewise)
   into the sender's counter.
 * **Sell** — one authenticated PATCH to `users/<nick>.json` that takes one
   sticker from the player's own counter and adds **half of the shop price** to
-  the cups (12 / 50 / 125 / 250). The shop stays the cheaper way to get a
+  the cups (12 / 50 / 125 / 200 / 250). The shop stays the cheaper way to get a
   sticker, while a duplicate from an event is still worth something.
 * **Admin grant** — the CCP panel's Gifts tab performs the same `+1` write; it
   does not debit cups.
@@ -74,15 +78,17 @@ another player's profile.
 * Every sticker is drawn from primitives (circles, rounded rectangles, lines,
   rotated rects) in `src/game/ui/gift_icons.inc`; the pixel font has no icons
   and is never asked for a symbol.
-* The collection shows a small **heap** of owned stickers instead of a `× N`
-  counter. Three icons at most, so any amount reads as "a pile".
-* The page has two columns and does not scroll at all: the shop is the left
-  column, the player's own stickers are the right one, four cards each, so
-  every sticker is always on screen and nothing can snap or jump.
-* There are no permanent buttons. Tapping a shop card shows a single
-  **Buy** button; tapping an owned card shows **Send** and **Sell**. The
-  recipient nickname field sits under the columns and is only needed for
-  Send.
+* The page has two columns: the shop on the left and the player's own
+  stickers on the right. The whole catalogue fits the left column at once;
+  the collection lists **one card per owned sticker** - two poops are two
+  cards - and scrolls smoothly with inertia, without snapping to rows.
+  Every card is clipped by hand to the list window, so nothing spills over
+  the header or the field below.
+* Every owned card carries its own **Send** and **Sell** buttons, so two
+  poops give two cards with two pairs of buttons; the Sell label shows the
+  half-price refund. A shop card is picked with a tap and bought with the
+  single **Buy** button under the columns. The recipient nickname field sits
+  there too and is only needed for Send.
 
 The signed-in Account screen contains that two-column page; the in-game CCP
 panel has a Gifts tab for admin grants.

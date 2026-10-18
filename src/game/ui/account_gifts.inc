@@ -1,59 +1,251 @@
 #include "gift_icons.inc"
 
-/* Sticker shop and collection on one page: the shop is the left column, the
- * player's own stickers are the right one. Nothing scrolls - four stickers
- * per side always fit - and there are no permanent buttons: tapping a card
- * shows only the actions that card allows. A shop sticker offers "Buy", an
- * owned one offers "Send" and "Sell" (half of the shop price comes back). */
+/* Sticker shop and collection on one page: the shop is the left column,
+ * the player's own stickers are the right one. The shop always shows the
+ * whole catalogue; the collection lists every owned sticker as its own card
+ * (two poops are two cards) and scrolls smoothly, without snapping. Every
+ * owned card carries its own "Send" and "Sell" buttons (selling returns half
+ * of the shop price); the shop card is bought with the button under the
+ * columns, because the shop has to fit the window without scrolling. */
+
+#define ACCT_GIFT_GAP 10
+#define ACCT_GIFT_COL_GAP 12
+#define ACCT_GIFT_PANEL_PAD 8
+#define ACCT_GIFT_PAD 8
 
 static double acct_gift_cols_top(void) { return acct_top() + 58; }
-static double acct_gift_head_h(void) { return 28; }
-/* The page keeps room under the columns for the recipient field, the action
- * row and the message, so the whole thing fits without scrolling. */
-static double acct_gift_card_h(void) {
-    double top = acct_gift_cols_top() + acct_gift_head_h();
-    double bottom = screen_h - screen_margin - 250;
-    return clamp((bottom - top - 30) / 4, 40, 156);
+static double acct_gift_head_h(void) { return 30; }
+static double acct_gift_view_top(void) { return acct_gift_cols_top() + acct_gift_head_h(); }
+static double acct_gift_shop_rows(void) {
+    double n = net_gift_types();
+    return n > 1 ? n : 1;
 }
-static double acct_gift_step(void) { return acct_gift_card_h() + 10; }
-static double acct_gift_footer_top(void) { return acct_gift_cols_top() + acct_gift_head_h() + 4 * acct_gift_step() + 8; }
-static double acct_gift_col_w(void) { return (acct_w() - 12) / 2; }
-static double acct_gift_btn_w(void) { return (acct_w() - 12) / 2; }
+/* Five catalogue cards have to fit the window without scrolling, so the card
+ * height follows the free space; the collection then scrolls through that
+ * same window, and the room under it stays free for the field and buttons. */
+static double acct_gift_card_h(void) {
+    double avail = screen_h - screen_margin - 250 - acct_gift_view_top();
+    double rows = acct_gift_shop_rows();
+    return clamp((avail - (rows - 1) * ACCT_GIFT_GAP) / rows, 40, 150);
+}
+static double acct_gift_step(void) { return acct_gift_card_h() + ACCT_GIFT_GAP; }
+/* Owned cards are taller than the shop ones: each has to host two buttons. */
+static double acct_gift_own_h(void) {
+    double h = acct_gift_card_h();
+    return h < 104 ? 104 : h;
+}
+static double acct_gift_own_step(void) { return acct_gift_own_h() + ACCT_GIFT_GAP; }
+static double acct_gift_own_y(double row) {
+    return acct_gift_view_top() + row * acct_gift_own_step() - acct_gift_scroll;
+}
+static double acct_gift_own_btn_h(void) { return clamp(acct_gift_own_h() * 0.24, 22, 34); }
+static double acct_gift_view_h(void) { return acct_gift_shop_rows() * acct_gift_step() - ACCT_GIFT_GAP; }
+static double acct_gift_view_bottom(void) { return acct_gift_view_top() + acct_gift_view_h(); }
+static double acct_gift_footer_top(void) { return acct_gift_view_bottom(); }
+static double acct_gift_col_w(void) { return (acct_w() - ACCT_GIFT_COL_GAP) / 2; }
 /* owned == 0 is the shop column on the left, 1 the collection on the right. */
-static double acct_gift_x(double owned) { return owned == 1 ? acct_x() + acct_gift_col_w() + 12 : acct_x(); }
-static double acct_gift_y(double i) { return acct_gift_cols_top() + acct_gift_head_h() + i * acct_gift_step(); }
+static double acct_gift_x(double owned) { return owned == 1 ? acct_x() + acct_gift_col_w() + ACCT_GIFT_COL_GAP : acct_x(); }
+static double acct_gift_panel_x(double owned) { return acct_gift_x(owned) - ACCT_GIFT_PANEL_PAD; }
+static double acct_gift_panel_y(void) { return acct_gift_cols_top() - 6; }
+static double acct_gift_panel_w(void) { return acct_gift_col_w() + 2 * ACCT_GIFT_PANEL_PAD; }
+static double acct_gift_panel_h(void) { return acct_gift_head_h() + acct_gift_view_h() + 12; }
 static double acct_gift_price(double i) { return net_gift_price(i); }
 static double acct_gift_refund(double i) { return net_gift_refund(i); }
 static const char *acct_gift_name(double i) {
     if (i == 0) return language == 1 ? "Какашка" : "Poop";
     if (i == 1) return language == 1 ? "Торт" : "Cake";
     if (i == 2) return language == 1 ? "Мишка" : "Teddy Bear";
-    return language == 1 ? "Ракета" : "Rocket";
-}
-static double acct_gift_picked(void) { return acct_gift_choice >= 0 ? 1 : 0; }
-static double acct_gift_picked_owned(void) {
-    return acct_gift_picked() == 1 && acct_gift_is_owned == 1 ? 1 : 0;
+    if (i == 3) return language == 1 ? "Ракета" : "Rocket";
+    return language == 1 ? "Изумруд" : "Emerald";
 }
 static const char *acct_gift_cups_line(double n) {
     return ds_concat(ds_concat(ds_num_to_string(n), " "), tr_cups_unit());
 }
 
-static double hit_acct_gift(double x, double y, double owned, double i) {
-    if (acct_open != ACCT_GIFTS || i < 0 || i > 3) return 0;
-    return hit_rect(x, y, acct_gift_x(owned), acct_gift_y(i), acct_gift_col_w(), acct_gift_card_h()) == 1;
+/* ---- collection: one row per owned sticker ---------------------------- */
+
+static double acct_gift_own_total(void) {
+    double n = 0, i = 0;
+    while (i < acct_gift_shop_rows()) {
+        n = n + net_gift_count(i);
+        i = i + 1;
+    }
+    return n;
+}
+/* Which sticker sits in a row; -1 when the row is past the end. */
+static double acct_gift_own_id(double row) {
+    double base = 0, i = 0;
+    if (row < 0) return -1;
+    while (i < acct_gift_shop_rows()) {
+        double c = net_gift_count(i);
+        if (row < base + c) return i;
+        base = base + c;
+        i = i + 1;
+    }
+    return -1;
+}
+static double acct_gift_scroll_max(void) {
+    double extra = acct_gift_own_total() * acct_gift_own_step() - ACCT_GIFT_GAP - acct_gift_view_h();
+    return extra > 0 ? extra : 0;
+}
+static double acct_gift_own_sel(void) {
+    if (acct_gift_is_owned != 1) return -1;
+    if (acct_gift_own_row < 0 || acct_gift_own_row >= acct_gift_own_total()) return -1;
+    return acct_gift_own_row;
+}
+static double acct_gift_sel_id(void) {
+    if (acct_gift_is_owned == 1) return acct_gift_own_id(acct_gift_own_sel());
+    return acct_gift_choice;
+}
+static double acct_gift_picked(void) {
+    if (acct_gift_is_owned == 1) return acct_gift_own_sel() >= 0 ? 1 : 0;
+    return acct_gift_choice >= 0 && acct_gift_choice < acct_gift_shop_rows() ? 1 : 0;
+}
+/* Smooth glide after the finger is lifted; no snapping to whole rows. */
+static void acct_gift_scroll_tick(void) {
+    if (acct_open != ACCT_GIFTS || acct_gift_drag >= 0) return;
+    /* The list can shrink under the scroll (a sticker was just sold), so the
+     * position is clamped on every tick, not only while it is gliding. */
+    double mx = acct_gift_scroll_max();
+    if (acct_gift_scroll > mx) acct_gift_scroll = mx;
+    if (acct_gift_scroll < 0) acct_gift_scroll = 0;
+    if (fabs(acct_gift_vel) < 0.5) {
+        acct_gift_vel = 0;
+        return;
+    }
+    acct_gift_scroll = acct_gift_scroll + acct_gift_vel * dt;
+    acct_gift_vel = acct_gift_vel * exp(-4.5 * dt);
+    if (acct_gift_scroll <= 0) {
+        acct_gift_scroll = 0;
+        acct_gift_vel = 0;
+    } else if (acct_gift_scroll >= mx) {
+        acct_gift_scroll = mx;
+        acct_gift_vel = 0;
+    }
+}
+
+/* ---- input ------------------------------------------------------------ */
+
+static double acct_gift_hit_row(double y) {
+    return floor((y - acct_gift_view_top() + acct_gift_scroll) / acct_gift_own_step());
+}
+static double hit_acct_gift(double x, double y, double i) {
+    if (acct_open != ACCT_GIFTS || i < 0 || i >= acct_gift_shop_rows()) return 0;
+    double cy = acct_gift_view_top() + i * acct_gift_step();
+    return hit_rect(x, y, acct_gift_x(0), cy, acct_gift_col_w(), acct_gift_card_h()) == 1;
+}
+static double hit_acct_gift_any(double x, double y) {
+    double i = 0;
+    while (i < acct_gift_shop_rows()) {
+        if (hit_acct_gift(x, y, i) == 1) return 1;
+        i = i + 1;
+    }
+    return 0;
 }
 static double hit_acct_gift_buy(double x, double y) {
     return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 0 &&
            hit_button(x, y, acct_x(), acct_below_fields(), acct_w(), btn_h) == 1;
 }
-static double hit_acct_gift_send(double x, double y) {
-    return acct_open == ACCT_GIFTS && acct_gift_picked_owned() == 1 &&
-           hit_button(x, y, acct_x(), acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
+/* Buttons on an owned card: side 0 is "Send", side 1 is "Sell". */
+static void acct_gift_btn_rect(double row, double side, double *bx, double *by, double *bw, double *bh) {
+    double w = (acct_gift_col_w() - 3 * ACCT_GIFT_PAD) / 2;
+    *bw = w;
+    *bh = acct_gift_own_btn_h();
+    *bx = acct_gift_x(1) + ACCT_GIFT_PAD + (w + ACCT_GIFT_PAD) * side;
+    *by = acct_gift_own_y(row) + acct_gift_own_h() - *bh - ACCT_GIFT_PAD;
 }
-static double hit_acct_gift_sell(double x, double y) {
-    return acct_open == ACCT_GIFTS && acct_gift_picked_owned() == 1 &&
-           hit_button(x, y, acct_x() + acct_gift_btn_w() + 12, acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
+static double acct_gift_card_btn(double x, double y, double *row, double *side) {
+    double r = 0, total = acct_gift_own_total();
+    if (acct_open != ACCT_GIFTS) return 0;
+    while (r < total) {
+        double s = 0;
+        while (s < 2) {
+            double bx, by, bw, bh;
+            acct_gift_btn_rect(r, s, &bx, &by, &bw, &bh);
+            if (by >= acct_gift_view_top() && by + bh <= acct_gift_view_bottom() &&
+                hit_rect(x, y, bx, by, bw, bh) == 1) {
+                *row = r;
+                *side = s;
+                return 1;
+            }
+            s = s + 1;
+        }
+        r = r + 1;
+    }
+    return 0;
 }
+static double hit_acct_gift_own_btn_any(double x, double y) {
+    double row, side;
+    return acct_gift_card_btn(x, y, &row, &side);
+}
+
+/* The collection keeps its own down/move/up machine: a drag scrolls, a short
+ * press selects the sticker under the finger. The shop never scrolls, so a
+ * touch on it selects right away. */
+static double touch_acct_gift_list(double x, double y, double action, double id) {
+    if (acct_open != ACCT_GIFTS) return 0;
+    double ox = acct_gift_x(1), oy = acct_gift_view_top();
+    double ow = acct_gift_col_w(), oh = acct_gift_view_h();
+    double inside_list = x >= ox && x <= ox + ow && y >= oy && y <= oy + oh;
+    if (action == 2) {
+        if (acct_gift_drag < 0 || id != acct_gift_drag) return 0;
+        double dy = y - acct_gift_drag_y;
+        acct_gift_scroll = clamp(acct_gift_scroll - dy, 0, acct_gift_scroll_max());
+        acct_gift_vel = clamp(-dy / fmax(dt, 0.016), -40, 40);
+        acct_gift_drag_y = y;
+        acct_gift_drag_move = acct_gift_drag_move + fabs(dy);
+        return 1;
+    }
+    if (action == 1 || action == 3) {
+        if (acct_gift_drag < 0 || id != acct_gift_drag) return 0;
+        if (action == 1 && acct_gift_drag_move < 14) {
+            double row = acct_gift_hit_row(y);
+            double picked = acct_gift_own_id(row);
+            if (picked >= 0) {
+                acct_gift_choice = picked;
+                acct_gift_is_owned = 1;
+                acct_gift_own_row = row;
+                play_button_click();
+            }
+        }
+        acct_gift_drag = -1;
+        return 1;
+    }
+    if (action != 0) return 0;
+    if (inside_list) {
+        double row, side;
+        if (acct_gift_card_btn(x, y, &row, &side) == 1) {
+            double picked = acct_gift_own_id(row);
+            if (picked >= 0) {
+                acct_gift_choice = picked;
+                acct_gift_is_owned = 1;
+                acct_gift_own_row = row;
+                play_button_click();
+                if (side == 0) acct_gift_send(); else acct_gift_sell();
+            }
+            return 1;
+        }
+        acct_gift_drag = id;
+        acct_gift_drag_y = y;
+        acct_gift_drag_move = 0;
+        acct_gift_vel = 0;
+        return 1;
+    }
+    double i = 0;
+    while (i < acct_gift_shop_rows()) {
+        if (hit_acct_gift(x, y, i) == 1) {
+            acct_gift_choice = i;
+            acct_gift_is_owned = 0;
+            acct_gift_own_row = -1;
+            acct_gift_vel = 0;
+            return 1;
+        }
+        i = i + 1;
+    }
+    return 0;
+}
+
+/* ---- drawing ---------------------------------------------------------- */
 
 /* The recipient field shows the nickname as typed: masking it with stars,
  * as the password fields do, hid who the sticker was about to go to. */
@@ -74,68 +266,105 @@ static void acct_gift_text_right(const char *s, double right, double y, double h
     text_scaled(s, right - tw, y + (h - th) / 2 - tt + 1.5, c, sc);
 }
 
-/* One sticker as a shop card: the picture on top, the name under it, and the
- * price (shop) or the little heap of owned stickers (collection) at the
- * bottom. A card that cannot be acted on is drawn dim, never hidden. On very
- * short screens the card turns into a single row so nothing overlaps. */
-static void acct_gift_card(double i, double owned) {
-    double x = acct_gift_x(owned), y = acct_gift_y(i), w = acct_gift_col_w(), h = acct_gift_card_h();
-    double count = owned == 1 ? net_gift_count(i) : 0;
-    double dim = owned == 1 && count < 1;
-    double p = button_press_k(x, y, w, h);
-    double sq = 1 - PRESS_SQUEEZE * p;
-    double bx = x + w * (1 - sq) / 2, by = y + h * (1 - sq) / 2;
-    double bw = w * sq, bh = h * sq;
-    uint32_t ink = (uint32_t)shade(text_color, dim ? 0.5 : 1);
-    uint32_t face = (uint32_t)shade(ui_purple, dim ? 0.5 : 1 - PRESS_SHADE * p);
-    const char *name = acct_gift_name(i);
-    const char *value = owned == 1 ? "" : ds_concat(ds_num_to_string(acct_gift_price(i)), language == 1 ? " куб." : " cups");
-    button_face(bx, by, bw, bh, face);
-    if (bh < 96) {
-        /* Short screens: icon, name and the value share one narrow row. */
-        double isz = clamp(bh * 0.62, 18, 44);
-        double vw = owned == 1 ? gift_pile_w(clamp(bh * 0.24, 12, 22), count) : text_ink_width(value) * 0.44;
-        double nx = bx + 8 + isz + 8;
-        gift_icon(i, bx + 8, by + (bh - isz) / 2, isz);
-        text_in_field(name, nx, by, bh, ink, fit_text_scale(name, bw - (nx - bx) - vw - 14, 0.58));
-        if (owned == 1) {
-            double psz = clamp(bh * 0.24, 12, 22);
-            if (vw > 0) gift_pile(i, bx + bw - 8, by + (bh - psz) / 2, psz, count);
-        } else {
-            acct_gift_text_right(value, bx + bw - 8, by, bh, ink, 0.44);
+/* One card, clipped by hand to [clip_top, clip_bottom]: the face is squared
+ * off where the window cuts it, and an element is drawn only when it lies
+ * completely inside, so nothing can spill over the header or the field. */
+static void acct_gift_card(double id, double owned, double card_y, double full, double clip_top, double clip_bottom, double selected) {
+    double x = acct_gift_x(owned), w = acct_gift_col_w();
+    double y = card_y > clip_top ? card_y : clip_top;
+    double bottom = card_y + full < clip_bottom ? card_y + full : clip_bottom;
+    double h = bottom - y;
+    if (h < 2) return;
+    double cut_top = card_y < clip_top ? 1 : 0;
+    double cut_bottom = card_y + full > clip_bottom ? 1 : 0;
+    double p = owned == 0 && cut_top == 0 && cut_bottom == 0 ? button_press_k(x, card_y, w, full) : 0;
+    uint32_t ink = text_color;
+    uint32_t face = (uint32_t)shade(ui_purple, 1 - PRESS_SHADE * p);
+    const char *name = acct_gift_name(id);
+    const char *value = owned == 1 ? "" : ds_concat(ds_num_to_string(acct_gift_price(id)), language == 1 ? " куб." : " cups");
+    double r = btn_radius;
+    roundrect(x, y, w, h, r, face);
+    if (cut_top == 1) rect(x, y, w, fmin(r, h), face);
+    if (cut_bottom == 1) rect(x, y + h - fmin(r, h), w, fmin(r, h), face);
+    if (owned == 1) {
+        /* Owned card: icon, name and both actions, all inside the card. */
+        double bh = acct_gift_own_btn_h();
+        double by = card_y + full - bh - ACCT_GIFT_PAD;
+        double ny = by - 21;
+        double isz = clamp((ny - card_y - 8) * 0.9, 16, 64);
+        double iy = card_y + 8 + (ny - card_y - 8 - isz) / 2;
+        double bw = (w - 3 * ACCT_GIFT_PAD) / 2;
+        const char *send = language == 1 ? "Подарить" : "Send";
+        const char *sell = ds_concat(language == 1 ? "Продать · +" : "Sell · +", acct_gift_cups_line(acct_gift_refund(id)));
+        if (iy >= y && iy + isz <= ny) gift_icon(id, x + (w - isz) / 2, iy, isz);
+        if (ny >= y && ny + 20 <= bottom) text_in_box(name, x, ny, w, 20, ink, fit_text_scale(name, w - 12, 0.6));
+        if (by >= y && by + bh <= bottom) {
+            button_scaled(send, x + ACCT_GIFT_PAD, by, bw, bh, fit_text_scale(send, bw - 10, 0.5));
+            button_scaled(sell, x + ACCT_GIFT_PAD * 2 + bw, by, bw, bh, fit_text_scale(sell, bw - 10, 0.46));
+        }
+    } else if (full < 96) {
+        /* Short cards: icon, name and the value share one narrow row. */
+        double isz = clamp(full * 0.62, 18, 44);
+        double nx = x + 8 + isz + 8;
+        double vw = text_ink_width(value) * 0.44;
+        double iy = card_y + (full - isz) / 2;
+        if (iy >= y && iy + isz <= bottom) gift_icon(id, x + 8, iy, isz);
+        if (card_y + 2 >= y && card_y + full - 2 <= bottom) {
+            text_in_field(name, nx, card_y, full, ink, fit_text_scale(name, w - (nx - x) - vw - 14, 0.58));
+            acct_gift_text_right(value, x + w - 8, card_y, full, ink, 0.44);
         }
     } else {
-        double isz = clamp(bh * 0.38, 20, 62);
-        gift_icon(i, bx + (bw - isz) / 2, by + bh * 0.13, isz);
-        text_in_box(name, bx, by + bh * 0.13 + isz + bh * 0.03, bw, 20, ink,
-                    fit_text_scale(name, bw - 12, 0.64));
-        if (owned == 1) {
-            double psz = clamp(bh * 0.17, 14, 26);
-            double pw = gift_pile_w(psz, count);
-            if (pw > 0) gift_pile(i, bx + (bw + pw) / 2, by + bh * 0.78, psz, count);
-        } else {
-            text_in_box(value, bx, by + bh * 0.76, bw, 20, ink, fit_text_scale(value, bw - 12, 0.5));
+        double isz = clamp(full * 0.38, 20, 62);
+        double iy = card_y + full * 0.13;
+        double ny = iy + isz + full * 0.03;
+        if (iy >= y && iy + isz <= bottom) gift_icon(id, x + (w - isz) / 2, iy, isz);
+        if (ny >= y && ny + 20 <= bottom) {
+            text_in_box(name, x, ny, w, 20, ink, fit_text_scale(name, w - 12, 0.64));
+        }
+        if (owned == 0 && card_y + full * 0.76 >= y && card_y + full * 0.76 + 20 <= bottom) {
+            text_in_box(value, x, card_y + full * 0.76, w, 20, ink, fit_text_scale(value, w - 12, 0.5));
         }
     }
-    if (acct_gift_picked() == 1 && acct_gift_is_owned == owned && acct_gift_choice == i) {
-        roundrect_outline(x, y, w, h, btn_radius, 3, 0xFFFFD34D);
+    if (selected == 1 && cut_top == 0 && cut_bottom == 0) {
+        roundrect_outline(x, y, w, full, r, 3, 0xFFFFD34D);
     }
 }
 
+static void acct_gift_panel(double owned) {
+    roundrect(acct_gift_panel_x(owned), acct_gift_panel_y(), acct_gift_panel_w(), acct_gift_panel_h(), 14, card_bg);
+}
+
 static void draw_acct_gifts(void) {
-    double head_y = acct_gift_cols_top();
-    const char *left = language == 1 ? "МАГАЗИН" : "SHOP";
-    const char *right = language == 1 ? "МОИ ПОДАРКИ" : "MY GIFTS";
-    text_in_box(left, acct_gift_x(0), head_y, acct_gift_col_w(), 20, text_color,
-                fit_text_scale(left, acct_gift_col_w() - 8, 0.58));
-    text_in_box(right, acct_gift_x(1), head_y, acct_gift_col_w(), 20, text_color,
-                fit_text_scale(right, acct_gift_col_w() - 8, 0.58));
+    double vt = acct_gift_view_top(), vb = acct_gift_view_bottom();
+    acct_gift_panel(0);
+    acct_gift_panel(1);
     double i = 0;
-    while (i < 4) {
-        acct_gift_card(i, 0);
-        acct_gift_card(i, 1);
+    while (i < acct_gift_shop_rows()) {
+        double picked = acct_gift_picked() == 1 && acct_gift_is_owned == 0 && acct_gift_choice == i;
+        acct_gift_card(i, 0, vt + i * acct_gift_step(), acct_gift_card_h(), vt, vb, picked);
         i = i + 1;
     }
+    double total = acct_gift_own_total();
+    if (total < 1) {
+        const char *empty = language == 1 ? "Пока нет подарков" : "No stickers yet";
+        ctext_scaled(empty, vt + acct_gift_view_h() / 2 - 8, text_color, fit_text_scale(empty, acct_gift_col_w() - 16, 0.55));
+    } else {
+        double row = floor(acct_gift_scroll / acct_gift_own_step());
+        double cy = vt + row * acct_gift_own_step() - acct_gift_scroll;
+        while (row < total && cy < vb) {
+            double id = acct_gift_own_id(row);
+            double picked = acct_gift_own_sel() == row ? 1 : 0;
+            acct_gift_card(id, 1, cy, acct_gift_own_h(), vt, vb, picked);
+            row = row + 1;
+            cy = cy + acct_gift_own_step();
+        }
+    }
+    const char *left = language == 1 ? "МАГАЗИН" : "SHOP";
+    const char *right = language == 1 ? "МОИ ПОДАРКИ" : "MY GIFTS";
+    text_in_box(left, acct_gift_x(0), acct_gift_cols_top(), acct_gift_col_w(), 22, text_color,
+                fit_text_scale(left, acct_gift_col_w() - 8, 0.58));
+    text_in_box(right, acct_gift_x(1), acct_gift_cols_top(), acct_gift_col_w(), 22, text_color,
+                fit_text_scale(right, acct_gift_col_w() - 8, 0.58));
     /* The title itself is drawn by draw_account(); only the hint is ours. */
     const char *hint_line = language == 1 ? "Слева - магазин, справа - ваши стикеры"
                                           : "Shop on the left, your stickers on the right";
@@ -147,116 +376,19 @@ static void draw_acct_gifts(void) {
                                                       : (language == 1 ? "Отправляем..." : "Sending...");
         button_scaled(wait, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(wait, acct_w() - 24, 0.6));
     } else if (acct_gift_picked() == 0) {
-        /* Nothing chosen: no buttons at all, just a hint where to tap. */
         const char *hint = language == 1 ? "Нажмите на стикер" : "Tap a sticker";
         ctext_scaled(hint, acct_below_fields() + (btn_h - 16) / 2, text_color, 0.55);
     } else if (acct_gift_is_owned == 0) {
         const char *buy = ds_concat(language == 1 ? "Купить · " : "Buy · ",
-                                    acct_gift_cups_line(acct_gift_price(acct_gift_choice)));
-        if (cups < acct_gift_price(acct_gift_choice)) {
+                                    acct_gift_cups_line(acct_gift_price(acct_gift_sel_id())));
+        if (cups < acct_gift_price(acct_gift_sel_id())) {
             button_disabled_scaled(buy, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(buy, acct_w() - 24, 0.6));
         } else {
             button_scaled(buy, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(buy, acct_w() - 24, 0.6));
         }
     } else {
-        double bw = acct_gift_btn_w();
-        const char *send = language == 1 ? "Подарить" : "Send";
-        const char *sell = ds_concat(language == 1 ? "Продать · +" : "Sell · +",
-                                     acct_gift_cups_line(acct_gift_refund(acct_gift_choice)));
-        if (net_gift_count(acct_gift_choice) < 1) {
-            button_disabled_scaled(send, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.56));
-            button_disabled_scaled(sell, acct_x() + bw + 12, acct_below_fields(), bw, btn_h, fit_text_scale(sell, bw - 12, 0.52));
-        } else {
-            button_scaled(send, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.56));
-            button_scaled(sell, acct_x() + bw + 12, acct_below_fields(), bw, btn_h, fit_text_scale(sell, bw - 12, 0.52));
-        }
-    }
-}
-
-/* A tap on either column picks that sticker and swaps the action row under
- * the columns; it never sends anything by itself. */
-static double touch_acct_gift_cards(double x, double y, double action) {
-    if (action != 0 || acct_open != ACCT_GIFTS) return 0;
-    double i = 0;
-    while (i < 4) {
-        if (hit_acct_gift(x, y, 0, i) == 1) {
-            acct_gift_choice = i; acct_gift_is_owned = 0; return 1;
-        }
-        if (hit_acct_gift(x, y, 1, i) == 1) {
-            acct_gift_choice = i; acct_gift_is_owned = 1; return 1;
-        }
-        i = i + 1;
-    }
-    return 0;
-}
-
-static void acct_gifts_page(void) {
-    acct_gift_choice = -1; acct_gift_busy = 0; acct_gift_is_owned = 0;
-    net_gift_refresh(); acct_go(ACCT_GIFTS);
-}
-static void acct_gift_buy(void) {
-    keyboard_hide();
-    if (cups < acct_gift_price(acct_gift_choice)) { acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups"; return; }
-    acct_gift_busy = 1; acct_gift_busy_mode = 2;
-    acct_msg = language == 1 ? "Покупаем стикер..." : "Buying sticker...";
-    net_gift_action(acct_gift_choice, "", 2);
-}
-static void acct_gift_send(void) {
-    acct_sync(); keyboard_hide();
-    if (acct_gift_picked_owned() != 1 || net_gift_count(acct_gift_choice) < 1) {
-        acct_msg = language == 1 ? "Выберите свой стикер справа" : "Pick one of your stickers on the right"; return;
-    }
-    if (!acct_buf[0][0]) { acct_msg = language == 1 ? "Введите ник получателя" : "Enter recipient nickname"; return; }
-    acct_gift_busy = 1; acct_gift_busy_mode = 0;
-    acct_msg = language == 1 ? "Отправляем стикер..." : "Sending sticker...";
-    net_gift_action(acct_gift_choice, acct_buf[0], 0);
-}
-static void acct_gift_sell(void) {
-    keyboard_hide();
-    if (acct_gift_picked_owned() != 1 || net_gift_count(acct_gift_choice) < 1) {
-        acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory"; return;
-    }
-    acct_gift_busy = 1; acct_gift_busy_mode = 3;
-    acct_msg = language == 1 ? "Продаём стикер..." : "Selling sticker...";
-    net_gift_action(acct_gift_choice, "", 3);
-}
-
-static void acct_poll_gifts(void) {
-    if (acct_gift_busy == 1) {
-        double gift_status = net_gift_action_status();
-        if (gift_status >= 2) {
-            acct_gift_busy = 0;
-            if (gift_status == 2) {
-                if (acct_gift_busy_mode == 2) {
-                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
-                    cups = cups - acct_gift_price(acct_gift_choice);
-                    if (cups < 0) cups = 0;
-                    acct_gift_is_owned = 1;
-                    save_progress();
-                } else if (acct_gift_busy_mode == 3) {
-                    acct_msg = ds_concat(language == 1 ? "Стикер продан: +" : "Sticker sold: +",
-                                         acct_gift_cups_line(acct_gift_refund(acct_gift_choice)));
-                    cups = cups + acct_gift_refund(acct_gift_choice);
-                    save_progress();
-                } else {
-                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
-                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
-                    acct_field = 0;
-                }
-                net_gift_refresh();
-            } else if (gift_status == 4) {
-                acct_msg = language == 1 ? "Игрок с таким ником не найден" : "No player with that nickname";
-            } else if (gift_status == 5) {
-                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
-            } else if (gift_status == 6) {
-                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
-            } else if (gift_status == 7) {
-                acct_msg = language == 1 ? "Проверьте ник: нельзя дарить самому себе" : "Check the nickname: you cannot gift yourself";
-            } else if (gift_status == 8) {
-                acct_msg = language == 1 ? "Коллекция заполнена (999)" : "Collection is full (999)";
-            } else {
-                acct_msg = language == 1 ? "Не удалось. Проверьте ник и подключение." : "Failed. Check nickname and connection.";
-            }
-        }
+        const char *pick = ds_concat(acct_gift_name(acct_gift_sel_id()),
+                                     language == 1 ? " · кнопки на карточке" : " · buttons on the card");
+        ctext_scaled(pick, acct_below_fields() + (btn_h - 16) / 2, text_color, fit_text_scale(pick, acct_w() - 16, 0.55));
     }
 }
