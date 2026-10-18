@@ -1,6 +1,8 @@
 # In-game gifts
 
-Gift IDs and cup prices are defined in `functions/index.js`:
+Gifts work through the Realtime Database directly — there is no Cloud Function
+(`giftAction`) anymore. Gift IDs and cup prices live in the game client
+(`src/engine/network/gifts.inc`; the UI reads them via `net_gift_price`):
 
 | ID | Cost |
 | --- | ---: |
@@ -9,6 +11,56 @@ Gift IDs and cup prices are defined in `functions/index.js`:
 | `bear` | 250 |
 | `rocket` | 500 |
 
-The `giftAction` callable supports `{ action: "buy", gift, sender }` to purchase for the signed-in player's own collection, `{ action: "send", gift, sender, recipient }` to transfer one owned gift, and (admins only) `{ action: "grant", gift, sender, recipient }`. It verifies the caller's Firebase Auth identity and uses Realtime Database transactions for cup debits and inventory changes. Buying charges cups once; sending an owned sticker does not charge again. Admin grants do not debit cups.
+## Data layout
 
-Deploy with `firebase deploy --only functions:giftAction`. The signed-in Account screen contains a scrollable sticker shop, inventory counts, a buy-for-self action, recipient field, and send-owned-gift action. Buying debits cups once and adds the sticker to the player's collection; gifting transfers one owned sticker without charging cups again. The in-game CCP panel has a Gifts tab for admin grants. The database rules allow the gift inventory schema but do not let clients write gifts; only the Admin SDK callable can do so.
+```
+users/<nick>/cups          cup balance
+users/<nick>/gifts/rose    0..999 owned stickers (cake, bear, rocket likewise)
+```
+
+* **Buy** — one authenticated PATCH to `users/<nick>.json` that writes the new
+  cup balance and the incremented sticker together, so a purchase cannot take
+  the cups without delivering the sticker.
+* **Send** — `-1` to the sender's `gifts` first, then `+1` to the recipient's.
+  If the second write fails, the client puts the sticker back into the sender's
+  counter.
+* **Admin grant** — the CCP panel's Gifts tab performs the same `+1` write; it
+  does not debit cups.
+
+All requests are normal Firebase REST calls with the signed-in player's ID
+token (`fb_http`), exactly like progress saves. No callable function is needed.
+
+## Database rules
+
+`firebase.rules.json` allows a signed-in `@cb4.game` password player to read
+profiles, as before. For gifts specifically:
+
+* the owner may set their own counters to any value `0..999`;
+* another player may only write the same value or `+1` (one sticker per write);
+* a write must contain all four counters (`hasChildren`), which also blocks
+  deleting somebody else's gifts or individual counters;
+* the rest of the profile (cups, levels, classes) stays owner-only, so gifting
+  cannot change anything besides the gift counter.
+
+Deploy the rules with:
+
+```
+firebase deploy --only database
+```
+
+If an older build had the `giftAction` callable deployed, remove it (nothing in
+the game calls it anymore):
+
+```
+firebase functions:delete giftAction
+```
+
+The cup balance is client-written, same trust model as the rest of the
+progress save, so a modified client could still fake its own cups — but not
+another player's profile.
+
+## UI
+
+The signed-in Account screen contains a scrollable sticker shop, inventory
+counts, a buy-for-self action, a recipient field, and a send-owned-gift action.
+The in-game CCP panel has a Gifts tab for admin grants.

@@ -79,6 +79,25 @@ static void check_expiry(void) {
     after = now_ms();
     assert(fb.expires_at <= after + 3600000);
 }
+static void check_gifts(void) {
+    assert(gift_nick_ok("Bob_1"));
+    assert(gift_nick_ok("abcdefghijklmnop"));
+    assert(!gift_nick_ok("abcdefghijklmnopq"));
+    assert(!gift_nick_ok("bad nick"));
+    assert(!gift_nick_ok(""));
+    assert(!gift_nick_ok(NULL));
+    assert(gift_nick_same("Bob", "bob"));
+    assert(!gift_nick_same("bob", "bobby"));
+    assert(!gift_nick_same("bob", NULL));
+    assert(strcmp(gift_id(0), "rose") == 0);
+    assert(strcmp(gift_id(3), "rocket") == 0);
+    assert(strcmp(gift_id(4), "") == 0);
+    assert(strcmp(gift_id(-1), "") == 0);
+    assert(gift_price(0) == 25 && gift_price(1) == 100 && gift_price(2) == 250 && gift_price(3) == 500);
+    assert(gift_price(9) == 0 && gift_price(-1) == 0);
+    assert(net_gift_price(0) == 25 && net_gift_price(3) == 500);
+    assert(net_gift_price(4) == 0 && net_gift_price(-2) == 0);
+}
 static void check_bpx(void) {
     net_set_data_path(".");
     apply_user_json("{\"bp\":7,\"bpx\":123}");
@@ -220,6 +239,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[1], "stream")) check_stream();
     else if (!strcmp(argv[1], "passwd")) check_passwd();
     else if (!strcmp(argv[1], "bpx")) check_bpx();
+    else if (!strcmp(argv[1], "gifts")) check_gifts();
     else return 2;
     printf("network memory: %s OK\n", argv[1]);
     return 0;
@@ -247,7 +267,7 @@ def main():
             str(temp / "test.c"), "-lm", "-lpthread", "-o", str(binary),
         ], check=True)
         failed = False
-        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd", "bpx"):
+        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd", "bpx", "gifts"):
             try:
                 result = subprocess.run([str(binary), name], cwd=temp, capture_output=True, text=True, timeout=5)
                 print(result.stdout, end="")

@@ -35,6 +35,7 @@ static void acct_gifts_page(void);
 static void acct_gift_buy(void);
 static void acct_gift_send(void);
 static void draw_acct_gifts(void);
+static void acct_poll_gifts(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -329,37 +330,7 @@ static void acct_tick(void) {
         acct_gift_velocity = acct_gift_velocity * exp(-5.2 * dt);
         if (acct_gift_scroll <= 0 || acct_gift_scroll >= acct_gift_scroll_max()) acct_gift_velocity = 0;
     }
-    if (acct_gift_busy == 1) {
-        double gift_status = net_gift_action_status();
-        if (gift_status >= 2) {
-            acct_gift_busy = 0;
-            if (gift_status == 2) {
-                if (acct_gift_busy_mode == 2) {
-                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
-                    cups = cups - acct_gift_price(acct_gift_choice);
-                    if (cups < 0) cups = 0;
-                    acct_gift_is_owned = 1;
-                    acct_gift_scroll = clamp(5 + acct_gift_choice - floor(acct_gift_visible() / 2), 0, 9 - acct_gift_visible());
-                    save_progress();
-                } else {
-                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
-                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
-                    acct_field = 0;
-                }
-                net_gift_refresh();
-            } else if (gift_status == 4) {
-                acct_msg = language == 1 ? "Сервер подарков не установлен: разверните giftAction" : "Gift server is not deployed: deploy giftAction";
-            } else if (gift_status == 5) {
-                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
-            } else if (gift_status == 6) {
-                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
-            } else if (gift_status == 7) {
-                acct_msg = language == 1 ? "Версия сервера подарков устарела" : "Gift server is out of date";
-            } else {
-                acct_msg = language == 1 ? "Не удалось отправить. Проверьте ник и подключение." : "Gift failed. Check nickname and connection.";
-            }
-        }
-    }
+    acct_poll_gifts();
     if (acct_busy == 1) {
         acct_poll_delete();
     } else if (acct_busy == 2) {

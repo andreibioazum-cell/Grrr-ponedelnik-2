@@ -725,6 +725,10 @@ void net_gift_action(double gift, const char *recipient, double grant) {
     (void)gift; (void)recipient; (void)grant;
 }
 double net_gift_action_status(void) { return 0; }
+double net_gift_price(double gift) {
+    int i = (int)gift;
+    return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 500 : 0;
+}
 double net_chat_is_passwd(const char *msg) {
     if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
     const char *t = msg + 7;

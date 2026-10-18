@@ -10,6 +10,7 @@
 #include "engine/network/promo.inc"
 #include "engine/network/profile_apply.inc"
 #include "engine/network/auth_session.inc"
+#include "engine/network/gifts.inc"
 #include "engine/network/presence_classify.inc"
 #include "engine/network/presence.inc"
 #include "engine/network/net_auth_flow.inc"

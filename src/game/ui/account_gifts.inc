@@ -20,7 +20,7 @@ static const char *acct_gift_name(double i) {
     return language == 1 ? "Ракета" : "Rocket";
 }
 static const char *acct_gift_icon(double i) { return i == 0 ? "✿" : i == 1 ? "★" : i == 2 ? "♥" : "➤"; }
-static double acct_gift_price(double i) { return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : 500; }
+static double acct_gift_price(double i) { return net_gift_price(i); }
 static double acct_gift_y(double i) { return acct_gift_list_top() + (i - acct_gift_scroll) * acct_gift_step(); }
 static double hit_acct_gift(double x, double y, double i) {
     double iy = acct_gift_y(i);
@@ -137,4 +137,40 @@ static void draw_acct_gifts(void) {
     const char *send = acct_gift_busy == 1 && acct_gift_busy_mode == 0 ? (language == 1 ? "Отправляем..." : "Sending...") : (language == 1 ? "Подарить" : "Send gift");
     button_scaled(buy, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(buy, bw - 12, 0.48));
     button_scaled(send, acct_x() + bw + 10, acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.54));
+}
+
+static void acct_poll_gifts(void) {
+    if (acct_gift_busy == 1) {
+        double gift_status = net_gift_action_status();
+        if (gift_status >= 2) {
+            acct_gift_busy = 0;
+            if (gift_status == 2) {
+                if (acct_gift_busy_mode == 2) {
+                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
+                    cups = cups - acct_gift_price(acct_gift_choice);
+                    if (cups < 0) cups = 0;
+                    acct_gift_is_owned = 1;
+                    acct_gift_scroll = clamp(5 + acct_gift_choice - floor(acct_gift_visible() / 2), 0, 9 - acct_gift_visible());
+                    save_progress();
+                } else {
+                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
+                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
+                    acct_field = 0;
+                }
+                net_gift_refresh();
+            } else if (gift_status == 4) {
+                acct_msg = language == 1 ? "Игрок с таким ником не найден" : "No player with that nickname";
+            } else if (gift_status == 5) {
+                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
+            } else if (gift_status == 6) {
+                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
+            } else if (gift_status == 7) {
+                acct_msg = language == 1 ? "Проверьте ник: нельзя дарить самому себе" : "Check the nickname: you cannot gift yourself";
+            } else if (gift_status == 8) {
+                acct_msg = language == 1 ? "Коллекция заполнена (999)" : "Collection is full (999)";
+            } else {
+                acct_msg = language == 1 ? "Не удалось отправить. Проверьте ник и подключение." : "Gift failed. Check nickname and connection.";
+            }
+        }
+    }
 }

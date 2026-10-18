@@ -49,10 +49,12 @@
         "w": { ".validate": "newData.isString() && newData.val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc'" },
         "cups": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
         "gifts": {
-          "rose": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
-          "cake": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
-          "bear": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
-          "rocket": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
+          ".write": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password' && newData.exists() && newData.hasChildren(['rose','cake','bear','rocket'])",
+          ".validate": "newData.hasChildren(['rose','cake','bear','rocket'])",
+          "rose": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999 && (auth.token.email.toLowerCase().replace('@cb4.game', '') == $nick.toLowerCase() || (!data.exists() ? (newData.val() == 0 || newData.val() == 1) : (newData.val() == data.val() || newData.val() == data.val() + 1)))" },
+          "cake": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999 && (auth.token.email.toLowerCase().replace('@cb4.game', '') == $nick.toLowerCase() || (!data.exists() ? (newData.val() == 0 || newData.val() == 1) : (newData.val() == data.val() || newData.val() == data.val() + 1)))" },
+          "bear": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999 && (auth.token.email.toLowerCase().replace('@cb4.game', '') == $nick.toLowerCase() || (!data.exists() ? (newData.val() == 0 || newData.val() == 1) : (newData.val() == data.val() || newData.val() == data.val() + 1)))" },
+          "rocket": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999 && (auth.token.email.toLowerCase().replace('@cb4.game', '') == $nick.toLowerCase() || (!data.exists() ? (newData.val() == 0 || newData.val() == 1) : (newData.val() == data.val() || newData.val() == data.val() + 1)))" },
           "$other": { ".validate": false }
         },
         "candies": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
