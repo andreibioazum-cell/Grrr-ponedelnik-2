@@ -6,6 +6,7 @@
 static double acct_gift_choice = 0;
 static double acct_gift_busy = 0;
 static double acct_gift_busy_mode = 0;
+static double acct_gift_is_owned = 0;
 static double acct_gift_scroll = 0;
 static double acct_gift_drag_id = -1;
 static double acct_gift_drag_y = 0;
@@ -132,7 +133,8 @@ static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
            hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
-           hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1;
+           hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1 ||
+           hit_acct_gift(x, y, 4) == 1 || hit_acct_gift(x, y, 5) == 1 || hit_acct_gift(x, y, 6) == 1 || hit_acct_gift(x, y, 7) == 1 || hit_acct_gift(x, y, 8) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -232,8 +234,8 @@ static void touch_acct_menu(double x, double y) {
 static void touch_account(double x, double y, double action, double id) {
     if (action == 2 && id == acct_gift_drag_id && acct_open == ACCT_GIFTS) {
         double delta = y - acct_gift_drag_y;
-        if (delta > acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll - 1, 0, 4 - acct_gift_visible()); acct_gift_drag_y = y; }
-        else if (delta < -acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll + 1, 0, 4 - acct_gift_visible()); acct_gift_drag_y = y; }
+        if (delta > acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll - 1, 0, 9 - acct_gift_visible()); acct_gift_drag_y = y; }
+        else if (delta < -acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll + 1, 0, 9 - acct_gift_visible()); acct_gift_drag_y = y; }
         return;
     }
     if (action == 2) {
@@ -245,8 +247,9 @@ static void touch_account(double x, double y, double action, double id) {
     if (action == 1 || action == 3) {
         if (id == acct_gift_drag_id) {
             if (action == 1 && fabs(y - acct_gift_drag_start_y) < 12) {
-                double choice = floor((y - acct_gift_list_top()) / acct_gift_step()) + acct_gift_scroll;
-                if (choice >= 0 && choice < 4) acct_gift_choice = choice;
+                double row = floor((y - acct_gift_list_top()) / acct_gift_step()) + acct_gift_scroll;
+                if (row >= 0 && row < 4) { acct_gift_choice = row; acct_gift_is_owned = 0; }
+                else if (row > 4 && row < 9) { acct_gift_choice = row - 5; acct_gift_is_owned = 1; }
             }
             acct_gift_drag_id = -1;
             return;
@@ -337,6 +340,8 @@ static void acct_tick(void) {
                     acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
                     cups = cups - acct_gift_price(acct_gift_choice);
                     if (cups < 0) cups = 0;
+                    acct_gift_is_owned = 1;
+                    acct_gift_scroll = clamp(5 + acct_gift_choice - floor(acct_gift_visible() / 2), 0, 9 - acct_gift_visible());
                     save_progress();
                 } else {
                     acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
