@@ -127,3 +127,73 @@ double net_change_password_status(void) {
         s_pass_chg_status = 0;
     return (double)s;
 }
+
+/* ---- Admin reset of another player's password ----
+ * The client sends the admin's own Firebase ID token to the
+ * adminResetPassword Cloud Function; only the function (Admin SDK) can
+ * change another account's password. Statuses: 0 idle, 1 running,
+ * 2 changed, 3 error or function not deployed, 4 bad new password,
+ * 5 bad target nick (result is handed out once). */
+static volatile int s_admin_reset_status = 0;
+static char s_admin_reset_nick[24], s_admin_reset_new[64];
+
+static void *admin_reset_job(void *arg) {
+    char nick[24], new_pass[64], idt[FB_ID_MAX], bearer[FB_ID_MAX + 16], body[512], resp[2048], enick[64], epass[96];
+    int code, result = 3;
+    (void)arg;
+    snprintf(nick, sizeof(nick), "%s", s_admin_reset_nick);
+    snprintf(new_pass, sizeof(new_pass), "%s", s_admin_reset_new);
+    memset(s_admin_reset_new, 0, sizeof(s_admin_reset_new));
+    if (!fb_enabled() || !fb_ensure_token())
+        goto done;
+    fb_id_token(idt, sizeof(idt));
+    if (!idt[0])
+        goto done;
+    snprintf(bearer, sizeof(bearer), "Bearer %s", idt);
+    json_escape(nick, enick, sizeof(enick));
+    json_escape(new_pass, epass, sizeof(epass));
+    /* Callable-function protocol: {"data": {...}} + caller ID token. */
+    snprintf(body, sizeof(body), "{\"data\":{\"nick\":\"%s\",\"password\":\"%s\"}}", enick, epass);
+    code = http_ex("POST", NET_ADMIN_RESET_URL, body, resp, sizeof(resp), "Authorization", bearer, NULL, 0);
+    memset(body, 0, sizeof(body));
+    memset(bearer, 0, sizeof(bearer));
+    if (code == 200 && strstr(resp, "\"result\"") && strstr(resp, "\"ok\":true"))
+        result = 2;
+    else if (net_log_ok())
+        LOGERR("admin password reset for '%s': HTTP %d %.160s", nick, code, resp);
+done:
+    memset(new_pass, 0, sizeof(new_pass));
+    s_admin_reset_status = result;
+    return NULL;
+}
+
+void net_admin_reset_password(const char *nick, const char *new_pass) {
+    DSThread t;
+    if (s_admin_reset_status == 1)
+        return;
+    if (!new_pass || !pass_valid(new_pass)) {
+        s_admin_reset_status = 4;
+        return;
+    }
+    if (!nick || !*nick || strlen(nick) >= sizeof(s_admin_reset_nick)) {
+        s_admin_reset_status = 5;
+        return;
+    }
+    snprintf(s_admin_reset_nick, sizeof(s_admin_reset_nick), "%s", nick);
+    snprintf(s_admin_reset_new, sizeof(s_admin_reset_new), "%s", new_pass);
+    s_admin_reset_status = 1;
+    t = ds_thread_start(admin_reset_job, NULL);
+    if (t) {
+        ds_thread_detach(t);
+        return;
+    }
+    memset(s_admin_reset_new, 0, sizeof(s_admin_reset_new));
+    s_admin_reset_status = 3;
+}
+
+double net_admin_reset_status(void) {
+    int s = s_admin_reset_status;
+    if (s >= 2)
+        s_admin_reset_status = 0;
+    return (double)s;
+}

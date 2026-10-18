@@ -697,6 +697,48 @@ const char *net_chat_unban_target(const char *msg) {
     (void)msg;
     return "";
 }
+static int stub_admin_reset_calls;
+static char stub_admin_reset_nick[24], stub_admin_reset_new[64];
+static double stub_admin_reset_status;
+void net_admin_reset_password(const char *nick, const char *new_pass) {
+    stub_admin_reset_calls++;
+    snprintf(stub_admin_reset_nick, sizeof(stub_admin_reset_nick), "%s", nick ? nick : "");
+    snprintf(stub_admin_reset_new, sizeof(stub_admin_reset_new), "%s", new_pass ? new_pass : "");
+    stub_admin_reset_status = 1;
+}
+double net_admin_reset_status(void) {
+    double v = stub_admin_reset_status;
+    if (v >= 2) stub_admin_reset_status = 0;
+    return v;
+}
+double net_chat_is_passwd(const char *msg) {
+    if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
+    const char *t = msg + 7;
+    while (*t == ' ' || *t == '\t') t++;
+    if (!*t) return 0;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? 1 : 0;
+}
+static char stub_passwd_target[24], stub_passwd_new[64];
+const char *net_chat_passwd_target(const char *msg) {
+    const char *t = msg ? msg + 7 : "";
+    size_t i = 0;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(stub_passwd_target) - 1 && t[i] != ' ' && t[i] != '\t') { stub_passwd_target[i] = t[i]; i++; }
+    stub_passwd_target[i] = 0;
+    return stub_passwd_target;
+}
+const char *net_chat_passwd_new(const char *msg) {
+    const char *t = msg ? msg + 7 : "";
+    size_t i = 0;
+    while (*t == ' ' || *t == '\t') t++;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(stub_passwd_new) - 1 && t[i] != ' ' && t[i] != '\t') { stub_passwd_new[i] = t[i]; i++; }
+    stub_passwd_new[i] = 0;
+    return stub_passwd_new;
+}
 double net_chat_is_text_cmd(const char *msg) {
     (void)msg;
     return 0;
@@ -1303,31 +1345,19 @@ static void test_dice_alone_and_bubbles(void) {
     assert(dev_access() == 0);
     srand(12345);
     double legendary = 0;
+    double saw_santa = 0;
+    double saw_cc = 0;
     double i = 0;
     while (i < 30000) {
         double f = dice_roll_cube();
-        assert(f != DICE_CUBE_SANTA && f != DICE_CUBE_CODECRACKER);
+        /* Every class rolls for everyone, admins included or not. */
+        if (f == DICE_CUBE_SANTA) saw_santa = 1;
+        if (f == DICE_CUBE_CODECRACKER) saw_cc = 1;
         if (f == DICE_CUBE_LEGENDARY) legendary = legendary + 1;
         i = i + 1;
     }
     assert(legendary > 0 && legendary < 80); /* 0.08% of 30000 = ~24 */
-    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
-    astra_ability_refresh();
-    assert(dev_access() == 1);
-    double saw_santa = 0;
-    double saw_cc = 0;
-    i = 0;
-    while (i < 30000) {
-        double f = dice_roll_cube();
-        if (f == DICE_CUBE_SANTA) saw_santa = 1;
-        if (f == DICE_CUBE_CODECRACKER) saw_cc = 1;
-        i = i + 1;
-    }
     assert(saw_santa == 1 && saw_cc == 1);
-    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
-    astra_ability_refresh();
 
     screen_w = 800;
     screen_h = 600;
@@ -1378,6 +1408,20 @@ static void test_dice_alone_and_bubbles(void) {
     arr_set(remotes, remote_fields + 5, 0);
     online_ready = 0;
     game_state = ST_LOBBY;
+
+    /* Admin passwd command: resets a normal account, never an admin. */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    stub_login_status = 2;
+    stub_admin_reset_calls = 0;
+    assert(admin_handle("passwd bob secret1") == 1);
+    assert(stub_admin_reset_calls == 1);
+    assert(strcmp(stub_admin_reset_nick, "bob") == 0);
+    assert(strcmp(stub_admin_reset_new, "secret1") == 0);
+    assert(admin_handle("passwd Dimasi4ek229 secret1") == 1);
+    assert(stub_admin_reset_calls == 1); /* protected admin account */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
 
     /* Chat bubbles: a second message must replace the bubble even though
      * net_chat_key() reuses one static buffer (the old aliasing bug). */

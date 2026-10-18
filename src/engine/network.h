@@ -229,6 +229,20 @@ double net_delete_account_status(void);
  * 6 — не выполнен вход (результат отдаётся один раз). */
 void net_change_password(const char *old_pass, const char *new_pass);
 double net_change_password_status(void);
+/* Admin reset of ANOTHER player's account password. A game client cannot
+ * do this in Firebase Auth directly (it takes the account's own token),
+ * so the client calls the adminResetPassword Cloud Function, which
+ * verifies the caller's admin token and uses the Admin SDK. Deploy it
+ * from functions/ (see FIREBASE.md); if it is not deployed the call
+ * simply ends in the error status. Statuses mirror net_change_password:
+ * 0 idle, 1 running, 2 changed, 3 error/not deployed, 4 bad new password,
+ * 5 bad target nick. */
+#define NET_ADMIN_RESET_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/adminResetPassword"
+void net_admin_reset_password(const char *nick, const char *new_pass);
+double net_admin_reset_status(void);
+double net_chat_is_passwd(const char *msg);
+const char *net_chat_passwd_target(const char *msg);
+const char *net_chat_passwd_new(const char *msg);
 
 double net_banned(void);
 double net_is_banned(const char *nick);

@@ -1,9 +1,9 @@
 /* Event 4: the Cube. A big cube in the middle of the arena throws out
- * other cubes - character cubes, not dice: Ordinary, Azum, Astra, Ebuc,
- * and for the two admin accounts also Santa and CodeCracker (the admin
- * classes join the pool only for admins, like the classes themselves).
- * A thrown cube flies to a random spot and lies there; whoever walks
- * over it collects its candy prize:
+ * other cubes - character cubes, not dice: every class in the game is
+ * in the pool for everyone (Santa and CodeCracker are NOT admin-only
+ * here - the event is a lottery, not the shop). A thrown cube flies to
+ * a random spot and lies there; whoever walks over it collects its
+ * candy prize:
  *   Ordinary 2, Azum 5, Astra 9, Ebuc 15, Santa 30, CodeCracker 60,
  *   Legendary Azum 95 - the best cube, chance 0.08%.
  * Chances are rolled in 0.001% units (roll 0..99999). The event replaces
@@ -53,17 +53,16 @@ static double dice_prize_of(double cube) {
 
 static double dice_roll_cube(void) {
     double roll = (double)(rand() % 100000); /* 0.001% units */
-    double admin = dev_access();
     if (roll < 80) {
         return DICE_CUBE_LEGENDARY; /* 0.08% -> 95 */
     }
     roll = roll - 80;
-    if (admin == 1 && roll < 1500) {
-        return DICE_CUBE_CODECRACKER; /* admins: 1.5% -> 60 */
+    if (roll < 1500) {
+        return DICE_CUBE_CODECRACKER; /* 1.5% -> 60, everyone */
     }
     roll = roll - 1500;
-    if (admin == 1 && roll < 3000) {
-        return DICE_CUBE_SANTA; /* admins: 3% -> 30 */
+    if (roll < 3000) {
+        return DICE_CUBE_SANTA; /* 3% -> 30, everyone */
     }
     roll = roll - 3000;
     if (roll < 7000) {

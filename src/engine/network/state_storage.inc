@@ -145,6 +145,8 @@ static char s_nick_ret[24];
 static char s_lg_nick_ret[24];
 static char s_lg_pass_ret[64];
 static char s_ban_target_ret[32];
+static char s_passwd_target_ret[24];
+static char s_passwd_new_ret[64];
 static char s_banner_text_ret[CHAT_TEXT_MAX];
 static char s_banner_color_ret[BANNER_COLOR_MAX];
 static char s_text_cmd_text_ret[CHAT_TEXT_MAX];

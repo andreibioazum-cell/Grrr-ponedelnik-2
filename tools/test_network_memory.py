@@ -159,6 +159,16 @@ static void check_merge(void) {
     snprintf(tiny, sizeof(tiny), "%s", "{\"a\":1}");
     assert(!json_object_merge(tiny, sizeof(tiny), "{\"b\":{\"long\":\"valuevaluevalue\"}}"));
 }
+static void check_passwd(void) {
+    assert(net_chat_is_passwd("passwd bob secret1") == 1);
+    assert(net_chat_is_passwd("passwd bob") == 0);
+    assert(net_chat_is_passwd("passwd") == 0);
+    assert(net_chat_is_passwd("password bob secret1") == 0);
+    assert(strcmp(net_chat_passwd_target("passwd bob secret1"), "bob") == 0);
+    assert(strcmp(net_chat_passwd_new("passwd bob secret1"), "secret1") == 0);
+    assert(strcmp(net_chat_passwd_target("passwd   alice_9   p4ss"), "alice_9") == 0);
+    assert(strcmp(net_chat_passwd_new("passwd   alice_9   p4ss"), "p4ss") == 0);
+}
 static void check_stream(void) {
     char dst[256];
     (void)dst;
@@ -198,6 +208,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[1], "fuzz")) check_fuzz();
     else if (!strcmp(argv[1], "merge")) check_merge();
     else if (!strcmp(argv[1], "stream")) check_stream();
+    else if (!strcmp(argv[1], "passwd")) check_passwd();
     else return 2;
     printf("network memory: %s OK\n", argv[1]);
     return 0;
@@ -225,7 +236,7 @@ def main():
             str(temp / "test.c"), "-lm", "-lpthread", "-o", str(binary),
         ], check=True)
         failed = False
-        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream"):
+        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd"):
             try:
                 result = subprocess.run([str(binary), name], cwd=temp, capture_output=True, text=True, timeout=5)
                 print(result.stdout, end="")

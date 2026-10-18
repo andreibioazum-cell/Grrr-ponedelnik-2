@@ -46,6 +46,8 @@ static double is_admin(void) {
     return 0;
 }
 
+static char admin_passwd_target_buf[24];
+
 static const char *admin_actor_nick(void) {
     return admin_nick_of(admin_slot(net_login_nick()));
 }
@@ -85,6 +87,27 @@ static double admin_handle(const char *msg) {
         net_chat_send(ds_concat(ds_concat("СОБЫТИЕ «КУБИК» от ", by), "!"));
         ds_log("admin: event 4 dice");
         return 1;
+    }
+    if (net_chat_is_passwd(msg) == 1) {
+        const char *t1 = net_chat_passwd_target(msg);
+        const char *np = net_chat_passwd_new(msg);
+        if (str_len(t1) > 0 && str_len(np) > 0) {
+            if (admin_slot(t1) != 0) {
+                net_chat_send(tr_admin_ban_protected());
+                ds_log("admin passwd blocked for protected account %s", t1);
+                return 1;
+            }
+            double i = 0;
+            while (t1[(int)i] != 0 && i < (double)(sizeof(admin_passwd_target_buf) - 1)) {
+                admin_passwd_target_buf[(int)i] = t1[(int)i];
+                i = i + 1;
+            }
+            admin_passwd_target_buf[(int)i] = 0;
+            net_admin_reset_password(t1, np);
+            net_chat_send(language == 1 ? "Меняю пароль..." : "Changing password...");
+            ds_log("admin passwd reset requested for %s", t1);
+            return 1;
+        }
     }
     if (net_chat_is_ban(msg) == 1) {
         const char *t1 = net_chat_ban_target(msg);
@@ -136,7 +159,8 @@ static void chat_send(void) {
             keyboard_clear();
             return;
         }
-        if (net_chat_is_ban(chat_input) == 1 || net_chat_is_unban(chat_input) == 1) {
+        if (net_chat_is_ban(chat_input) == 1 || net_chat_is_unban(chat_input) == 1 ||
+            net_chat_is_passwd(chat_input) == 1) {
             admin_handle(chat_input);
             chat_input = "";
             keyboard_clear();
@@ -247,6 +271,16 @@ static void draw_sticker_tile(double i) {
 static void chat_update(void) {
     if (game_state != 5 || chat_open == 0) {
         return;
+    }
+    {
+        double rs = net_admin_reset_status();
+        if (rs == 2) {
+            net_chat_send(ds_concat(language == 1 ? "Пароль изменён: " : "Password changed: ",
+                                    admin_passwd_target_buf));
+        } else if (rs >= 3) {
+            net_chat_send(language == 1 ? "Не удалось изменить пароль (функция не развёрнута?)"
+                                        : "Password change failed (function not deployed?)");
+        }
     }
     if (keyboard_visible() == 1) {
         chat_sync_input();

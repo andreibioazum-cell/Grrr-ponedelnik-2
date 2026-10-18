@@ -323,6 +323,51 @@ const char *net_chat_unban_target(const char *msg) {
     return s_ban_target_ret;
 }
 
+/* Admin command: passwd <nick> <new password> (no spaces in either). */
+static const char *passwd_args(const char *msg) {
+    if (!msg || strncmp(msg, "passwd ", 7) != 0)
+        return NULL;
+    const char *t = msg + 7;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? t : NULL;
+}
+double net_chat_is_passwd(const char *msg) {
+    const char *t = passwd_args(msg);
+    if (!t)
+        return 0;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? 1 : 0;
+}
+const char *net_chat_passwd_target(const char *msg) {
+    const char *t = passwd_args(msg);
+    size_t i = 0;
+    s_passwd_target_ret[0] = 0;
+    if (!t)
+        return s_passwd_target_ret;
+    while (t[i] && i < sizeof(s_passwd_target_ret) - 1 && t[i] != ' ' && t[i] != '\t') {
+        s_passwd_target_ret[i] = t[i];
+        i++;
+    }
+    s_passwd_target_ret[i] = 0;
+    return s_passwd_target_ret;
+}
+const char *net_chat_passwd_new(const char *msg) {
+    const char *t = passwd_args(msg);
+    size_t i = 0;
+    s_passwd_new_ret[0] = 0;
+    if (!t)
+        return s_passwd_new_ret;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(s_passwd_new_ret) - 1 && t[i] != ' ' && t[i] != '\t') {
+        s_passwd_new_ret[i] = t[i];
+        i++;
+    }
+    s_passwd_new_ret[i] = 0;
+    return s_passwd_new_ret;
+}
+
 typedef struct {
     char nick[24];
     int cups;
