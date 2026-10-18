@@ -22,6 +22,7 @@
 #include "engine/network/leaderboard.inc"
 #include "engine/network/room_directory.inc"
 #include "engine/network/room_sync.inc"
+#include "engine/network/room_stream.inc"
 #include "engine/network/room_chat.inc"
 #include "engine/network/room_threads.inc"
 #include "engine/network/player_api.inc"
