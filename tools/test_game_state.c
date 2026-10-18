@@ -719,6 +719,12 @@ double net_admin_reset_status(void) {
     if (v >= 2) stub_admin_reset_status = 0;
     return v;
 }
+double net_gift_count(double gift) { (void)gift; return 0; }
+void net_gift_refresh(void) {}
+void net_gift_action(double gift, const char *recipient, double grant) {
+    (void)gift; (void)recipient; (void)grant;
+}
+double net_gift_action_status(void) { return 0; }
 double net_chat_is_passwd(const char *msg) {
     if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
     const char *t = msg + 7;
@@ -2717,26 +2723,27 @@ int main(void) {
     /* The panel calls itself a content creator panel and the orb wears the
      * short name; the admin nick and the old "label: on/off" status line under
      * the panel are gone. */
-    /* The title, "X", the orb's "CCP" and six cheat labels - and nothing else:
-     * no tabs, no nick field, no status line. */
-    assert(adm_text_n == 9);
+    /* The title, close button, orb, two tabs and six cheat labels. */
+    assert(adm_text_n == 11);
     assert(adm_has_text(tr_admin_title()) == 1);
     assert(adm_has_text(admin_orb_label()) == 1);
+    assert(adm_has_text(language == 1 ? "Читы" : "Cheats") == 1);
+    assert(adm_has_text(language == 1 ? "Подарки" : "Gifts") == 1);
     assert(adm_has_text("ADMIN") == 0);
     assert(adm_has_text(ADMIN_NICK) == 0);
     assert(adm_has_text(": ") == 0);
     for (int i = 0; i < 6; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
 
-    /* Вкладок больше нет: панель сразу показывает шесть читов. */
+    /* Панель содержит отдельные вкладки читов и подарков. */
     adm_reset_log();
     admin_draw();
     assert(adm_all_greyscale() == 1);
     assert(adm_all_flat() == 1);
     for (int i = 0; i < 6; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
-    /* Сетка занимает весь контент панели: сверху донизу, без вкладок. */
-    assert(fabs(admin_grid_top() - admin_content_top()) < 0.001);
+    /* The cheat grid starts below the tabs and remains inside the panel. */
+    assert(fabs(admin_grid_top() - admin_content_top() - admin_row_h() - admin_gap()) < 0.001);
     assert(admin_grid_top() + 3 * admin_cheat_row_h() + 2 * admin_gap() <=
                admin_panel_y() + admin_panel_h() - admin_pad() + 0.01);
 
@@ -2789,13 +2796,13 @@ int main(void) {
     adm_reset_log();
     admin_draw();
     assert(adm_no_white_fill() == 1);
-    assert(adm_fill_count(0x333333) == 1); /* the enabled cheat */
+    assert(adm_fill_count(0x333333) == 2); /* selected tab and enabled cheat */
     admin_press(0); /* ...and straight back off */
     assert(cheat_god == 0 && cheat_stain == 1);
     adm_reset_log();
     admin_draw();
     assert(adm_no_white_fill() == 1);
-    assert(adm_fill_count(0x333333) == 0); /* nothing is switched on */
+    assert(adm_fill_count(0x333333) == 1); /* only selected tab remains grey */
     assert(adm_has_text(admin_cheat_label(0)) == 1);
     assert(admin_cups_allowed() == 0);
     cups = 0;

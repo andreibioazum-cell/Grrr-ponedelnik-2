@@ -1,19 +1,40 @@
-/* Экран аккаунта: смена пароля, выход и удаление аккаунта.
- *
- * Это оверлей, как и окно документов: его открывают из лобби (кнопка
- * «Аккаунт», когда игрок уже вошёл) и из «Правовой информации» (кнопка
- * удаления на странице прав). Рисуется поверх документов и первым забирает
- * касания и кнопку «назад».
- *
- * Удаление защищено от случайного нажатия дважды: нужно ввести пароль
- * аккаунта и провести ползунок вправо до конца. Пароль проверяет и игра
- * (совпадает с паролем сессии), и сервер (свежий вход перед удалением). */
-
 #define ACCT_MENU 1
 #define ACCT_PASS 2
 #define ACCT_DELETE 3
+#define ACCT_GIFTS 4
 #define ACCT_BUF 64
-
+static double acct_gift_choice = 0;
+static double acct_gift_busy = 0;
+static double acct_gift_busy_mode = 0;
+static double acct_gift_is_owned = 0;
+static double acct_gift_scroll = 0;
+static double acct_gift_drag_id = -1;
+static double acct_gift_drag_y = 0;
+static double acct_gift_drag_start_y = 0;
+static double acct_gift_velocity = 0;
+static double acct_gift_bar_drag_id = -1;
+static double acct_gift_bar_grab = 0;
+static double acct_gift_list_top(void);
+static double acct_gift_card_h(void);
+static double acct_gift_step(void);
+static double acct_gift_visible(void);
+static double acct_gift_footer_top(void);
+static double acct_gift_btn_w(void);
+static double acct_gift_price(double i);
+static double acct_gift_y(double i);
+static double hit_acct_gift_buy(double x, double y);
+static double hit_acct_gift_send(double x, double y);
+static double hit_acct_gift(double x, double y, double i);
+static double hit_acct_gift_scrollbar(double x, double y);
+static void acct_gift_scroll_to(double y);
+static double acct_gift_scroll_max(void);
+static double acct_gift_thumb_h(void);
+static double acct_gift_thumb_y(void);
+static double touch_acct_gift_scroll(double x, double y, double action, double id);
+static void acct_gifts_page(void);
+static void acct_gift_buy(void);
+static void acct_gift_send(void);
+static void draw_acct_gifts(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -25,11 +46,7 @@ static double acct_knob;     /* положение ползунка удален
 static double acct_drag = -1; /* палец, который тащит ползунок */
 static double acct_pending;  /* 1 - открыть аккаунт в конце перехода */
 static double acct_grab;     /* где палец взялся за ползунок */
-
-/* --- тексты ------------------------------------------------------------ */
-
 static const char *acct_tr(const char *ru, const char *en) { return language == 1 ? ru : en; }
-
 static const char *tr_acct_title(void) { return acct_tr("Аккаунт: ", "Account: "); }
 static const char *tr_acct_change(void) { return acct_tr("Сменить пароль", "Change password"); }
 static const char *tr_acct_switch(void) { return acct_tr("Войти в другой аккаунт", "Sign in to another account"); }
@@ -57,16 +74,12 @@ static const char *tr_acct_warn2(void) {
     return acct_tr("навсегда, восстановить их будет нельзя.", "deleted forever and cannot be restored.");
 }
 static const char *tr_acct_swipe(void) { return acct_tr("Проведите вправо, чтобы удалить", "Swipe right to delete"); }
-
-/* --- открытие и закрытие ----------------------------------------------- */
-
 static void acct_clear_fields(void) {
     memset(acct_buf, 0, sizeof(acct_buf));
     acct_field = 0;
     keyboard_clear();
     keyboard_hide();
 }
-
 static void acct_go(double mode) {
     acct_open = mode;
     acct_msg = "";
@@ -75,13 +88,11 @@ static void acct_go(double mode) {
     acct_clear_fields();
     ui_nav_gen = ui_nav_gen + 1;
 }
-
 static void acct_show(double mode) {
     acct_entry = mode;
     acct_done = 0;
     acct_go(mode);
 }
-
 static void acct_close(void) {
     acct_pending = 0;
     acct_clear_fields();
@@ -89,8 +100,6 @@ static void acct_close(void) {
     acct_drag = -1;
     ui_nav_gen = ui_nav_gen + 1;
 }
-
-/* «Назад»: из смены пароля и удаления - в меню аккаунта, если открыли его. */
 static void acct_back(void) {
     if (acct_open != ACCT_MENU && acct_entry == ACCT_MENU && acct_done == 0 && net_login_status() == 2) {
         acct_go(ACCT_MENU);
@@ -98,15 +107,12 @@ static void acct_back(void) {
     }
     acct_close();
 }
-
-/* --- раскладка --------------------------------------------------------- */
-
 static double acct_top(void) { return back_y + btn_h + 24; }
 static double acct_w(void) { return fit_w(620); }
 static double acct_x(void) { return center_x(acct_w()); }
 static double acct_menu_y(double i) { return acct_top() + 56 + i * (btn_h + 16); }
-static double acct_fields(void) { return acct_open == ACCT_PASS ? 3 : (acct_open == ACCT_DELETE ? 1 : 0); }
-static double acct_fields_top(void) { return acct_open == ACCT_DELETE ? acct_top() + 116 : acct_top() + 44; }
+static double acct_fields(void) { return acct_open == ACCT_PASS ? 3 : (acct_open == ACCT_DELETE || acct_open == ACCT_GIFTS ? 1 : 0); }
+static double acct_fields_top(void) { return acct_open == ACCT_DELETE ? acct_top() + 116 : (acct_open == ACCT_GIFTS ? acct_gift_footer_top() + login_lab + 2 : acct_top() + 44); }
 static double acct_field_y(double i) { return acct_fields_top() + login_lab + i * (login_fh + login_lab + 12); }
 static double acct_below_fields(void) { return acct_field_y(acct_fields() - 1) + login_fh + 22; }
 static double acct_slider_y(void) { return acct_below_fields(); }
@@ -119,7 +125,6 @@ static double acct_msg_y(void) {
     }
     return acct_below_fields() + (acct_open == ACCT_DELETE ? acct_slider_h() : btn_h) + 18;
 }
-
 static double hit_acct_menu(double x, double y, double i) {
     return acct_open == ACCT_MENU && hit_button(x, y, acct_x(), acct_menu_y(i), acct_w(), btn_h) == 1;
 }
@@ -135,17 +140,16 @@ static double hit_acct_knob(double x, double y) {
 }
 static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
-           hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_submit(x, y) == 1;
+           hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
+           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
+           hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1 ||
+           hit_acct_gift(x, y, 4) == 1 || hit_acct_gift(x, y, 5) == 1 || hit_acct_gift(x, y, 6) == 1 || hit_acct_gift(x, y, 7) == 1 || hit_acct_gift(x, y, 8) == 1 || hit_acct_gift_scrollbar(x, y) == 1;
 }
-
-/* --- поля ввода -------------------------------------------------------- */
-
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
         keyboard_get_text_to(acct_buf[(int)acct_field], ACCT_BUF);
     }
 }
-
 static void acct_focus(double i) {
     acct_sync();
     acct_field = i;
@@ -155,8 +159,6 @@ static void acct_focus(double i) {
     }
     keyboard_show();
 }
-
-/* Пароль на экране - звёздочки: одна на символ (UTF-8 считаем по символам). */
 static const char *acct_mask(double i) {
     const unsigned char *s = (const unsigned char *)acct_buf[(int)i];
     char *out = acct_mask_buf[(int)i];
@@ -170,7 +172,6 @@ static const char *acct_mask(double i) {
     out[n] = 0;
     return out;
 }
-
 static void draw_acct_field(const char *label, double i) {
     double y = acct_field_y(i);
     double caret = acct_field == i && keyboard_visible() == 1;
@@ -179,14 +180,10 @@ static void draw_acct_field(const char *label, double i) {
     roundrect(acct_x(), y, acct_w(), login_fh, field_radius, card_bg);
     text_in_field(shown, acct_x() + field_text_pad, y, login_fh, text_color, 0.6);
 }
-
-/* --- действия ---------------------------------------------------------- */
-
 static double acct_is_admin_nick(void) {
     const char *nick = net_login_nick();
     return str_eq(nick, ADMIN_NICK) == 1 || str_eq(nick, ADMIN2_NICK) == 1;
 }
-
 static void acct_pass_try(void) {
     acct_sync();
     if (!acct_buf[0][0]) {
@@ -208,7 +205,6 @@ static void acct_pass_try(void) {
     }
     keyboard_hide();
 }
-
 static void acct_delete_try(void) {
     acct_sync();
     keyboard_hide();
@@ -222,7 +218,6 @@ static void acct_delete_try(void) {
     net_delete_account(acct_buf[0]);
     acct_clear_fields();
 }
-
 static void acct_password_page(void) { acct_go(ACCT_PASS); }
 static void acct_delete_page(void) { acct_go(ACCT_DELETE); }
 static void acct_delete_window(void) { acct_show(ACCT_DELETE); }
@@ -231,7 +226,6 @@ static void acct_sign_out(void) {
     progress_reset_on_signout();
     acct_close();
 }
-
 static void touch_acct_menu(double x, double y) {
     if (hit_acct_menu(x, y, 0) == 1) {
         start_action_transition(acct_password_page);
@@ -242,10 +236,12 @@ static void touch_acct_menu(double x, double y) {
         start_action_transition(acct_sign_out);
     } else if (hit_acct_menu(x, y, 3) == 1) {
         start_action_transition(acct_delete_page);
+    } else if (hit_acct_menu(x, y, 4) == 1) {
+        start_action_transition(acct_gifts_page);
     }
 }
-
 static void touch_account(double x, double y, double action, double id) {
+    if (touch_acct_gift_scroll(x, y, action, id) == 1 && action != 0) return;
     if (action == 2) {
         if (id == acct_drag) {
             acct_knob = clamp((x - acct_grab - acct_x() - 4) / (acct_w() - acct_knob_w() - 8), 0, 1);
@@ -272,9 +268,10 @@ static void touch_account(double x, double y, double action, double id) {
         touch_acct_menu(x, y);
         return;
     }
-    if (acct_busy != 0 || acct_done == 1) {
+    if (acct_busy != 0 || acct_done == 1 || acct_gift_busy != 0) {
         return;
     }
+    if (touch_acct_gift_scroll(x, y, action, id) == 1) return;
     double i = 0;
     while (i < acct_fields()) {
         if (hit_acct_field(x, y, i) == 1) {
@@ -283,10 +280,9 @@ static void touch_account(double x, double y, double action, double id) {
         }
         i = i + 1;
     }
-    if (hit_acct_submit(x, y) == 1) {
-        acct_pass_try();
-        return;
-    }
+    if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
+    if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
+    if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();
         keyboard_hide();
@@ -294,13 +290,9 @@ static void touch_account(double x, double y, double action, double id) {
         acct_grab = x - acct_knob_x();
         return;
     }
-    /* Касание мимо полей прячет клавиатуру (введённое остаётся). */
     acct_sync();
     keyboard_hide();
 }
-
-/* --- кадр -------------------------------------------------------------- */
-
 static void acct_poll_delete(void) {
     double st = net_delete_account_status();
     if (st == 2) {
@@ -313,7 +305,6 @@ static void acct_poll_delete(void) {
         acct_msg = st == 4 ? tr_acct_wrong() : tr_acct_failed();
     }
 }
-
 static void acct_poll_password(void) {
     double st = net_change_password_status();
     if (st < 2) {
@@ -332,8 +323,43 @@ static void acct_poll_password(void) {
         acct_msg = tr_acct_failed();
     }
 }
-
 static void acct_tick(void) {
+    if (acct_open == ACCT_GIFTS && acct_gift_drag_id == -1 && acct_gift_bar_drag_id == -1 && fabs(acct_gift_velocity) > 0.01) {
+        acct_gift_scroll = clamp(acct_gift_scroll + acct_gift_velocity * dt, 0, acct_gift_scroll_max());
+        acct_gift_velocity = acct_gift_velocity * exp(-5.2 * dt);
+        if (acct_gift_scroll <= 0 || acct_gift_scroll >= acct_gift_scroll_max()) acct_gift_velocity = 0;
+    }
+    if (acct_gift_busy == 1) {
+        double gift_status = net_gift_action_status();
+        if (gift_status >= 2) {
+            acct_gift_busy = 0;
+            if (gift_status == 2) {
+                if (acct_gift_busy_mode == 2) {
+                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
+                    cups = cups - acct_gift_price(acct_gift_choice);
+                    if (cups < 0) cups = 0;
+                    acct_gift_is_owned = 1;
+                    acct_gift_scroll = clamp(5 + acct_gift_choice - floor(acct_gift_visible() / 2), 0, 9 - acct_gift_visible());
+                    save_progress();
+                } else {
+                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
+                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
+                    acct_field = 0;
+                }
+                net_gift_refresh();
+            } else if (gift_status == 4) {
+                acct_msg = language == 1 ? "Сервер подарков не установлен: разверните giftAction" : "Gift server is not deployed: deploy giftAction";
+            } else if (gift_status == 5) {
+                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
+            } else if (gift_status == 6) {
+                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
+            } else if (gift_status == 7) {
+                acct_msg = language == 1 ? "Версия сервера подарков устарела" : "Gift server is out of date";
+            } else {
+                acct_msg = language == 1 ? "Не удалось отправить. Проверьте ник и подключение." : "Gift failed. Check nickname and connection.";
+            }
+        }
+    }
     if (acct_busy == 1) {
         acct_poll_delete();
     } else if (acct_busy == 2) {
@@ -354,14 +380,10 @@ static void acct_tick(void) {
             keyboard_hide();
         }
     }
-    /* Отпущенный раньше конца ползунок уезжает обратно. */
     if (acct_drag == -1 && acct_busy == 0 && acct_done == 0 && acct_knob > 0) {
         acct_knob = clamp(acct_knob - dt * 3, 0, 1);
     }
 }
-
-/* --- отрисовка --------------------------------------------------------- */
-
 static void draw_acct_slider(void) {
     double x = acct_x();
     double y = acct_slider_y();
@@ -382,29 +404,30 @@ static void draw_acct_slider(void) {
     roundrect(kx, y + 4, kw, h - 8, (h - 8) / 2, 0xFFD23A4A);
     text_in_box(">>", kx, y + 4, kw, h - 8, text_color, 0.7);
 }
-
 static void draw_acct_msg(void) {
     if (str_len(acct_msg) > 0) {
         ctext_scaled(acct_msg, acct_msg_y(), text_color, fit_text_scale(acct_msg, fit_w(screen_w), 0.55));
     }
 }
-
 static void draw_account(void) {
     screen_fill();
     press_overlay = 3;
     draw_back();
     const char *title = acct_open == ACCT_PASS ? tr_acct_change()
                         : acct_open == ACCT_DELETE ? tr_delete_account()
-                                                   : ds_concat(tr_acct_title(), net_login_nick());
+                        : acct_open == ACCT_GIFTS ? (language == 1 ? "Подарки" : "Gifts")
+                                                  : ds_concat(tr_acct_title(), net_login_nick());
     ctext_scaled(title, acct_top(), text_color, fit_text_scale(title, fit_w(screen_w), 0.8));
     if (acct_open == ACCT_MENU) {
-        const char *rows[4] = {tr_acct_change(), tr_acct_switch(), tr_acct_logout(), tr_delete_account()};
+        const char *rows[5] = {tr_acct_change(), tr_acct_switch(), tr_acct_logout(), tr_delete_account(), language == 1 ? "Подарки" : "Gifts"};
         double i = 0;
-        while (i < 4) {
+        while (i < 5) {
             const char *r = rows[(int)i];
             button_scaled(r, acct_x(), acct_menu_y(i), acct_w(), btn_h, fit_text_scale(r, acct_w() - 24, 0.65));
             i = i + 1;
         }
+    } else if (acct_open == ACCT_GIFTS) {
+        draw_acct_gifts();
     } else if (acct_open == ACCT_PASS) {
         draw_acct_field(tr_acct_old(), 0);
         draw_acct_field(tr_acct_new(), 1);
@@ -422,3 +445,5 @@ static void draw_account(void) {
     draw_acct_msg();
     press_overlay = 0;
 }
+
+#include "account_gifts.inc"

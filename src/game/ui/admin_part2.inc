@@ -114,6 +114,36 @@ static void admin_panel_press(double x, double y) {
         admin_panel_close();
         return;
     }
+    double tab_y = admin_content_top();
+    if (y >= tab_y && y <= tab_y + admin_row_h()) {
+        admin_tab = x < px + pw / 2 ? 0 : 1;
+        play_button_click();
+        return;
+    }
+    if (admin_tab == 1) {
+        double ty = admin_content_top();
+        double rhg = admin_row_h();
+        double row_index = floor((y - ty) / (rhg + admin_gap()));
+        if (row_index >= 1 && row_index <= 4) {
+            admin_gift_choice = row_index - 1;
+            return;
+        }
+        if (row_index == 5) {
+            keyboard_clear();
+            if (admin_gift_target[0]) keyboard_type(admin_gift_target);
+            keyboard_show();
+            return;
+        }
+        if (row_index == 6) {
+            keyboard_hide();
+            if (admin_gift_target[0] && admin_gift_busy != 1) {
+                net_gift_action(admin_gift_choice, admin_gift_target, 1);
+                admin_gift_busy = 1;
+            }
+            return;
+        }
+        return;
+    }
     double bw = (pw - 2 * admin_pad() - admin_gap()) / 2;
     double rh = admin_cheat_row_h();
     double row = floor((y - admin_grid_top()) / (rh + admin_gap()));
@@ -216,6 +246,33 @@ static void admin_draw_cheats(void) {
     }
 }
 
+static void admin_draw_tabs(void) {
+    double px = admin_panel_x() + admin_pad();
+    double y = admin_content_top();
+    double w = (admin_panel_w() - 2 * admin_pad() - admin_gap()) / 2;
+    double h = admin_row_h();
+    admin_btn(language == 1 ? "Читы" : "Cheats", px, y, w, h, admin_tab == 0, 0.55);
+    admin_btn(language == 1 ? "Подарки" : "Gifts", px + w + admin_gap(), y, w, h, admin_tab == 1, 0.55);
+}
+static void admin_draw_gifts(void) {
+    double px = admin_panel_x() + admin_pad();
+    double y = admin_content_top() + admin_row_h() + admin_gap();
+    double w = admin_panel_w() - 2 * admin_pad();
+    double rh = admin_row_h();
+    for (int i = 0; i < 4; ++i) {
+        const char *name = admin_gift_names[i];
+        if (language == 1) name = i == 0 ? "Роза" : i == 1 ? "Торт" : i == 2 ? "Мишка" : "Ракета";
+        const char *label = ds_concat(admin_gift_choice == i ? "> " : "", name);
+        admin_btn(label, px, y + i * (rh + admin_gap()), w, rh, admin_gift_choice == i, 0.55);
+    }
+    double target_y = y + 4 * (rh + admin_gap());
+    roundrect(px, target_y, w, rh, 8, admin_off());
+    roundrect_outline(px, target_y, w, rh, 8, 2, admin_frame());
+    const char *target_label = admin_gift_target[0] ? admin_gift_target : (language == 1 ? "Ник получателя" : "Recipient nickname");
+    text_in_box(target_label, px + 8, target_y, w - 16, rh, admin_frame(), 0.55);
+    const char *grant = admin_gift_busy == 1 ? (language == 1 ? "Выдаём..." : "Granting...") : admin_gift_busy == 2 ? (language == 1 ? "Подарок выдан!" : "Gift granted!") : admin_gift_busy == 3 ? (language == 1 ? "Ошибка, нажмите для повтора" : "Failed — tap to retry") : (language == 1 ? "Выдать подарок" : "Grant gift");
+    admin_btn(grant, px, target_y + rh + admin_gap(), w, rh, 0, 0.55);
+}
 static void admin_draw_panel(void) {
     double px = admin_panel_x();
     double py = admin_panel_y();
@@ -240,7 +297,8 @@ static void admin_draw_panel(void) {
     circle(cxx, py + hh / 2, cr, admin_off());
     ring(cxx, py + hh / 2, cr, clamp(cr * 0.14, 2, 3), admin_frame());
     text_in_box("X", cxx - cr, py + hh / 2 - cr, cr * 2, cr * 2, admin_frame(), cr / 30.0);
-    admin_draw_cheats();
+    admin_draw_tabs();
+    if (admin_tab == 0) admin_draw_cheats(); else admin_draw_gifts();
 }
 
 static void admin_draw(void) {
@@ -261,6 +319,13 @@ static void admin_draw(void) {
  * and the zeroed cooldowns survive every re-application the fight makes. */
 static void admin_tick(void) {
     admin_ball_t = admin_ball_t + dt;
+    if (is_admin() == 1 && admin_panel_open == 1 && admin_tab == 1) {
+        if (keyboard_visible() == 1) keyboard_get_text_to(admin_gift_target, sizeof(admin_gift_target));
+        if (admin_gift_busy == 1) {
+            double gs = net_gift_action_status();
+            if (gs >= 2) admin_gift_busy = gs == 2 ? 2 : 3;
+        }
+    }
     if (is_admin() == 0 || admin_in_battle() == 0 || finished != 0) {
         return;
     }

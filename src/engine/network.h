@@ -240,6 +240,11 @@ double net_change_password_status(void);
  * 0 idle, 1 running, 2 changed, 3 error/not deployed, 4 bad new password,
  * 5 bad target nick. */
 #define NET_ADMIN_RESET_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/adminResetPassword"
+#define NET_GIFT_ACTION_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/giftAction"
+double net_gift_count(double gift);
+void net_gift_refresh(void);
+void net_gift_action(double gift, const char *recipient, double grant);
+double net_gift_action_status(void);
 void net_admin_reset_password(const char *nick, const char *new_pass);
 double net_admin_reset_status(void);
 double net_chat_is_passwd(const char *msg);

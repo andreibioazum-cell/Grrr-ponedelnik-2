@@ -1,5 +1,8 @@
 static void draw_menu_button(double row, const char *label) {
-    button(label, menu_x(), menu_row(row), menu_btn_w(), btn_h);
+    double w = menu_btn_w();
+    /* Use the native lobby label scale for every action. Do not fit the font
+     * independently per label: short labels were appearing much larger. */
+    button(label, menu_x(), menu_row(row), w, btn_h);
 }
 
 static void draw_lobby_nick(void) {
