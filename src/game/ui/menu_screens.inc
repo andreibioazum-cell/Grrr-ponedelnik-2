@@ -1,6 +1,8 @@
 static void draw_menu_button(double row, const char *label) {
     double w = menu_btn_w();
-    button_scaled(label, menu_x(), menu_row(row), w, btn_h, fit_text_scale(label, w - 24, 0.72));
+    /* One shared large label scale keeps short labels (e.g. Play) from
+     * looking larger than the longer lobby actions. */
+    button_scaled(label, menu_x(), menu_row(row), w, btn_h, 0.72);
 }
 
 static void draw_lobby_nick(void) {
