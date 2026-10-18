@@ -40,109 +40,13 @@ static double is_admin(void) {
     if (str_eq(nick, ADMIN_NICK) == 1 && str_eq(pass, ADMIN_PASS) == 1) {
         return 1;
     }
-    if (str_eq(nick, ADMIN2_NICK) == 1 && str_eq(pass, ADMIN2_PASS) == 1) {
-        return 1;
-    }
-    return 0;
+    return str_eq(nick, ADMIN2_NICK) == 1 && str_eq(pass, ADMIN2_PASS) == 1 ? 1 : 0;
 }
 
 static char admin_passwd_target_buf[24];
 
 static const char *admin_actor_nick(void) {
     return admin_nick_of(admin_slot(net_login_nick()));
-}
-
-static double admin_handle(const char *msg) {
-    if (is_admin() == 0) {
-        return 0;
-    }
-    const char *by = admin_actor_nick();
-    if (str_eq(msg, "event 0") == 1) {
-        double cur = net_event();
-        if (cur == 0) {
-            net_event_set(1);
-            net_chat_send(ds_concat(ds_concat("ДИСКО-СОБЫТИЕ от ", by), "!"));
-            ds_log("admin: event 0 -> disco ON");
-        } else {
-            net_event_set(0);
-            net_chat_send(ds_concat("СОБЫТИЕ ВЫКЛЮЧИЛ ", by));
-            ds_log("admin: event 0 -> OFF");
-        }
-        return 1;
-    }
-    if (str_eq(msg, "event 1") == 1) {
-        net_event_set(1);
-        net_chat_send(ds_concat(ds_concat("ДИСКО-СОБЫТИЕ от ", by), "!"));
-        ds_log("admin: event 1 disco");
-        return 1;
-    }
-    if (str_eq(msg, "event 2") == 1 || str_eq(msg, "event 3") == 1) {
-        net_event_set(2);
-        net_chat_send(ds_concat("СОБЫТИЕ «ПЛИТЫ» от ", by));
-        ds_log("admin: event 2 plates");
-        return 1;
-    }
-    if (str_eq(msg, "event 4") == 1) {
-        net_event_set(4);
-        net_chat_send(ds_concat(ds_concat("СОБЫТИЕ «КУБИК» от ", by), "!"));
-        ds_log("admin: event 4 dice");
-        return 1;
-    }
-    if (net_chat_is_passwd(msg) == 1) {
-        const char *t1 = net_chat_passwd_target(msg);
-        const char *np = net_chat_passwd_new(msg);
-        if (str_len(t1) > 0 && str_len(np) > 0) {
-            if (admin_slot(t1) != 0) {
-                net_chat_send(tr_admin_ban_protected());
-                ds_log("admin passwd blocked for protected account %s", t1);
-                return 1;
-            }
-            double i = 0;
-            while (t1[(int)i] != 0 && i < (double)(sizeof(admin_passwd_target_buf) - 1)) {
-                admin_passwd_target_buf[(int)i] = t1[(int)i];
-                i = i + 1;
-            }
-            admin_passwd_target_buf[(int)i] = 0;
-            net_admin_reset_password(t1, np);
-            net_chat_send(language == 1 ? "Меняю пароль..." : "Changing password...");
-            ds_log("admin passwd reset requested for %s", t1);
-            return 1;
-        }
-    }
-    if (net_chat_is_ban(msg) == 1) {
-        const char *t1 = net_chat_ban_target(msg);
-        if (str_len(t1) > 0) {
-            if (admin_slot(t1) != 0) {
-                net_chat_send(tr_admin_ban_protected());
-                ds_log("admin ban blocked for protected account %s", t1);
-                return 1;
-            }
-            net_ban_set(t1, 1);
-            net_chat_send(ds_concat(ds_concat(t1, " ЗАБЛОКИРОВАН, админ "), by));
-            ds_log("admin ban %s", t1);
-            return 1;
-        }
-    }
-    if (net_chat_is_unban(msg) == 1) {
-        const char *t2 = net_chat_unban_target(msg);
-        if (str_len(t2) > 0) {
-            net_ban_set(t2, 0);
-            net_chat_send(ds_concat(ds_concat(t2, " РАЗБЛОКИРОВАН, админ "), by));
-            ds_log("admin unban %s", t2);
-            return 1;
-        }
-    }
-    if (net_chat_is_text_cmd(msg) == 1) {
-        const char *btxt = net_chat_text_cmd_text(msg);
-        const char *bcol = net_chat_text_cmd_color(msg);
-        if (str_len(btxt) > 0) {
-            /* Every banner carries its author's nick: "Dimasi4ek229: текст". */
-            net_banner_send(ds_concat(ds_concat(by, ": "), btxt), bcol);
-            ds_log("admin text: %s (%s)", ds_concat(ds_concat(by, ": "), btxt), bcol);
-            return 1;
-        }
-    }
-    return 0;
 }
 
 static void chat_send(void) {
@@ -247,8 +151,7 @@ static const char *sticker_tex_of(double i) {
 }
 
 static void draw_sticker_face(double cx, double cy) {
-    /* Clear sticker-sheet icon: a white smiling sticker with a folded corner,
-     * rather than the old mouth made from overlapping circle/rectangle shapes. */
+    /* Clear sticker-sheet icon: white smiling sticker with a folded corner. */
     circle(cx, cy, 15, 0xFFFFFFFF);
     ring(cx, cy, 15, 2, 0xFF292944);
     circle(cx - 5, cy - 4, 2.2, 0xFF292944);
@@ -272,16 +175,12 @@ static void chat_update(void) {
     if (game_state != 5 || chat_open == 0) {
         return;
     }
-    {
-        double rs = net_admin_reset_status();
-        if (rs == 2) {
-            net_chat_send(ds_concat(language == 1 ? "Пароль изменён: " : "Password changed: ",
-                                    admin_passwd_target_buf));
-        } else if (rs >= 3) {
-            net_chat_send(language == 1 ? "Не удалось изменить пароль (функция не развёрнута?)"
-                                        : "Password change failed (function not deployed?)");
-        }
-    }
+    { double rs = net_admin_reset_status();
+      if (rs == 2) {
+          net_chat_send(ds_concat(language == 1 ? "Пароль изменён: " : "Password changed: ", admin_passwd_target_buf));
+      } else if (rs >= 3) {
+          net_chat_send(language == 1 ? "Не удалось изменить пароль (функция не развёрнута?)" : "Password change failed (function not deployed?)");
+      } }
     if (keyboard_visible() == 1) {
         chat_sync_input();
     }
@@ -322,9 +221,7 @@ static void draw_chat(void) {
     /* The open chat covers the fight, so its own buttons claim the press. */
     press_overlay = 1;
     button(tr_close(), cx, chat_top_y(), btn_w, btn_h);
-    /* Header: the room this chat belongs to. Taken from the connection
-     * itself (net_current_room), so after creating or joining a room the
-     * title shows exactly that room's name, never a stale one. */
+    /* Header: the room this chat belongs to (from the connection itself). */
     const char *room_title = net_current_room();
     if (str_len(room_title) == 0) {
         room_title = ROOM;
@@ -452,8 +349,7 @@ static double touch_chat(double x, double y, double action) {
     return 1;
 }
 
-/* Mirror of touch_chat() used for the button click sound: only the actual
- * controls count, the text field and the message log stay silent. */
+/* Mirror of touch_chat() for the click sound: only real controls count. */
 static double chat_button_hit(double x, double y) {
     double lx = 16;
     double lw = screen_w - 32;
