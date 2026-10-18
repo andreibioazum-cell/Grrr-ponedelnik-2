@@ -16,7 +16,8 @@ static double acct_gift_busy_mode = 0;
 static double acct_gift_footer_top(void);
 static double hit_acct_gift_any(double x, double y);
 static double hit_acct_gift_buy(double x, double y);
-static double hit_acct_gift_own_btn_any(double x, double y);
+static double hit_acct_gift_send(double x, double y);
+static double hit_acct_gift_sell(double x, double y);
 static double touch_acct_gift_list(double x, double y, double action, double id);
 static void acct_gifts_page(void);
 static void acct_gift_buy(void);
@@ -131,8 +132,8 @@ static double hit_acct_knob(double x, double y) {
 static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
-           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_own_btn_any(x, y) == 1 ||
-           hit_acct_gift_any(x, y) == 1;
+           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
+           hit_acct_gift_sell(x, y) == 1 || hit_acct_gift_any(x, y) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -272,6 +273,8 @@ static void touch_account(double x, double y, double action, double id) {
         i = i + 1;
     }
     if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
+    if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
+    if (hit_acct_gift_sell(x, y) == 1) { acct_gift_sell(); return; }
     if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();

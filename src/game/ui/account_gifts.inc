@@ -3,15 +3,14 @@
 /* Sticker shop and collection on one page: the shop is the left column,
  * the player's own stickers are the right one. The shop always shows the
  * whole catalogue; the collection lists every owned sticker as its own card
- * (two poops are two cards) and scrolls smoothly, without snapping. Every
- * owned card carries its own "Send" and "Sell" buttons (selling returns half
- * of the shop price); the shop card is bought with the button under the
- * columns, because the shop has to fit the window without scrolling. */
+ * (two poops are two cards) and scrolls smoothly, without snapping. A card
+ * is drawn once - one PNG sprite, the name and a rarity caption, both in the
+ * rarity colour - and has no buttons on it: a tap selects the card and the
+ * action row under the columns buys it or sends/sells the selected sticker. */
 
 #define ACCT_GIFT_GAP 10
 #define ACCT_GIFT_COL_GAP 12
 #define ACCT_GIFT_PANEL_PAD 8
-#define ACCT_GIFT_PAD 8
 
 static double acct_gift_cols_top(void) { return acct_top() + 58; }
 static double acct_gift_head_h(void) { return 30; }
@@ -29,20 +28,11 @@ static double acct_gift_card_h(void) {
     return clamp((avail - (rows - 1) * ACCT_GIFT_GAP) / rows, 40, 150);
 }
 static double acct_gift_step(void) { return acct_gift_card_h() + ACCT_GIFT_GAP; }
-/* Owned cards are taller than the shop ones: each has to host two buttons. */
-static double acct_gift_own_h(void) {
-    double h = acct_gift_card_h();
-    return h < 104 ? 104 : h;
-}
-static double acct_gift_own_step(void) { return acct_gift_own_h() + ACCT_GIFT_GAP; }
-static double acct_gift_own_y(double row) {
-    return acct_gift_view_top() + row * acct_gift_own_step() - acct_gift_scroll;
-}
-static double acct_gift_own_btn_h(void) { return clamp(acct_gift_own_h() * 0.24, 22, 34); }
 static double acct_gift_view_h(void) { return acct_gift_shop_rows() * acct_gift_step() - ACCT_GIFT_GAP; }
 static double acct_gift_view_bottom(void) { return acct_gift_view_top() + acct_gift_view_h(); }
 static double acct_gift_footer_top(void) { return acct_gift_view_bottom(); }
 static double acct_gift_col_w(void) { return (acct_w() - ACCT_GIFT_COL_GAP) / 2; }
+static double acct_gift_btn_w(void) { return (acct_w() - ACCT_GIFT_COL_GAP) / 2; }
 /* owned == 0 is the shop column on the left, 1 the collection on the right. */
 static double acct_gift_x(double owned) { return owned == 1 ? acct_x() + acct_gift_col_w() + ACCT_GIFT_COL_GAP : acct_x(); }
 static double acct_gift_panel_x(double owned) { return acct_gift_x(owned) - ACCT_GIFT_PANEL_PAD; }
@@ -85,7 +75,7 @@ static double acct_gift_own_id(double row) {
     return -1;
 }
 static double acct_gift_scroll_max(void) {
-    double extra = acct_gift_own_total() * acct_gift_own_step() - ACCT_GIFT_GAP - acct_gift_view_h();
+    double extra = acct_gift_own_total() * acct_gift_step() - ACCT_GIFT_GAP - acct_gift_view_h();
     return extra > 0 ? extra : 0;
 }
 static double acct_gift_own_sel(void) {
@@ -101,7 +91,8 @@ static double acct_gift_picked(void) {
     if (acct_gift_is_owned == 1) return acct_gift_own_sel() >= 0 ? 1 : 0;
     return acct_gift_choice >= 0 && acct_gift_choice < acct_gift_shop_rows() ? 1 : 0;
 }
-/* Smooth glide after the finger is lifted; no snapping to whole rows. */
+/* Smooth glide after the finger is lifted; no snapping to whole rows, and a
+ * gentle decay so the list does not fly away on a short flick. */
 static void acct_gift_scroll_tick(void) {
     if (acct_open != ACCT_GIFTS || acct_gift_drag >= 0) return;
     /* The list can shrink under the scroll (a sticker was just sold), so the
@@ -109,12 +100,12 @@ static void acct_gift_scroll_tick(void) {
     double mx = acct_gift_scroll_max();
     if (acct_gift_scroll > mx) acct_gift_scroll = mx;
     if (acct_gift_scroll < 0) acct_gift_scroll = 0;
-    if (fabs(acct_gift_vel) < 0.5) {
+    if (fabs(acct_gift_vel) < 0.6) {
         acct_gift_vel = 0;
         return;
     }
     acct_gift_scroll = acct_gift_scroll + acct_gift_vel * dt;
-    acct_gift_vel = acct_gift_vel * exp(-4.5 * dt);
+    acct_gift_vel = acct_gift_vel * exp(-6.0 * dt);
     if (acct_gift_scroll <= 0) {
         acct_gift_scroll = 0;
         acct_gift_vel = 0;
@@ -127,7 +118,7 @@ static void acct_gift_scroll_tick(void) {
 /* ---- input ------------------------------------------------------------ */
 
 static double acct_gift_hit_row(double y) {
-    return floor((y - acct_gift_view_top() + acct_gift_scroll) / acct_gift_own_step());
+    return floor((y - acct_gift_view_top() + acct_gift_scroll) / acct_gift_step());
 }
 static double hit_acct_gift(double x, double y, double i) {
     if (acct_open != ACCT_GIFTS || i < 0 || i >= acct_gift_shop_rows()) return 0;
@@ -146,42 +137,18 @@ static double hit_acct_gift_buy(double x, double y) {
     return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 0 &&
            hit_button(x, y, acct_x(), acct_below_fields(), acct_w(), btn_h) == 1;
 }
-/* Buttons on an owned card: side 0 is "Send", side 1 is "Sell". */
-static void acct_gift_btn_rect(double row, double side, double *bx, double *by, double *bw, double *bh) {
-    double w = (acct_gift_col_w() - 3 * ACCT_GIFT_PAD) / 2;
-    *bw = w;
-    *bh = acct_gift_own_btn_h();
-    *bx = acct_gift_x(1) + ACCT_GIFT_PAD + (w + ACCT_GIFT_PAD) * side;
-    *by = acct_gift_own_y(row) + acct_gift_own_h() - *bh - ACCT_GIFT_PAD;
+static double hit_acct_gift_send(double x, double y) {
+    return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 1 &&
+           hit_button(x, y, acct_x(), acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
 }
-static double acct_gift_card_btn(double x, double y, double *row, double *side) {
-    double r = 0, total = acct_gift_own_total();
-    if (acct_open != ACCT_GIFTS) return 0;
-    while (r < total) {
-        double s = 0;
-        while (s < 2) {
-            double bx, by, bw, bh;
-            acct_gift_btn_rect(r, s, &bx, &by, &bw, &bh);
-            if (by >= acct_gift_view_top() && by + bh <= acct_gift_view_bottom() &&
-                hit_rect(x, y, bx, by, bw, bh) == 1) {
-                *row = r;
-                *side = s;
-                return 1;
-            }
-            s = s + 1;
-        }
-        r = r + 1;
-    }
-    return 0;
-}
-static double hit_acct_gift_own_btn_any(double x, double y) {
-    double row, side;
-    return acct_gift_card_btn(x, y, &row, &side);
+static double hit_acct_gift_sell(double x, double y) {
+    return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 1 &&
+           hit_button(x, y, acct_x() + acct_gift_btn_w() + ACCT_GIFT_COL_GAP, acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
 }
 
 /* The collection keeps its own down/move/up machine: a drag scrolls, a short
  * press selects the sticker under the finger. The shop never scrolls, so a
- * touch on it selects right away. */
+ * touch on it selects right away. Selecting never sends or sells by itself. */
 static double touch_acct_gift_list(double x, double y, double action, double id) {
     if (acct_open != ACCT_GIFTS) return 0;
     double ox = acct_gift_x(1), oy = acct_gift_view_top();
@@ -191,7 +158,9 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
         if (acct_gift_drag < 0 || id != acct_gift_drag) return 0;
         double dy = y - acct_gift_drag_y;
         acct_gift_scroll = clamp(acct_gift_scroll - dy, 0, acct_gift_scroll_max());
-        acct_gift_vel = clamp(-dy / fmax(dt, 0.016), -40, 40);
+        /* Slower than the raw finger speed: a short flick used to throw the
+         * list far past the sticker the player was aiming at. */
+        acct_gift_vel = clamp(-dy / fmax(dt, 0.016) * 0.55, -22, 22);
         acct_gift_drag_y = y;
         acct_gift_drag_move = acct_gift_drag_move + fabs(dy);
         return 1;
@@ -213,18 +182,6 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
     }
     if (action != 0) return 0;
     if (inside_list) {
-        double row, side;
-        if (acct_gift_card_btn(x, y, &row, &side) == 1) {
-            double picked = acct_gift_own_id(row);
-            if (picked >= 0) {
-                acct_gift_choice = picked;
-                acct_gift_is_owned = 1;
-                acct_gift_own_row = row;
-                play_button_click();
-                if (side == 0) acct_gift_send(); else acct_gift_sell();
-            }
-            return 1;
-        }
         acct_gift_drag = id;
         acct_gift_drag_y = y;
         acct_gift_drag_move = 0;
@@ -266,10 +223,12 @@ static void acct_gift_text_right(const char *s, double right, double y, double h
     text_scaled(s, right - tw, y + (h - th) / 2 - tt + 1.5, c, sc);
 }
 
-/* One card, clipped by hand to [clip_top, clip_bottom]: the face is squared
- * off where the window cuts it, and an element is drawn only when it lies
- * completely inside, so nothing can spill over the header or the field. */
-static void acct_gift_card(double id, double owned, double card_y, double full, double clip_top, double clip_bottom, double selected) {
+/* One card: one picture, the name and the rarity caption. The face is cut by
+ * hand to [clip_top, clip_bottom] - squared off where the window slices it -
+ * and an element is drawn only when it lies completely inside, so nothing can
+ * spill over the header or the field below. */
+static void acct_gift_card(double id, double owned, double card_y, double clip_top, double clip_bottom, double selected) {
+    double full = acct_gift_card_h();
     double x = acct_gift_x(owned), w = acct_gift_col_w();
     double y = card_y > clip_top ? card_y : clip_top;
     double bottom = card_y + full < clip_bottom ? card_y + full : clip_bottom;
@@ -277,53 +236,37 @@ static void acct_gift_card(double id, double owned, double card_y, double full, 
     if (h < 2) return;
     double cut_top = card_y < clip_top ? 1 : 0;
     double cut_bottom = card_y + full > clip_bottom ? 1 : 0;
-    double p = owned == 0 && cut_top == 0 && cut_bottom == 0 ? button_press_k(x, card_y, w, full) : 0;
+    double p = cut_top == 0 && cut_bottom == 0 ? button_press_k(x, card_y, w, full) : 0;
     uint32_t ink = text_color;
     uint32_t face = (uint32_t)shade(ui_purple, 1 - PRESS_SHADE * p);
     const char *name = acct_gift_name(id);
+    const char *rarity = gift_rarity_name(id);
     const char *value = owned == 1 ? "" : ds_concat(ds_num_to_string(acct_gift_price(id)), language == 1 ? " куб." : " cups");
     double r = btn_radius;
     roundrect(x, y, w, h, r, face);
     if (cut_top == 1) rect(x, y, w, fmin(r, h), face);
     if (cut_bottom == 1) rect(x, y + h - fmin(r, h), w, fmin(r, h), face);
-    if (owned == 1) {
-        /* Owned card: icon, name and both actions, all inside the card. */
-        double bh = acct_gift_own_btn_h();
-        double by = card_y + full - bh - ACCT_GIFT_PAD;
-        double ny = by - 21;
-        double isz = clamp((ny - card_y - 8) * 0.9, 16, 64);
-        double iy = card_y + 8 + (ny - card_y - 8 - isz) / 2;
-        double bw = (w - 3 * ACCT_GIFT_PAD) / 2;
-        const char *send = language == 1 ? "Подарить" : "Send";
-        const char *sell = ds_concat(language == 1 ? "Продать · +" : "Sell · +", acct_gift_cups_line(acct_gift_refund(id)));
-        if (iy >= y && iy + isz <= ny) gift_icon(id, x + (w - isz) / 2, iy, isz);
-        if (ny >= y && ny + 20 <= bottom) text_in_box(name, x, ny, w, 20, ink, fit_text_scale(name, w - 12, 0.6));
-        if (by >= y && by + bh <= bottom) {
-            button_scaled(send, x + ACCT_GIFT_PAD, by, bw, bh, fit_text_scale(send, bw - 10, 0.5));
-            button_scaled(sell, x + ACCT_GIFT_PAD * 2 + bw, by, bw, bh, fit_text_scale(sell, bw - 10, 0.46));
-        }
-    } else if (full < 96) {
-        /* Short cards: icon, name and the value share one narrow row. */
+    if (full < 96) {
+        /* Short cards: picture, name and the price share one narrow row. */
         double isz = clamp(full * 0.62, 18, 44);
         double nx = x + 8 + isz + 8;
-        double vw = text_ink_width(value) * 0.44;
+        double vw = owned == 1 ? 0 : text_ink_width(value) * 0.44;
         double iy = card_y + (full - isz) / 2;
         if (iy >= y && iy + isz <= bottom) gift_icon(id, x + 8, iy, isz);
         if (card_y + 2 >= y && card_y + full - 2 <= bottom) {
-            text_in_field(name, nx, card_y, full, ink, fit_text_scale(name, w - (nx - x) - vw - 14, 0.58));
-            acct_gift_text_right(value, x + w - 8, card_y, full, ink, 0.44);
+            gift_text_rarity_left(name, nx, card_y, full, id, fit_text_scale(name, w - (nx - x) - vw - 14, 0.58));
+            if (owned == 0) acct_gift_text_right(value, x + w - 8, card_y, full, ink, 0.44);
         }
     } else {
-        double isz = clamp(full * 0.38, 20, 62);
-        double iy = card_y + full * 0.13;
-        double ny = iy + isz + full * 0.03;
+        double isz = clamp(full * 0.36, 20, 56);
+        double iy = card_y + full * 0.10;
+        double ny = iy + isz + full * 0.02;
+        double ry = ny + 21;
+        double py = card_y + full * 0.80;
         if (iy >= y && iy + isz <= bottom) gift_icon(id, x + (w - isz) / 2, iy, isz);
-        if (ny >= y && ny + 20 <= bottom) {
-            text_in_box(name, x, ny, w, 20, ink, fit_text_scale(name, w - 12, 0.64));
-        }
-        if (owned == 0 && card_y + full * 0.76 >= y && card_y + full * 0.76 + 20 <= bottom) {
-            text_in_box(value, x, card_y + full * 0.76, w, 20, ink, fit_text_scale(value, w - 12, 0.5));
-        }
+        if (ny >= y && ny + 19 <= bottom) gift_text_rarity(name, x, ny, w, 19, id, fit_text_scale(name, w - 12, 0.6));
+        if (ry >= y && ry + 14 <= bottom) gift_text_rarity(rarity, x, ry, w, 14, id, fit_text_scale(rarity, w - 16, 0.34));
+        if (owned == 0 && py >= y && py + 18 <= bottom) text_in_box(value, x, py, w, 18, ink, fit_text_scale(value, w - 12, 0.48));
     }
     if (selected == 1 && cut_top == 0 && cut_bottom == 0) {
         roundrect_outline(x, y, w, full, r, 3, 0xFFFFD34D);
@@ -341,7 +284,7 @@ static void draw_acct_gifts(void) {
     double i = 0;
     while (i < acct_gift_shop_rows()) {
         double picked = acct_gift_picked() == 1 && acct_gift_is_owned == 0 && acct_gift_choice == i;
-        acct_gift_card(i, 0, vt + i * acct_gift_step(), acct_gift_card_h(), vt, vb, picked);
+        acct_gift_card(i, 0, vt + i * acct_gift_step(), vt, vb, picked);
         i = i + 1;
     }
     double total = acct_gift_own_total();
@@ -349,14 +292,14 @@ static void draw_acct_gifts(void) {
         const char *empty = language == 1 ? "Пока нет подарков" : "No stickers yet";
         ctext_scaled(empty, vt + acct_gift_view_h() / 2 - 8, text_color, fit_text_scale(empty, acct_gift_col_w() - 16, 0.55));
     } else {
-        double row = floor(acct_gift_scroll / acct_gift_own_step());
-        double cy = vt + row * acct_gift_own_step() - acct_gift_scroll;
+        double row = floor(acct_gift_scroll / acct_gift_step());
+        double cy = vt + row * acct_gift_step() - acct_gift_scroll;
         while (row < total && cy < vb) {
             double id = acct_gift_own_id(row);
             double picked = acct_gift_own_sel() == row ? 1 : 0;
-            acct_gift_card(id, 1, cy, acct_gift_own_h(), vt, vb, picked);
+            acct_gift_card(id, 1, cy, vt, vb, picked);
             row = row + 1;
-            cy = cy + acct_gift_own_step();
+            cy = cy + acct_gift_step();
         }
     }
     const char *left = language == 1 ? "МАГАЗИН" : "SHOP";
@@ -387,8 +330,11 @@ static void draw_acct_gifts(void) {
             button_scaled(buy, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(buy, acct_w() - 24, 0.6));
         }
     } else {
-        const char *pick = ds_concat(acct_gift_name(acct_gift_sel_id()),
-                                     language == 1 ? " · кнопки на карточке" : " · buttons on the card");
-        ctext_scaled(pick, acct_below_fields() + (btn_h - 16) / 2, text_color, fit_text_scale(pick, acct_w() - 16, 0.55));
+        double bw = acct_gift_btn_w();
+        const char *send = language == 1 ? "Подарить" : "Send";
+        const char *sell = ds_concat(language == 1 ? "Продать · +" : "Sell · +",
+                                     acct_gift_cups_line(acct_gift_refund(acct_gift_sel_id())));
+        button_scaled(send, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.56));
+        button_scaled(sell, acct_x() + bw + ACCT_GIFT_COL_GAP, acct_below_fields(), bw, btn_h, fit_text_scale(sell, bw - 12, 0.52));
     }
 }

@@ -68,7 +68,8 @@ typedef enum {
     DS_CMD_TEX_TINT,
     DS_CMD_RECT_ROT,
     DS_CMD_TEX_ROUND,
-    DS_CMD_TEX_FADE
+    DS_CMD_TEX_FADE,
+    DS_CMD_TEXT_RAINBOW
 } DSCommand;
 typedef struct {
     DSCommand t;
@@ -116,6 +117,11 @@ typedef struct {
             float x, y, sc;
             uint32_t c;
         } tt;
+        /* Rainbow lettering: each glyph walks the hue wheel from `hue`. */
+        struct {
+            char *s;
+            float x, y, sc, hue;
+        } tr;
     } v;
 } DSCmd;
 

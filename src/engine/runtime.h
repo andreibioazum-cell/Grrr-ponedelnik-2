@@ -117,6 +117,9 @@ void ds_sound_set_java_vm(void *vm);
 #define DS_FONT_PIXEL_HEIGHT 32
 void text(const char *string, float x, float y, uint32_t color);
 void text_scaled(const char *string, float x, float y, uint32_t color, float scale);
+/* Same as text_scaled, but every glyph takes the next hue step, so the line
+ * reads as a rainbow that starts at `hue` (0..1). */
+void text_rainbow(const char *string, float x, float y, float scale, float hue);
 
 int text_ink_width(const char *string);
 int text_ink_height(const char *string);
