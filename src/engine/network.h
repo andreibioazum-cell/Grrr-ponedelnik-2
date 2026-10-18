@@ -193,6 +193,7 @@ const char *net_roomlist_name(double idx);
 /* create=1 creates the room (fails if it exists), create=0 checks joining.
  * Status: 0 idle, 1 busy, 2 ok, 3 wrong/needed password, 4 exists, 5 error, 6 bad name. */
 void net_room_prepare(const char *url, const char *name, const char *pass, double create);
+const char *net_current_room(void);
 double net_room_prep_status(void);
 void net_room_prep_reset(void);
 

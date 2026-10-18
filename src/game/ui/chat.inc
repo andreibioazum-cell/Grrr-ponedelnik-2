@@ -288,6 +288,16 @@ static void draw_chat(void) {
     /* The open chat covers the fight, so its own buttons claim the press. */
     press_overlay = 1;
     button(tr_close(), cx, chat_top_y(), btn_w, btn_h);
+    /* Header: the room this chat belongs to. Taken from the connection
+     * itself (net_current_room), so after creating or joining a room the
+     * title shows exactly that room's name, never a stale one. */
+    const char *room_title = net_current_room();
+    if (str_len(room_title) == 0) {
+        room_title = ROOM;
+    }
+    const char *room_header = ds_concat(language == 1 ? "Комната: " : "Room: ", room_title);
+    text_scaled(room_header, 16, chat_top_y() + 16, text_color,
+                fit_text_scale(room_header, (screen_w - btn_w) / 2 - 24, 0.6));
     double lx = 16;
     double lw = screen_w - 32;
     double iy = chat_input_y();

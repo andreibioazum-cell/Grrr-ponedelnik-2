@@ -168,6 +168,17 @@ static void room_prep_set(int status) {
     ds_mutex_unlock(room_prep.lock);
 }
 
+/* The room this client is actually connected to ("" when offline). The
+ * chat header shows this, so it always matches the room the messages
+ * belong to - including after creating a brand-new room. */
+const char *net_current_room(void) {
+    static char ret[ROOM_NAME_MAX + 1];
+    lock();
+    snprintf(ret, sizeof(ret), "%s", net.room);
+    unlock();
+    return ret;
+}
+
 double net_room_prep_status(void) {
     double s;
     ds_mutex_lock(room_prep.lock);

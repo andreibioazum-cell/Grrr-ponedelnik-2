@@ -1282,6 +1282,8 @@ void net_room_prepare(const char *url, const char *name, const char *pass, doubl
     stub_prep_status = 1;
 }
 double net_room_prep_status(void) { return stub_prep_status; }
+static char stub_current_room[25];
+const char *net_current_room(void) { return stub_current_room; }
 void net_room_prep_reset(void) { stub_prep_status = 0; }
 
 /* Ачивка mov eax, 0x229 и экран комнат с паролями. */
@@ -1365,6 +1367,17 @@ static void test_eax229_and_rooms(void) {
     t_target = 0;
     game_state = ST_LOBBY;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+
+    /* Chat header: after creating a room, the chat title is that room. */
+    snprintf(stub_current_room, sizeof(stub_current_room), "%s", "my-room");
+    language = 0;
+    game_state = ST_ONLINE;
+    chat_open = 1;
+    adm_reset_log();
+    draw_chat();
+    assert(adm_has_text("Room: my-room") == 1);
+    chat_open = 0;
+    game_state = ST_LOBBY;
     puts("eax229 + rooms: meet-admin achievement, room list, password join, create");
 }
 
