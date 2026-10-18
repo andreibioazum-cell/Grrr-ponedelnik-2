@@ -179,7 +179,8 @@ static double skin_unlocked_for(double cls, double skin) {
         return 1;
     }
     if (cls == CLASS_EBUC) {
-        return 1;
+        /* Elf Ebuc: battle-pass tier 4 reward. */
+        return bp_claimed >= 4 ? 1 : 0;
     }
     if (cls == CLASS_AZUM && has_achievement(ACH_LEGENDS) == 1) {
         return 1;
@@ -231,7 +232,7 @@ static double class_visible(double cls) {
     if (cls == CLASS_CODECRACKER) {
         return codecracker_allowed();
     }
-    if (cls == CLASS_SANTA && dev_access() == 0) {
+    if (cls == CLASS_SANTA && dev_access() == 0 && bp_claimed < 7) {
         return 0;
     }
     return 1;

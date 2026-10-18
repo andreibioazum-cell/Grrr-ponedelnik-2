@@ -235,6 +235,9 @@ static void touch_lobby(double x, double y, double action) {
     if (hit_menu_row(x, y, 4) == 1) {
         start_transition(ST_ACHIEVEMENTS);
     }
+    if (hit_menu_row(x, y, 5) == 1) {
+        start_transition(ST_BPASS);
+    }
 }
 
 static void touch_modes(double x, double y) {

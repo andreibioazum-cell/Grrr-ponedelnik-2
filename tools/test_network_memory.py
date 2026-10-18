@@ -79,6 +79,16 @@ static void check_expiry(void) {
     after = now_ms();
     assert(fb.expires_at <= after + 3600000);
 }
+static void check_bpx(void) {
+    net_set_data_path(".");
+    apply_user_json("{\"bp\":7,\"bpx\":123}");
+    assert(net_load_bp_level() == 7);
+    assert(net_load_bp_xp() == 123);
+    net_set_bp_xp(200);
+    assert(net_load_bp_xp() == 200);
+    net_set_bp_xp(50); /* XP never goes down */
+    assert(net_load_bp_xp() == 200);
+}
 static void check_progress(void) {
     /* Malformed delimiters must not trap member() in a non-advancing loop. */
     assert(member("{\"a\":]}", "missing") == NULL);
@@ -209,6 +219,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[1], "merge")) check_merge();
     else if (!strcmp(argv[1], "stream")) check_stream();
     else if (!strcmp(argv[1], "passwd")) check_passwd();
+    else if (!strcmp(argv[1], "bpx")) check_bpx();
     else return 2;
     printf("network memory: %s OK\n", argv[1]);
     return 0;
@@ -236,7 +247,7 @@ def main():
             str(temp / "test.c"), "-lm", "-lpthread", "-o", str(binary),
         ], check=True)
         failed = False
-        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd"):
+        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd", "bpx"):
             try:
                 result = subprocess.run([str(binary), name], cwd=temp, capture_output=True, text=True, timeout=5)
                 print(result.stdout, end="")

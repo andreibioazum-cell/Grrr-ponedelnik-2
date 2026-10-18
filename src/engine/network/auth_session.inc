@@ -314,7 +314,7 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
     pending_cls = 0;
     pending_level = 0;
     pending_skin = 0;
-    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     lg_lock();
     snprintf(lg.session_nick, sizeof(lg.session_nick), "%s", nick);
     snprintf(lg.session_pass, sizeof(lg.session_pass), "%s", pass);

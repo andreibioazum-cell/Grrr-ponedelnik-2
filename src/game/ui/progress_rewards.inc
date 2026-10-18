@@ -68,7 +68,8 @@ static void check_meet_eax229(void) {
 }
 
 static void save_progress(void) {
-    double bp_lv = net_load_bp_level();
+    net_set_bp_xp(bp_xp);
+    double bp_lv = bp_claimed;
     net_save_progress_all(cups, candies, player_class, class_owned_of(CLASS_AZUM), class_owned_of(CLASS_SANTA),
                           class_owned_of(CLASS_EBUC), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
                           class_unlocked_of(CLASS_ORDINARY), class_level_of(CLASS_AZUM), class_unlocked_of(CLASS_AZUM),
@@ -123,8 +124,9 @@ static void progress_normalize(void) {
         set_class_progress(cls, lv, un);
         order = order + 1;
     }
-    if (player_class == CLASS_SANTA && dev_access() == 0) {
-        /* Santa is developer-only for now; the ownership itself is kept. */
+    if (player_class == CLASS_SANTA && dev_access() == 0 && bp_claimed < 7) {
+        /* Santa is developer-only until battle-pass tier 7 is claimed;
+         * the ownership itself is kept either way. */
         player_class = CLASS_ORDINARY;
     }
     if (class_id_valid(player_class) == 0 || class_owned_of(player_class) == 0) {
@@ -137,6 +139,10 @@ static void progress_normalize(void) {
 }
 
 static void progress_from_storage(void) {
+    bp_xp = net_load_bp_xp();
+    bp_claimed = net_load_bp_level();
+    if (bp_claimed < 0) bp_claimed = 0;
+    if (bp_claimed > 7) bp_claimed = 7;
     cups = net_load_cups();
     candies = net_load_candies();
     achievement_mask = net_load_achievement_flags();
@@ -178,6 +184,8 @@ static void progress_from_storage(void) {
  * run this after net_logout(), when save_progress() can only write the
  * local file, and logging back in restores the account from the cloud. */
 static void progress_reset_on_signout(void) {
+    bp_xp = 0;
+    bp_claimed = 0;
     cups = 0;
     candies = 0;
     set_class_owned(CLASS_AZUM, 0);

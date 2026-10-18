@@ -45,6 +45,7 @@ static void draw_lobby(void) {
     draw_menu_button(2, tr_settings());
     draw_menu_button(3, tr_account());
     draw_menu_button(4, tr_achievements());
+    draw_menu_button(5, language == 1 ? "Баттл-пасс" : "Battle Pass");
     draw_lobby_nick();
     draw_lobby_money();
     if (new_theme == 1) {
@@ -223,9 +224,6 @@ static void draw_level_row(double n) {
 
 static void draw_levels(void) {
     screen_fill();
-    if (flash_sale_active == 1) {
-        ctext_scaled(language == 1 ? "ФЛЕШ-РАСПРОДАЖА -10%" : "FLASH SALE -10%", levels_top() - 34, 0xFFFF3030, 0.6);
-    }
     double n = 1;
     while (n <= max_level) {
         draw_level_row(n);

@@ -120,6 +120,8 @@ static void draw_screen(void) {
         draw_classes();
     } else if (game_state == ST_LEVELS) {
         draw_levels();
+    } else if (game_state == ST_BPASS) {
+        draw_bpass();
     } else if (game_state == ST_SKINS) {
         draw_skins();
     } else if (game_state == ST_LEADERBOARD) {
@@ -236,6 +238,10 @@ static double logic_back(void) {
     }
     if (game_state == ST_LEVELS || game_state == ST_SKINS) {
         start_transition(ST_CLASSES);
+        return 1;
+    }
+    if (game_state == ST_BPASS) {
+        start_transition(ST_LOBBY);
         return 1;
     }
     if (game_state == ST_LEADERBOARD || game_state == ST_PROMO || game_state == ST_ROOMS) {

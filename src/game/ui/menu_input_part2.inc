@@ -146,6 +146,9 @@ static double menu_button_hit(double x, double y) {
         }
         return 0;
     }
+    if (game_state == ST_BPASS) {
+        return bpass_any_hit(x, y);
+    }
     if (game_state == ST_SKINS) {
         if (back_hit(x, y) == 1) return 1;
         while (i < SKIN_COUNT) {
@@ -194,6 +197,10 @@ static void touch_menu(double x, double y, double action, double id) {
     }
     if (game_state == ST_LEVELS) {
         touch_levels(x, y, action);
+        return;
+    }
+    if (game_state == ST_BPASS) {
+        touch_bpass(x, y, action);
         return;
     }
     if (game_state == ST_SKINS) {

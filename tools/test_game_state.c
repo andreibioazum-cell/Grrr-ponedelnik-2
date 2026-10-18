@@ -302,8 +302,16 @@ void net_mark_achievement_flag(double flag) {
 void net_save_azum_revives(double value) {
     (void)value;
 }
+double stub_bpx = 0;
 double net_load_bp_level(void) {
-    return 0;
+    return bp_claimed;
+}
+void net_set_bp_xp(double v) {
+    if (v > stub_bpx)
+        stub_bpx = v;
+}
+double net_load_bp_xp(void) {
+    return stub_bpx;
 }
 void net_set_class(double value) {
     (void)value;
@@ -3168,6 +3176,39 @@ int main(void) {
     test_eax229_and_rooms();
     test_dice_alone_and_bubbles();
     test_overlay_transitions();
+
+    /* New Year battle pass: wins give XP, tiers claim in order for
+     * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */
+    {
+        bp_xp = 0;
+        bp_claimed = 0;
+        candies = 1000;
+        cups = 0;
+        stub_bpx = 0;
+        award_battle_result(1);
+        assert(bp_xp == 10 && stub_bpx == 10);
+        double cups_after_win = cups;
+        assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        bp_claim(2); /* out of order: nothing happens */
+        assert(bp_claimed == 0 && candies == 1000);
+        bp_claim(1);
+        assert(bp_claimed == 1 && cups == cups_after_win + 10 && candies == 1000 - 12);
+        bp_xp = 300;
+        bp_claim(2);
+        bp_claim(3);
+        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        bp_claim(4);
+        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
+        assert(class_owned_of(CLASS_SANTA) == 0);
+        bp_claim(5);
+        bp_claim(6);
+        bp_claim(7);
+        assert(bp_claimed == 7 && class_owned_of(CLASS_SANTA) == 1);
+        assert(class_visible(CLASS_SANTA) == 1);
+        bp_xp = 0;
+        bp_claimed = 0;
+        stub_bpx = 0;
+    }
 
     state_destroy();
     state_ready = 0;

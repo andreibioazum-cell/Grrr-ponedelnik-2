@@ -109,3 +109,4 @@ EBUC_CARD_TEX = "ebuc_card.png";
 EBUC_ELF_CARD_TEX = "ebuc_elf_card.png";
 ASTRA_CARD_TEX = "astra_card.png";
 astra_ability_ok = 0;
+ST_BPASS = 16;

@@ -13,6 +13,7 @@
 #include "include/prototypes/ui/chat.inc"
 #include "include/prototypes/ui/admin.inc"
 #include "include/prototypes/ui/menu_screens.inc"
+#include "include/prototypes/ui/battle_pass.inc"
 #include "include/prototypes/ui/menu_input.inc"
 #include "include/prototypes/ui/rooms.inc"
 #include "include/prototypes/combat/battle_rules.inc"

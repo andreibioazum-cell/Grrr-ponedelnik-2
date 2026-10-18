@@ -1,6 +1,8 @@
 class_level_tbl = arr_new();
 class_unlocked_tbl = arr_new();
 class_owned_tbl = arr_new();
+bp_xp = 0;
+bp_claimed = 0;
 classes_scroll = 0;
 classes_swipe_last_x = 0;
 classes_swipe_moved = 0;

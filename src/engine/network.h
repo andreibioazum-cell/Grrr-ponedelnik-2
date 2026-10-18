@@ -161,6 +161,8 @@ double net_load_ebuc_level(void);
 double net_load_ebuc_levels_unlocked(void);
 
 double net_load_bp_level(void);
+void net_set_bp_xp(double v);
+double net_load_bp_xp(void);
 double net_load_azum_skin(void);
 
 double net_load_astra(void);

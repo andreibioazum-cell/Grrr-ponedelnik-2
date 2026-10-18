@@ -2,7 +2,7 @@ static void progress_write(int cups, int candies, int cls, int azum, int santa, 
                            int levels_unlocked, int ordinary_level, int ordinary_levels_unlocked, int azum_level,
                            int azum_levels_unlocked, int santa_level, int santa_levels_unlocked, int ebuc_level,
                            int ebuc_levels_unlocked, int bp_level, int azum_skin, int astra, int astra_level,
-                           int astra_levels_unlocked) {
+                           int astra_levels_unlocked, int bp_xp) {
     char path[320], text[512];
     if (cls == 5) {
         cls = 4;
@@ -12,7 +12,7 @@ static void progress_write(int cups, int candies, int cls, int azum, int santa, 
     snprintf(text, sizeof(text), "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", cups, cls, azum,
              santa, candies, level, levels_unlocked, ordinary_level, ordinary_levels_unlocked, azum_level,
              azum_levels_unlocked, santa_level, santa_levels_unlocked, ebuc_level, ebuc_levels_unlocked, ebuc, bp_level,
-             azum_skin, astra, astra_level, astra_levels_unlocked, 0);
+             azum_skin, astra, astra_level, astra_levels_unlocked, bp_xp);
     file_write_atomic(path, text);
 }
 static void progress_read(void) {
@@ -25,7 +25,7 @@ static void progress_read(void) {
     int ebuc_level = -1, ebuc_levels_unlocked = -1;
     int bp_level = 0, azum_skin = 0;
     int astra = 0, astra_level = -1, astra_levels_unlocked = -1;
-    int legacy_marker = 0; /* Trailing field from old saves; ignored. */
+    int bp_xp = 0; /* Trailing field: battle-pass XP (was an ignored 0 in old saves). */
     int legacy_astra_class = 0;
     pg_lock();
     if (pg.loaded) {
@@ -40,7 +40,7 @@ static void progress_read(void) {
                        &santa, &candies, &level, &levels_unlocked, &ordinary_level, &ordinary_levels_unlocked,
                        &azum_level, &azum_levels_unlocked, &santa_level, &santa_levels_unlocked, &ebuc_level,
                        &ebuc_levels_unlocked, &ebuc, &bp_level, &azum_skin, &astra, &astra_level,
-                       &astra_levels_unlocked, &legacy_marker);
+                       &astra_levels_unlocked, &bp_xp);
         legacy_astra_class = (cls == 5);
         if (n < 3) {
             cups = 0;
@@ -57,7 +57,7 @@ static void progress_read(void) {
             ebuc_level = ebuc_levels_unlocked = 0;
             astra = 0;
             astra_level = astra_levels_unlocked = 0;
-            legacy_marker = 0;
+            bp_xp = 0;
         } else {
             if (n < 6) {
                 level = 0;
@@ -108,7 +108,7 @@ static void progress_read(void) {
                 }
             }
             if (n < 22) {
-                legacy_marker = 0;
+                bp_xp = 0;
             }
         }
         fclose(f);
@@ -183,6 +183,7 @@ static void progress_read(void) {
     pg.ebuc_level = ebuc_level;
     pg.ebuc_levels_unlocked = ebuc_levels_unlocked;
     pg.bp_level = bp_level;
+    pg.bp_xp = bp_xp < 0 ? 0 : bp_xp;
     pg.azum_skin = azum_skin;
     pg.astra = astra;
     pg.astra_level = astra_level;
@@ -318,6 +319,26 @@ double net_load_ebuc_levels_unlocked(void) {
     pg_unlock();
     return v;
 }
+void net_set_bp_xp(double v) {
+    int iv = (int)v;
+    if (iv < 0)
+        iv = 0;
+    progress_read();
+    pg_lock();
+    if (iv > pg.bp_xp)
+        pg.bp_xp = iv;
+    pg_unlock();
+}
+
+double net_load_bp_xp(void) {
+    double v;
+    progress_read();
+    pg_lock();
+    v = (double)pg.bp_xp;
+    pg_unlock();
+    return v;
+}
+
 double net_load_bp_level(void) {
     double v;
     progress_read();
@@ -408,5 +429,6 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
         pending_level = plv;
         pending_skin = 0;
     }
-    progress_write(c, cd, k, a, sn, eu, plv, plu, ol, ou, al, au, sl, su, el, eul, bp, sk, own, lv, lu);
+    progress_write(c, cd, k, a, sn, eu, plv, plu, ol, ou, al, au, sl, su, el, eul, bp, sk, own, lv, lu,
+                   (int)net_load_bp_xp());
 }
