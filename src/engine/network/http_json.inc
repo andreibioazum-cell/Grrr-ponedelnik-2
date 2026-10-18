@@ -111,6 +111,117 @@ static const char *path_val(const char *json, const char *path) {
     }
     return v;
 }
+/* Span of one object member's value: returns member key span too. */
+static int member_span(const char *o, const char *key, const char **vs, const char **ve, const char **ms,
+                       const char **me) {
+    size_t n = strlen(key);
+    const char *p = skip_ws(o);
+    if (!p || *p != '{')
+        return 0;
+    for (p = skip_ws(p + 1); p && *p && *p != '}';) {
+        const char *name = p, *end = skip_str(p);
+        const char *v, *vend;
+        if (!end)
+            return 0;
+        p = skip_ws(end);
+        if (*p != ':')
+            return 0;
+        v = skip_ws(p + 1);
+        vend = skip_val(v);
+        if (!vend)
+            return 0;
+        if ((size_t)(end - name - 2) == n && strncmp(name + 1, key, n) == 0) {
+            *vs = v;
+            *ve = vend;
+            *ms = name;
+            *me = vend;
+            return 1;
+        }
+        p = skip_ws(vend);
+        if (p && *p == ',')
+            p = skip_ws(p + 1);
+    }
+    return 0;
+}
+
+/* Merge patch members into the JSON object in dst (in place, bounded):
+ * existing keys are replaced, null deletes, new keys are appended.
+ * Used to apply Firebase streaming "patch" events to a cached object
+ * without re-downloading it. Returns 1 on success. */
+static int json_object_merge(char *dst, size_t cap, const char *patch) {
+    const char *p = skip_ws(patch);
+    if (!dst || !cap || !p || *p != '{' || !dst[0])
+        return 0;
+    for (p = skip_ws(p + 1); p && *p && *p != '}';) {
+        const char *name = p, *end = skip_str(p);
+        const char *v, *vend, *ovs, *ove, *oms, *ome;
+        char key[48];
+        size_t kn;
+        if (!end)
+            return 0;
+        p = skip_ws(end);
+        if (*p != ':')
+            return 0;
+        v = skip_ws(p + 1);
+        vend = skip_val(v);
+        if (!vend)
+            return 0;
+        kn = (size_t)(end - name - 2);
+        if (kn >= sizeof(key))
+            return 0;
+        memcpy(key, name + 1, kn);
+        key[kn] = 0;
+        int is_null = (size_t)(vend - v) == 4 && strncmp(v, "null", 4) == 0;
+        if (member_span(dst, key, &ovs, &ove, &oms, &ome)) {
+            if (is_null) {
+                /* Delete the member plus one neighbouring comma. */
+                const char *ds = oms, *de = ome;
+                const char *q = skip_ws(de);
+                if (*q == ',')
+                    de = q + 1;
+                else {
+                    while (ds > dst && (ds[-1] == ' ' || ds[-1] == '\t'))
+                        ds--;
+                    if (ds > dst && ds[-1] == ',')
+                        ds--;
+                }
+                memmove((char *)ds, de, strlen(de) + 1);
+            } else {
+                size_t old_len = (size_t)(ove - ovs), new_len = (size_t)(vend - v);
+                size_t total = strlen(dst);
+                if (total - old_len + new_len >= cap)
+                    return 0;
+                memmove((char *)ovs + new_len, ove, strlen(ove) + 1);
+                memcpy((char *)ovs, v, new_len);
+            }
+        } else if (!is_null) {
+            /* Append before the closing brace. */
+            size_t total = strlen(dst);
+            size_t add = (size_t)(end - name) + 1 + (size_t)(vend - v);
+            const char *q = skip_ws(dst + 1);
+            int empty = (*q == '}');
+            if (total + add + (empty ? 0 : 1) >= cap)
+                return 0;
+            char *ins = dst + total - 1; /* the closing brace */
+            if (!empty) {
+                memmove(ins + 1, ins, 2);
+                *ins++ = ',';
+            }
+            memcpy(ins, name, (size_t)(end - name));
+            ins += (size_t)(end - name);
+            *ins++ = ':';
+            memcpy(ins, v, (size_t)(vend - v));
+            ins += (size_t)(vend - v);
+            *ins = '}';
+            ins[1] = 0;
+        }
+        p = skip_ws(vend);
+        if (p && *p == ',')
+            p = skip_ws(p + 1);
+    }
+    return 1;
+}
+
 static double num(const char *json, const char *path, double fb) {
     const char *v = path_val(json, path);
     if (!v || !strncmp(v, "null", 4))

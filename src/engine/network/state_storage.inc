@@ -96,7 +96,9 @@ typedef struct {
 } ChatMsg;
 static int chat_keep = 20;
 static struct {
-    DSThread thread, rthread;
+    DSThread thread, rthread, sthread;
+    long long stream_live_at;
+    int stream_active;
     DSMutex lock;
     JavaVM *vm;
     int run, started, slot, status;

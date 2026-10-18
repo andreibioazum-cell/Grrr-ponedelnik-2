@@ -139,6 +139,53 @@ static void check_truncation(void) {
         }
     }
 }
+
+static void check_merge(void) {
+    char dst[256];
+    snprintf(dst, sizeof(dst), "%s", "{\"0\":{\"x\":1},\"1\":{\"x\":2}}");
+    assert(json_object_merge(dst, sizeof(dst), "{\"0\":{\"x\":9}}"));
+    assert(num(dst, "0/x", 0) == 9 && num(dst, "1/x", 0) == 2);
+    assert(json_object_merge(dst, sizeof(dst), "{\"2\":{\"x\":3}}"));
+    assert(num(dst, "2/x", 0) == 3 && num(dst, "0/x", 0) == 9);
+    assert(json_object_merge(dst, sizeof(dst), "{\"0\":null}"));
+    assert(member(dst, "0") == NULL && num(dst, "1/x", 0) == 2 && num(dst, "2/x", 0) == 3);
+    assert(json_object_merge(dst, sizeof(dst), "{\"2\":null}"));
+    assert(member(dst, "2") == NULL && num(dst, "1/x", 0) == 2);
+    snprintf(dst, sizeof(dst), "%s", "{}");
+    assert(json_object_merge(dst, sizeof(dst), "{\"5\":{\"uid\":\"u\"}}"));
+    assert(member(dst, "5") != NULL);
+    /* Too-small destination must fail cleanly, not corrupt. */
+    char tiny[16];
+    snprintf(tiny, sizeof(tiny), "%s", "{\"a\":1}");
+    assert(!json_object_merge(tiny, sizeof(tiny), "{\"b\":{\"long\":\"valuevaluevalue\"}}"));
+}
+static void check_stream(void) {
+    char dst[256];
+    (void)dst;
+    net.run = 1;
+    net.gen = 7;
+    stream_gen = 7;
+    net.slot = -1;
+    snprintf(net.uid, sizeof(net.uid), "%s", "meuid");
+    memset(&sse, 0, sizeof(sse));
+    stream_players_cache[0] = 0;
+    const char *put1 = "event: put\ndata: {\"path\":\"/\",\"data\":{\"0\":{\"uid\":\"u1\",\"nick\":\"Bob\",\"x\":0.5,\"y\":0.25,\"alive\":1,\"seq\":1,\"hp\":10}}}\n\n";
+    /* Feed in awkward chunks, split mid-line, like TCP would. */
+    assert(stream_players_chunk(NULL, put1, 7) == 1);
+    assert(stream_players_chunk(NULL, put1 + 7, 31) == 1);
+    assert(stream_players_chunk(NULL, put1 + 38, strlen(put1) - 38) == 1);
+    assert(net.players[0].online == 1);
+    assert(fabs(net.players[0].x - 0.5) < 1e-9);
+    const char *patch = "event: patch\ndata: {\"path\":\"/\",\"data\":{\"0\":{\"uid\":\"u1\",\"nick\":\"Bob\",\"x\":0.9,\"y\":0.25,\"alive\":1,\"seq\":2,\"hp\":9}}}\n\n";
+    assert(stream_players_chunk(NULL, patch, strlen(patch)) == 1);
+    assert(fabs(net.players[0].x - 0.9) < 1e-9);
+    assert(stream_players_chunk(NULL, "event: keep-alive\ndata: {}\n\n", 28) == 1);
+    assert(fabs(net.players[0].x - 0.9) < 1e-9);
+    const char *del = "event: put\ndata: {\"path\":\"/0\",\"data\":null}\n\n";
+    assert(stream_players_chunk(NULL, del, strlen(del)) == 1);
+    assert(net.players[0].online == 0);
+    net.run = 0;
+}
 int main(int argc, char **argv) {
     assert(argc == 2);
     if (!strcmp(argv[1], "strings")) check_strings();
@@ -149,6 +196,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[1], "progress")) check_progress();
     else if (!strcmp(argv[1], "truncation")) check_truncation();
     else if (!strcmp(argv[1], "fuzz")) check_fuzz();
+    else if (!strcmp(argv[1], "merge")) check_merge();
+    else if (!strcmp(argv[1], "stream")) check_stream();
     else return 2;
     printf("network memory: %s OK\n", argv[1]);
     return 0;
@@ -176,7 +225,7 @@ def main():
             str(temp / "test.c"), "-lm", "-lpthread", "-o", str(binary),
         ], check=True)
         failed = False
-        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz"):
+        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream"):
             try:
                 result = subprocess.run([str(binary), name], cwd=temp, capture_output=True, text=True, timeout=5)
                 print(result.stdout, end="")
