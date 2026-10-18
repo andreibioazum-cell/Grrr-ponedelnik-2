@@ -39,6 +39,68 @@ function bad(code, message) {
   return new HttpsError(code, message);
 }
 
+// Gift catalogue and server-authoritative gifting. The sender's cup balance is
+// changed with an RTDB transaction (never trusted from the client); gift counts
+// are stored on the recipient profile. CCP grants use the same endpoint and
+// are restricted to the two existing admin accounts.
+const GIFT_CATALOG = Object.freeze({ rose: 25, cake: 100, bear: 250, rocket: 500 });
+const giftDb = admin.database();
+function giftCaller(req) {
+  if (!req.auth || !req.auth.token || !req.auth.token.email) {
+    throw bad("unauthenticated", "sign-in required");
+  }
+  const email = String(req.auth.token.email).toLowerCase();
+  if (!email.endsWith(EMAIL_DOMAIN)) throw bad("permission-denied", "game account required");
+  return { email, nick: email.slice(0, -EMAIL_DOMAIN.length), admin: ADMIN_EMAILS.includes(email) };
+}
+exports.giftAction = onCall({ region: "us-central1" }, async (req) => {
+  const caller = giftCaller(req);
+  const data = req.data || {};
+  const id = typeof data.gift === "string" ? data.gift : "";
+  const cost = GIFT_CATALOG[id];
+  const recipient = typeof data.recipient === "string" ? data.recipient.trim() : "";
+  if (!cost) throw bad("invalid-argument", "unknown gift");
+  if (!NICK_RE.test(recipient)) throw bad("invalid-argument", "bad recipient");
+  const grant = data.action === "grant";
+  if (grant && !caller.admin) throw bad("permission-denied", "admins only");
+  if (!grant && data.action !== "send") throw bad("invalid-argument", "bad action");
+  if (!grant && recipient.toLowerCase() === caller.nick.toLowerCase()) {
+    throw bad("failed-precondition", "cannot gift yourself");
+  }
+  const target = giftDb.ref(`users/${recipient}`);
+  const targetSnap = await target.get();
+  if (!targetSnap.exists()) throw bad("not-found", "recipient not found");
+  if (!grant) {
+    const sender = giftDb.ref(`users/${caller.nick}`);
+    let insufficient = false;
+    const debit = await sender.transaction((profile) => {
+      if (!profile || typeof profile !== "object") return;
+      const cups = Number(profile.cups || 0);
+      if (cups < cost) { insufficient = true; return; }
+      profile.cups = cups - cost;
+      return profile;
+    });
+    if (!debit.committed) {
+      if (insufficient) throw bad("failed-precondition", "not enough cups");
+      throw bad("failed-precondition", "sender profile unavailable");
+    }
+  }
+  try {
+    const result = await target.transaction((profile) => {
+      if (!profile || typeof profile !== "object") return;
+      profile.gifts = profile.gifts && typeof profile.gifts === "object" ? profile.gifts : {};
+      profile.gifts[id] = Math.min(999, Number(profile.gifts[id] || 0) + 1);
+      return profile;
+    });
+    if (!result.committed) throw bad("not-found", "recipient not found");
+  } catch (e) {
+    // Refund the exact price if delivery fails after the debit.
+    if (!grant) await giftDb.ref(`users/${caller.nick}/cups`).transaction((v) => Number(v || 0) + cost);
+    throw e;
+  }
+  return { ok: true, gift: id };
+});
+
 exports.adminResetPassword = onCall(
   { region: "us-central1", secrets: [passSuffix] },
   async (req) => {
