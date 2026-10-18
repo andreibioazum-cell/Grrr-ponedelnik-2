@@ -2,11 +2,14 @@
  * Инвентарь и покупки идут обычными запросами к Realtime Database:
  *   users/<ник>/gifts/<стикер> — счётчик 0..999;
  *   users/<ник>/cups           — кубки.
+ * Первый стикер — poop («какашка»); старые счётчики rose остаются в базе,
+ * но больше не показываются.
  * Купить — одна запись users/<ник>.json: кубки минус цена и +1 стикер, так
  * покупка не рассыпается на две.
  * Подарить — сначала -1 у себя, затем +1 получателю; если вторая запись не
  * прошла, свой счётчик возвращается. firebase.rules.json разрешает чужому
- * игроку только +1 в gifts (и не даёт трогать остальной профиль).
+ * игроку только +1 в gifts (и не даёт трогать остальной профиль или
+ * удалять чужие стикеры).
  * Статусы: 0 — ничего, 1 — идёт, 2 — готово, 3 — сеть или сервер,
  * 4 — получатель не найден, 5 — не хватает кубков, 6 — нет стикера
  * в инвентаре, 7 — плохой ник или подарок самому себе,
@@ -20,7 +23,7 @@ static volatile int s_gift_counts_loaded = 0;
 static volatile int s_gift_counts_requested = 0;
 
 static const char *gift_id(double gift) {
-    static const char *ids[] = {"rose", "cake", "bear", "rocket"};
+    static const char *ids[] = {"poop", "cake", "bear", "rocket"};
     int i = (int)gift;
     return i >= 0 && i < 4 ? ids[i] : "";
 }
@@ -67,7 +70,7 @@ static int gift_get_counts(const char *nick, int out[4]) {
     snprintf(url, sizeof(url), "%s/users/%s/gifts.json", net.base, nick);
     if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
         return 0;
-    out[0] = num_int(resp, "rose", 0);
+    out[0] = num_int(resp, "poop", 0);
     out[1] = num_int(resp, "cake", 0);
     out[2] = num_int(resp, "bear", 0);
     out[3] = num_int(resp, "rocket", 0);
@@ -80,12 +83,13 @@ static int gift_get_counts(const char *nick, int out[4]) {
     return 1;
 }
 
-/* Правила базы требуют все четыре счётчика в одной записи. */
-static int gift_put_counts(const char *nick, const int c[4]) {
-    char url[URL], body[160];
-    snprintf(url, sizeof(url), "%s/users/%s/gifts.json", net.base, nick);
-    snprintf(body, sizeof(body), "{\"rose\":%d,\"cake\":%d,\"bear\":%d,\"rocket\":%d}", c[0], c[1], c[2], c[3]);
-    return fb_http("PATCH", url, body, NULL, 0);
+/* Один стикер — одна запись: чужие счётчики не перезаписываются и старые
+ * ключи (например, rose) в профиле не мешают. */
+static int gift_put_one(const char *nick, int id, int value) {
+    char url[URL], body[32];
+    snprintf(url, sizeof(url), "%s/users/%s/gifts/%s.json", net.base, nick, gift_id(id));
+    snprintf(body, sizeof(body), "%d", value);
+    return fb_http("PUT", url, body, NULL, 0);
 }
 
 static int gift_recipient_exists(const char *nick) {
@@ -111,8 +115,7 @@ static int gift_buy(const char *nick, int id) {
         return 8;
     counts[id]++;
     snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
-    snprintf(body, sizeof(body), "{\"cups\":%d,\"gifts\":{\"rose\":%d,\"cake\":%d,\"bear\":%d,\"rocket\":%d}}", cups - price,
-             counts[0], counts[1], counts[2], counts[3]);
+    snprintf(body, sizeof(body), "{\"cups\":%d,\"gifts\":{\"%s\":%d}}", cups - price, gift_id(id), counts[id]);
     net_seal_body(body, sizeof(body));
     code = fb_http("PATCH", url, body, NULL, 0);
     if (code != 200) {
@@ -138,16 +141,16 @@ static int gift_send(const char *sender, const char *recipient, int id) {
     if (theirs[id] >= 999)
         return 8;
     mine[id]--;
-    if (gift_put_counts(sender, mine) != 200) {
+    if (gift_put_one(sender, id, mine[id]) != 200) {
         if (net_log_ok())
             LOGERR("gift send: cannot take the sticker from '%s'", sender);
         return 3;
     }
     theirs[id]++;
-    if (gift_put_counts(recipient, theirs) != 200) {
+    if (gift_put_one(recipient, id, theirs[id]) != 200) {
         /* Не смогли положить получателю — возвращаем стикер себе. */
         mine[id]++;
-        gift_put_counts(sender, mine);
+        gift_put_one(sender, id, mine[id]);
         if (net_log_ok())
             LOGERR("gift send: cannot deliver to '%s'", recipient);
         return 3;
@@ -166,7 +169,7 @@ static int gift_grant(const char *recipient, int id) {
     if (theirs[id] >= 999)
         return 8;
     theirs[id]++;
-    if (gift_put_counts(recipient, theirs) != 200) {
+    if (gift_put_one(recipient, id, theirs[id]) != 200) {
         if (net_log_ok())
             LOGERR("gift grant for '%s': write failed", recipient);
         return 3;
@@ -237,7 +240,7 @@ static void *gift_counts_job(void *arg) {
         snprintf(plain, sizeof(plain), "%s/users/%s/gifts.json", net.base, nick);
         fb_url(url, sizeof(url), plain);
         if (http("GET", url, NULL, resp, sizeof(resp)) == 200) {
-            s_gift_counts[0] = num_int(resp, "rose", 0);
+            s_gift_counts[0] = num_int(resp, "poop", 0);
             s_gift_counts[1] = num_int(resp, "cake", 0);
             s_gift_counts[2] = num_int(resp, "bear", 0);
             s_gift_counts[3] = num_int(resp, "rocket", 0);

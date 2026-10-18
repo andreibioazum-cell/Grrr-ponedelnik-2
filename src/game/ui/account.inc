@@ -36,6 +36,7 @@ static void acct_gift_buy(void);
 static void acct_gift_send(void);
 static void draw_acct_gifts(void);
 static void acct_poll_gifts(void);
+static void acct_gift_tick(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -325,11 +326,7 @@ static void acct_poll_password(void) {
     }
 }
 static void acct_tick(void) {
-    if (acct_open == ACCT_GIFTS && acct_gift_drag_id == -1 && acct_gift_bar_drag_id == -1 && fabs(acct_gift_velocity) > 0.01) {
-        acct_gift_scroll = clamp(acct_gift_scroll + acct_gift_velocity * dt, 0, acct_gift_scroll_max());
-        acct_gift_velocity = acct_gift_velocity * exp(-5.2 * dt);
-        if (acct_gift_scroll <= 0 || acct_gift_scroll >= acct_gift_scroll_max()) acct_gift_velocity = 0;
-    }
+    acct_gift_tick();
     acct_poll_gifts();
     if (acct_busy == 1) {
         acct_poll_delete();

@@ -89,7 +89,9 @@ static void check_gifts(void) {
     assert(gift_nick_same("Bob", "bob"));
     assert(!gift_nick_same("bob", "bobby"));
     assert(!gift_nick_same("bob", NULL));
-    assert(strcmp(gift_id(0), "rose") == 0);
+    assert(strcmp(gift_id(0), "poop") == 0);
+    assert(strcmp(gift_id(1), "cake") == 0);
+    assert(strcmp(gift_id(2), "bear") == 0);
     assert(strcmp(gift_id(3), "rocket") == 0);
     assert(strcmp(gift_id(4), "") == 0);
     assert(strcmp(gift_id(-1), "") == 0);

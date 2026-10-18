@@ -999,6 +999,58 @@ static void test_account_screen(void) {
     puts("account: menu, password change checks, sign-out, delete needs password + full swipe right");
 }
 
+/* Магазин подарков: строки всегда выровнены по целым карточкам, поэтому над
+ * списком больше не просвечивает половинка кнопки; первый стикер - какашка,
+ * а количество подарков рисуется кучкой значков, без цифр. */
+static void test_gifts_page(void) {
+    double saved_w = screen_w, saved_h = screen_h;
+    double saved_lang = language;
+    screen_w = 720;
+    screen_h = 1280;
+    language = 1;
+    acct_open = ACCT_GIFTS;
+    acct_gift_scroll = 0;
+    acct_gift_velocity = 0;
+    acct_gift_drag_id = -1;
+    acct_gift_bar_drag_id = -1;
+    assert(acct_gift_visible() >= 1);
+    assert(str_eq(acct_gift_name(0), "Какашка") == 1);
+    assert(net_gift_price(0) == 25);
+    /* Окно списка всегда начинается с целой строки. */
+    for (double s = 0; s <= acct_gift_scroll_max() + 1; s += 0.07) {
+        acct_gift_scroll = s;
+        double r0 = acct_gift_row0();
+        assert(r0 >= 0 && r0 <= acct_gift_scroll_max());
+        assert(fabs(acct_gift_y(r0) - acct_gift_list_top()) < 1e-9);
+        for (double i = 0; i < 9; i++) {
+            double y = acct_gift_y(i);
+            if (i >= r0 && i < r0 + acct_gift_visible()) {
+                assert(y >= acct_gift_list_top() - 1e-9);
+                assert(y + acct_gift_card_h() <=
+                       acct_gift_list_top() + acct_gift_visible() * acct_gift_step() - 8 + 1e-6);
+            }
+        }
+    }
+    /* Касание выбирает ровно ту строку, которая видна. */
+    acct_gift_scroll = 2;
+    double y = acct_gift_y(5) + acct_gift_card_h() / 2;
+    acct_gift_drag_id = 11;
+    acct_gift_drag_start_y = y;
+    acct_gift_drag_y = y;
+    assert(touch_acct_gift_scroll(acct_x() + 20, y, 2, 11) == 1);
+    assert(touch_acct_gift_scroll(acct_x() + 20, y, 1, 11) == 1);
+    assert(acct_gift_choice == 0 && acct_gift_is_owned == 1);
+    /* Продажа и коллекция рисуются примитивами: ни одного значка из шрифта. */
+    draw_acct_gifts();
+    acct_open = 0;
+    acct_gift_scroll = 0;
+    acct_gift_velocity = 0;
+    language = saved_lang;
+    screen_w = saved_w;
+    screen_h = saved_h;
+    puts("gifts: whole-row list, poop first, piles instead of counters");
+}
+
 /* Правовая часть: фильтр чата, согласие при входе, вопрос в лобби, окно
  * документов поверх предупреждения и удаление аккаунта. */
 static void test_legal(void) {
@@ -3187,6 +3239,7 @@ int main(void) {
     test_eax229_and_rooms();
     test_dice_alone_and_bubbles();
     test_overlay_transitions();
+    test_gifts_page();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
      * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */

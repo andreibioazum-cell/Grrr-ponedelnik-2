@@ -23,7 +23,7 @@ static double admin_tab = 0;
 static double admin_gift_choice = 0;
 static double admin_gift_busy = 0;
 static char admin_gift_target[24];
-static const char *admin_gift_names[4] = {"Rose", "Cake", "Teddy", "Rocket"};
+static const char *admin_gift_names[4] = {"Poop", "Cake", "Teddy", "Rocket"};
 
 /* Chrome heights are measured from the screen, never from the panel, so the
  * panel height stays a plain function of the content. */
