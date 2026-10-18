@@ -58,32 +58,48 @@ exports.giftAction = onCall({ region: "us-central1" }, async (req) => {
   const data = req.data || {};
   const id = typeof data.gift === "string" ? data.gift : "";
   const cost = GIFT_CATALOG[id];
+  const action = data.action;
   const recipient = typeof data.recipient === "string" ? data.recipient.trim() : "";
+  const senderNick = typeof data.sender === "string" ? data.sender.trim() : caller.nick;
+  if (!NICK_RE.test(senderNick) || senderNick.toLowerCase() !== caller.nick.toLowerCase()) {
+    throw bad("permission-denied", "sender identity mismatch");
+  }
   if (!cost) throw bad("invalid-argument", "unknown gift");
-  if (!NICK_RE.test(recipient)) throw bad("invalid-argument", "bad recipient");
-  const grant = data.action === "grant";
-  if (grant && !caller.admin) throw bad("permission-denied", "admins only");
-  if (!grant && data.action !== "send") throw bad("invalid-argument", "bad action");
-  if (!grant && recipient.toLowerCase() === caller.nick.toLowerCase()) {
+  if (action === "grant" && !caller.admin) throw bad("permission-denied", "admins only");
+  if (!["buy", "send", "grant"].includes(action)) throw bad("invalid-argument", "bad action");
+  const targetNick = action === "buy" ? senderNick : recipient;
+  if (!NICK_RE.test(targetNick)) throw bad("invalid-argument", "bad recipient");
+  if (action === "send" && targetNick.toLowerCase() === caller.nick.toLowerCase()) {
     throw bad("failed-precondition", "cannot gift yourself");
   }
-  const target = giftDb.ref(`users/${recipient}`);
-  const targetSnap = await target.get();
-  if (!targetSnap.exists()) throw bad("not-found", "recipient not found");
-  if (!grant) {
-    const sender = giftDb.ref(`users/${caller.nick}`);
-    let insufficient = false;
+  const target = giftDb.ref(`users/${targetNick}`);
+  if (!(await target.get()).exists()) throw bad("not-found", "recipient not found");
+  let senderChanged = false;
+  let inventoryError = "";
+  if (action !== "grant") {
+    const sender = giftDb.ref(`users/${senderNick}`);
     const debit = await sender.transaction((profile) => {
       if (!profile || typeof profile !== "object") return;
-      const cups = Number(profile.cups || 0);
-      if (cups < cost) { insufficient = true; return; }
-      profile.cups = cups - cost;
+      profile.gifts = profile.gifts && typeof profile.gifts === "object" ? profile.gifts : {};
+      const owned = Number(profile.gifts[id] || 0);
+      if (action === "send") {
+        if (owned < 1) { inventoryError = "no gift in inventory"; return; }
+        profile.gifts[id] = owned - 1;
+      } else {
+        const cups = Number(profile.cups || 0);
+        if (cups < cost) { inventoryError = "not enough cups"; return; }
+        profile.cups = cups - cost;
+        profile.gifts[id] = Math.min(999, owned + 1);
+      }
       return profile;
     });
     if (!debit.committed) {
-      if (insufficient) throw bad("failed-precondition", "not enough cups");
+      if (inventoryError === "not enough cups") throw bad("failed-precondition", inventoryError);
+      if (inventoryError) throw bad("failed-precondition", inventoryError);
       throw bad("failed-precondition", "sender profile unavailable");
     }
+    senderChanged = true;
+    if (action === "buy") return { ok: true, gift: id, owned: Number(debit.snapshot.child(`gifts/${id}`).val() || 0) };
   }
   try {
     const result = await target.transaction((profile) => {
@@ -94,8 +110,13 @@ exports.giftAction = onCall({ region: "us-central1" }, async (req) => {
     });
     if (!result.committed) throw bad("not-found", "recipient not found");
   } catch (e) {
-    // Refund the exact price if delivery fails after the debit.
-    if (!grant) await giftDb.ref(`users/${caller.nick}/cups`).transaction((v) => Number(v || 0) + cost);
+    if (senderChanged) {
+      await giftDb.ref(`users/${senderNick}`).transaction((profile) => {
+        if (!profile || !profile.gifts) return;
+        if (action === "send") profile.gifts[id] = Number(profile.gifts[id] || 0) + 1;
+        return profile;
+      });
+    }
     throw e;
   }
   return { ok: true, gift: id };

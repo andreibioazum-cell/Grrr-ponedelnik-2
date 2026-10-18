@@ -5,6 +5,26 @@
 #define ACCT_BUF 64
 static double acct_gift_choice = 0;
 static double acct_gift_busy = 0;
+static double acct_gift_busy_mode = 0;
+static double acct_gift_scroll = 0;
+static double acct_gift_drag_id = -1;
+static double acct_gift_drag_y = 0;
+static double acct_gift_drag_start_y = 0;
+static double acct_gift_list_top(void);
+static double acct_gift_card_h(void);
+static double acct_gift_step(void);
+static double acct_gift_visible(void);
+static double acct_gift_footer_top(void);
+static double acct_gift_btn_w(void);
+static double acct_gift_price(double i);
+static double acct_gift_y(double i);
+static double hit_acct_gift_buy(double x, double y);
+static double hit_acct_gift_send(double x, double y);
+static double hit_acct_gift(double x, double y, double i);
+static void acct_gifts_page(void);
+static void acct_gift_buy(void);
+static void acct_gift_send(void);
+static void draw_acct_gifts(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -82,7 +102,7 @@ static double acct_w(void) { return fit_w(620); }
 static double acct_x(void) { return center_x(acct_w()); }
 static double acct_menu_y(double i) { return acct_top() + 56 + i * (btn_h + 16); }
 static double acct_fields(void) { return acct_open == ACCT_PASS ? 3 : (acct_open == ACCT_DELETE || acct_open == ACCT_GIFTS ? 1 : 0); }
-static double acct_fields_top(void) { return acct_open == ACCT_DELETE ? acct_top() + 116 : (acct_open == ACCT_GIFTS ? acct_top() + 52 + 4 * (btn_h + 8) : acct_top() + 44); }
+static double acct_fields_top(void) { return acct_open == ACCT_DELETE ? acct_top() + 116 : (acct_open == ACCT_GIFTS ? acct_gift_footer_top() + login_lab + 2 : acct_top() + 44); }
 static double acct_field_y(double i) { return acct_fields_top() + login_lab + i * (login_fh + login_lab + 12); }
 static double acct_below_fields(void) { return acct_field_y(acct_fields() - 1) + login_fh + 22; }
 static double acct_slider_y(void) { return acct_below_fields(); }
@@ -102,17 +122,7 @@ static double hit_acct_field(double x, double y, double i) {
     return i < acct_fields() && hit_rect(x, y, acct_x(), acct_field_y(i), acct_w(), login_fh) == 1;
 }
 static double hit_acct_submit(double x, double y) {
-    return (acct_open == ACCT_PASS || acct_open == ACCT_GIFTS) && hit_button(x, y, acct_x(), acct_below_fields(), acct_w(), btn_h) == 1;
-}
-static const char *acct_gift_name(double i) {
-    if (i == 0) return language == 1 ? "🌹 Роза — 25 кубков" : "🌹 Rose — 25 cups";
-    if (i == 1) return language == 1 ? "🎂 Торт — 100 кубков" : "🎂 Cake — 100 cups";
-    if (i == 2) return language == 1 ? "🧸 Мишка — 250 кубков" : "🧸 Teddy — 250 cups";
-    return language == 1 ? "🚀 Ракета — 500 кубков" : "🚀 Rocket — 500 cups";
-}
-static double acct_gift_y(double i) { return acct_top() + 44 + i * (btn_h + 8); }
-static double hit_acct_gift(double x, double y, double i) {
-    return acct_open == ACCT_GIFTS && hit_button(x, y, acct_x(), acct_gift_y(i), acct_w(), btn_h) == 1;
+    return acct_open == ACCT_PASS && hit_button(x, y, acct_x(), acct_below_fields(), acct_w(), btn_h) == 1;
 }
 static double hit_acct_knob(double x, double y) {
     return acct_open == ACCT_DELETE && acct_done == 0 && acct_busy == 0 &&
@@ -121,8 +131,8 @@ static double hit_acct_knob(double x, double y) {
 static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
-           hit_acct_submit(x, y) == 1 || hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 ||
-           hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1;
+           hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
+           hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -198,15 +208,6 @@ static void acct_delete_try(void) {
     acct_clear_fields();
 }
 static void acct_password_page(void) { acct_go(ACCT_PASS); }
-static void acct_gifts_page(void) { acct_gift_choice = 0; acct_gift_busy = 0; net_gift_refresh(); acct_go(ACCT_GIFTS); }
-static void acct_gift_send(void) {
-    acct_sync();
-    keyboard_hide();
-    if (!acct_buf[0][0]) { acct_msg = language == 1 ? "Введите ник получателя" : "Enter recipient nickname"; return; }
-    acct_gift_busy = 1;
-    acct_msg = language == 1 ? "Отправляем подарок..." : "Sending gift...";
-    net_gift_action(acct_gift_choice, acct_buf[0], 0);
-}
 static void acct_delete_page(void) { acct_go(ACCT_DELETE); }
 static void acct_delete_window(void) { acct_show(ACCT_DELETE); }
 static void acct_sign_out(void) {
@@ -229,6 +230,12 @@ static void touch_acct_menu(double x, double y) {
     }
 }
 static void touch_account(double x, double y, double action, double id) {
+    if (action == 2 && id == acct_gift_drag_id && acct_open == ACCT_GIFTS) {
+        double delta = y - acct_gift_drag_y;
+        if (delta > acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll - 1, 0, 4 - acct_gift_visible()); acct_gift_drag_y = y; }
+        else if (delta < -acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll + 1, 0, 4 - acct_gift_visible()); acct_gift_drag_y = y; }
+        return;
+    }
     if (action == 2) {
         if (id == acct_drag) {
             acct_knob = clamp((x - acct_grab - acct_x() - 4) / (acct_w() - acct_knob_w() - 8), 0, 1);
@@ -236,6 +243,14 @@ static void touch_account(double x, double y, double action, double id) {
         return;
     }
     if (action == 1 || action == 3) {
+        if (id == acct_gift_drag_id) {
+            if (action == 1 && fabs(y - acct_gift_drag_start_y) < 12) {
+                double choice = floor((y - acct_gift_list_top()) / acct_gift_step()) + acct_gift_scroll;
+                if (choice >= 0 && choice < 4) acct_gift_choice = choice;
+            }
+            acct_gift_drag_id = -1;
+            return;
+        }
         if (id == acct_drag) {
             acct_drag = -1;
             if (action == 1 && acct_knob >= 0.95) {
@@ -258,12 +273,8 @@ static void touch_account(double x, double y, double action, double id) {
     if (acct_busy != 0 || acct_done == 1 || acct_gift_busy != 0) {
         return;
     }
-    if (acct_open == ACCT_GIFTS) {
-        double gift_i = 0;
-        while (gift_i < 4) {
-            if (hit_acct_gift(x, y, gift_i) == 1) { acct_gift_choice = gift_i; return; }
-            gift_i = gift_i + 1;
-        }
+    if (acct_open == ACCT_GIFTS && hit_rect(x, y, acct_x(), acct_gift_list_top(), acct_w(), acct_gift_visible() * acct_gift_step() - 8) == 1) {
+        acct_gift_drag_id = id; acct_gift_drag_start_y = y; acct_gift_drag_y = y; return;
     }
     double i = 0;
     while (i < acct_fields()) {
@@ -273,10 +284,9 @@ static void touch_account(double x, double y, double action, double id) {
         }
         i = i + 1;
     }
-    if (hit_acct_submit(x, y) == 1) {
-        if (acct_open == ACCT_GIFTS) acct_gift_send(); else acct_pass_try();
-        return;
-    }
+    if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
+    if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
+    if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();
         keyboard_hide();
@@ -323,15 +333,17 @@ static void acct_tick(void) {
         if (gift_status >= 2) {
             acct_gift_busy = 0;
             if (gift_status == 2) {
-                acct_msg = language == 1 ? "Подарок отправлен!" : "Gift sent!";
-                if (acct_gift_choice == 0) cups = cups - 25;
-                else if (acct_gift_choice == 1) cups = cups - 100;
-                else if (acct_gift_choice == 2) cups = cups - 250;
-                else cups = cups - 500;
-                if (cups < 0) cups = 0;
-                save_progress();
-                memset(acct_buf[0], 0, sizeof(acct_buf[0]));
-                acct_field = 0;
+                if (acct_gift_busy_mode == 2) {
+                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
+                    cups = cups - acct_gift_price(acct_gift_choice);
+                    if (cups < 0) cups = 0;
+                    save_progress();
+                } else {
+                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
+                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
+                    acct_field = 0;
+                }
+                net_gift_refresh();
             } else {
                 acct_msg = language == 1 ? "Ошибка отправки. Проверьте ник и баланс." : "Could not send. Check nickname and cups.";
             }
@@ -404,18 +416,7 @@ static void draw_account(void) {
             i = i + 1;
         }
     } else if (acct_open == ACCT_GIFTS) {
-        ctext_scaled(language == 1 ? "Выберите подарок. В наличии:" : "Choose a gift. Your collection:", acct_top() + 30, text_color, 0.55);
-        double gi = 0;
-        while (gi < 4) {
-            const char *gn = acct_gift_name(gi);
-            button_scaled(ds_concat(gn, ds_concat("  x", ds_num_to_string(net_gift_count(gi)))), acct_x(), acct_gift_y(gi), acct_w(), btn_h,
-                          fit_text_scale(gn, acct_w() - 24, 0.52));
-            if (gi == acct_gift_choice) roundrect_outline(acct_x(), acct_gift_y(gi), acct_w(), btn_h, field_radius, 3, 0xFFFFD54A);
-            gi = gi + 1;
-        }
-        draw_acct_field(language == 1 ? "Ник получателя" : "Recipient nickname", 0);
-        const char *send = acct_gift_busy == 1 ? (language == 1 ? "Отправляем..." : "Sending...") : (language == 1 ? "Подарить" : "Send gift");
-        button_scaled(send, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(send, acct_w() - 24, 0.65));
+        draw_acct_gifts();
     } else if (acct_open == ACCT_PASS) {
         draw_acct_field(tr_acct_old(), 0);
         draw_acct_field(tr_acct_new(), 1);
@@ -433,3 +434,5 @@ static void draw_account(void) {
     draw_acct_msg();
     press_overlay = 0;
 }
+
+#include "account_gifts.inc"

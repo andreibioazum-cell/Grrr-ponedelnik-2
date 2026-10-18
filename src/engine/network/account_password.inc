@@ -210,19 +210,22 @@ static int s_gift_counts[4] = {0, 0, 0, 0};
 static volatile int s_gift_counts_loaded = 0;
 static volatile int s_gift_counts_requested = 0;
 static void *gift_action_job(void *arg) {
-    char idt[FB_ID_MAX], bearer[FB_ID_MAX + 16], body[256], resp[2048], enick[64];
-    char nick[24], gift[16];
+    char idt[FB_ID_MAX], bearer[FB_ID_MAX + 16], body[320], resp[2048], enick[64], esender[64];
+    char nick[24], sender[24], gift[16];
     int code, result = 3;
     (void)arg;
     snprintf(nick, sizeof(nick), "%s", s_gift_recipient);
+    lg_lock(); snprintf(sender, sizeof(sender), "%s", lg.session_nick); lg_unlock();
     snprintf(gift, sizeof(gift), "%s", gift_id(s_gift_id));
-    if (!gift[0] || !fb_enabled() || !fb_ensure_token()) goto gift_done;
+    if (!gift[0] || !sender[0] || !fb_enabled() || !fb_ensure_token()) goto gift_done;
     fb_id_token(idt, sizeof(idt));
     if (!idt[0]) goto gift_done;
     snprintf(bearer, sizeof(bearer), "Bearer %s", idt);
     json_escape(nick, enick, sizeof(enick));
-    snprintf(body, sizeof(body), "{\"data\":{\"action\":\"%s\",\"gift\":\"%s\",\"recipient\":\"%s\"}}",
-             s_gift_grant ? "grant" : "send", gift, enick);
+    json_escape(sender, esender, sizeof(esender));
+    const char *action = s_gift_grant == 1 ? "grant" : s_gift_grant == 2 ? "buy" : "send";
+    snprintf(body, sizeof(body), "{\"data\":{\"action\":\"%s\",\"gift\":\"%s\",\"sender\":\"%s\",\"recipient\":\"%s\"}}",
+             action, gift, esender, enick);
     code = http_ex("POST", NET_GIFT_ACTION_URL, body, resp, sizeof(resp), "Authorization", bearer, NULL, 0);
     if (code == 200 && strstr(resp, "\"result\"") && strstr(resp, "\"ok\":true")) result = 2;
     else if (net_log_ok()) LOGERR("gift action: HTTP %d %.160s", code, resp);
@@ -233,7 +236,8 @@ gift_done:
 }
 void net_gift_action(double gift, const char *recipient, double grant) {
     DSThread t;
-    if (s_gift_status == 1 || gift < 0 || gift > 3 || !recipient || !*recipient || strlen(recipient) >= sizeof(s_gift_recipient)) return;
+    if (s_gift_status == 1 || gift < 0 || gift > 3 || !recipient || strlen(recipient) >= sizeof(s_gift_recipient) ||
+        (grant != 2 && !*recipient)) return;
     snprintf(s_gift_recipient, sizeof(s_gift_recipient), "%s", recipient);
     s_gift_id = (int)gift; s_gift_grant = grant == 1;
     s_gift_status = 1;
