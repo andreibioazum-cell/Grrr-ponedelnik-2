@@ -77,6 +77,16 @@ static int fb_http(const char *method, const char *url, const char *body, char *
     return fb_http_ex(method, url, body, out, cap, NULL, NULL, NULL, 0);
 }
 
+/* Streaming GET with the auth token attached (Firebase REST SSE). */
+static int fb_http_stream(const char *url, DSStreamChunkFn cb, void *ctx) {
+    char authed[FB_URL_MAX];
+    if (!fb_enabled())
+        return http_stream(url, "text/event-stream", cb, ctx);
+    fb_ensure_token();
+    fb_url(authed, sizeof(authed), url);
+    return http_stream(authed, "text/event-stream", cb, ctx);
+}
+
 static void fb_email_of(const char *nick, char *dst, size_t cap) {
     static const char domain[] = FB_EMAIL_DOMAIN;
     size_t i = 0;
@@ -304,7 +314,7 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
     pending_cls = 0;
     pending_level = 0;
     pending_skin = 0;
-    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     lg_lock();
     snprintf(lg.session_nick, sizeof(lg.session_nick), "%s", nick);
     snprintf(lg.session_pass, sizeof(lg.session_pass), "%s", pass);

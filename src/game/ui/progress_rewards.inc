@@ -22,10 +22,54 @@ static void check_achievements(void) {
     if (class_owned_of(CLASS_AZUM) == 1 && class_owned_of(CLASS_SANTA) == 1 && class_owned_of(CLASS_EBUC) == 1) {
         grant_achievement(ACH_ALL_CHARACTERS);
     }
+    check_meet_eax229();
+}
+
+static double nick_is_dimasi229(const char *nick) {
+    const char *want = ADMIN_NICK;
+    if (!nick) {
+        return 0;
+    }
+    while (*want && *nick) {
+        char a = *nick, b = *want;
+        if (a >= 'A' && a <= 'Z')
+            a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z')
+            b = (char)(b - 'A' + 'a');
+        if (a != b)
+            return 0;
+        nick++;
+        want++;
+    }
+    return *want == 0 && *nick == 0 ? 1 : 0;
+}
+
+/* mov eax, 0x229: be in one online room with Dimasi4ek229. For
+ * Dimasi4ek229 himself it is granted automatically. */
+static void check_meet_eax229(void) {
+    if (has_achievement(ACH_EAX229) == 1) {
+        return;
+    }
+    if (nick_is_dimasi229(net_login_nick()) == 1) {
+        grant_achievement(ACH_EAX229);
+        return;
+    }
+    if (game_state != ST_ONLINE) {
+        return;
+    }
+    double s = 0;
+    while (s < NET_SLOTS) {
+        if (s != net_slot() && net_player_online(s) == 1 && nick_is_dimasi229(net_player_nick(s)) == 1) {
+            grant_achievement(ACH_EAX229);
+            return;
+        }
+        s = s + 1;
+    }
 }
 
 static void save_progress(void) {
-    double bp_lv = net_load_bp_level();
+    net_set_bp_xp(bp_xp);
+    double bp_lv = bp_claimed;
     net_save_progress_all(cups, candies, player_class, class_owned_of(CLASS_AZUM), class_owned_of(CLASS_SANTA),
                           class_owned_of(CLASS_EBUC), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
                           class_unlocked_of(CLASS_ORDINARY), class_level_of(CLASS_AZUM), class_unlocked_of(CLASS_AZUM),
@@ -80,8 +124,9 @@ static void progress_normalize(void) {
         set_class_progress(cls, lv, un);
         order = order + 1;
     }
-    if (player_class == CLASS_SANTA && dev_access() == 0) {
-        /* Santa is developer-only for now; the ownership itself is kept. */
+    if (player_class == CLASS_SANTA && dev_access() == 0 && bp_claimed < 7) {
+        /* Santa is developer-only until battle-pass tier 7 is claimed;
+         * the ownership itself is kept either way. */
         player_class = CLASS_ORDINARY;
     }
     if (class_id_valid(player_class) == 0 || class_owned_of(player_class) == 0) {
@@ -94,6 +139,10 @@ static void progress_normalize(void) {
 }
 
 static void progress_from_storage(void) {
+    bp_xp = net_load_bp_xp();
+    bp_claimed = net_load_bp_level();
+    if (bp_claimed < 0) bp_claimed = 0;
+    if (bp_claimed > 7) bp_claimed = 7;
     cups = net_load_cups();
     candies = net_load_candies();
     achievement_mask = net_load_achievement_flags();
@@ -126,6 +175,37 @@ static void progress_from_storage(void) {
     sync_selected_class();
     progress_push_to_net();
     check_achievements();
+}
+
+/* Sign-out wipes the local progress back to a fresh guest: cups, candies,
+ * bought classes, levels, skins and achievements all go to zero, and the
+ * zeroed state is saved on the device so a restart does not resurrect the
+ * previous account's numbers. The cloud profile is NOT touched: callers
+ * run this after net_logout(), when save_progress() can only write the
+ * local file, and logging back in restores the account from the cloud. */
+static void progress_reset_on_signout(void) {
+    bp_xp = 0;
+    bp_claimed = 0;
+    cups = 0;
+    candies = 0;
+    set_class_owned(CLASS_AZUM, 0);
+    set_class_owned(CLASS_SANTA, 0);
+    set_class_owned(CLASS_EBUC, 0);
+    set_class_owned(CLASS_ASTRA, 0);
+    double i = 0;
+    while (i < class_count) {
+        set_class_progress(class_at_order(i), 0, 0);
+        i = i + 1;
+    }
+    player_class = CLASS_ORDINARY;
+    player_level = 0;
+    levels_unlocked = 0;
+    azum_skin = SKIN_NORMAL;
+    ebuc_skin = SKIN_NORMAL;
+    achievement_mask = 0;
+    azum_revive_count = 0;
+    sync_selected_class();
+    save_progress();
 }
 
 static void settings_from_storage(void) {

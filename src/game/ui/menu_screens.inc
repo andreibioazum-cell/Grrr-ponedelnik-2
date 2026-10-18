@@ -45,6 +45,7 @@ static void draw_lobby(void) {
     draw_menu_button(2, tr_settings());
     draw_menu_button(3, tr_account());
     draw_menu_button(4, tr_achievements());
+    draw_menu_button(5, language == 1 ? "Баттл-пасс" : "Battle Pass");
     draw_lobby_nick();
     draw_lobby_money();
     if (new_theme == 1) {
@@ -141,8 +142,15 @@ static void draw_class_card(double vi) {
                   fit_text_scale(motto, w - 16, 0.5) * s);
     centered_text(ds_concat(ds_concat(tr_level(), " "), ds_num_to_string((double)(class_level_of(cls)))), bx, bw,
                   squeeze_y(class_level_y(), top, class_card_h, s), tc, 0.45 * s);
-    button_scaled(class_pick_label(cls), bx + class_pick_inset() * s,
-                  squeeze_y(class_pick_y(), top, class_card_h, s), class_pick_w() * s, class_pick_h * s, 0.55 * s);
+    if (flash_sale_active == 1 && class_owned_of(cls) == 0) {
+        /* A discounted price is red, so the sale is visible at a glance. */
+        button_scaled_color(class_pick_label(cls), bx + class_pick_inset() * s,
+                            squeeze_y(class_pick_y(), top, class_card_h, s), class_pick_w() * s, class_pick_h * s,
+                            0.55 * s, 0xFFFF3030);
+    } else {
+        button_scaled(class_pick_label(cls), bx + class_pick_inset() * s,
+                      squeeze_y(class_pick_y(), top, class_card_h, s), class_pick_w() * s, class_pick_h * s, 0.55 * s);
+    }
 }
 
 static void draw_class_stats(void) {
@@ -153,6 +161,9 @@ static void draw_class_stats(void) {
 
 static void draw_classes(void) {
     screen_fill();
+    if (flash_sale_active == 1) {
+        ctext_scaled(language == 1 ? "ФЛЕШ-РАСПРОДАЖА -10%" : "FLASH SALE -10%", classes_top() - 34, 0xFFFF3030, 0.6);
+    }
     classes_scroll_clamp();
     double vi = 0;
     double last = classes_visible_count();
@@ -203,7 +214,12 @@ static void draw_level_row(double n) {
     centered_text(ds_concat(ds_concat(tr_level(), " "), ds_num_to_string((double)(n))), bx, bw,
                   squeeze_y(y + 10, y, level_row_h, s), tc, 0.62 * s);
     centered_text(tr_class_level_effect(player_class, n), bx, bw, squeeze_y(y + 34, y, level_row_h, s), tc, 0.46 * s);
-    centered_text(level_status_of(player_class, n), bx, bw, squeeze_y(y + 52, y, level_row_h, s), tc, 0.42 * s);
+    /* During the flash sale the unlock price is red, like class prices. */
+    uint32_t status_c = tc;
+    if (flash_sale_active == 1 && n == class_unlocked_of(player_class) + 1) {
+        status_c = shade(0xFFFF3030, 1 - PRESS_SHADE * p);
+    }
+    centered_text(level_status_of(player_class, n), bx, bw, squeeze_y(y + 52, y, level_row_h, s), status_c, 0.42 * s);
 }
 
 static void draw_levels(void) {
@@ -261,7 +277,7 @@ static void draw_skins(void) {
 }
 
 static double achievement_count(void) {
-    return 4;
+    return 5;
 }
 
 static double achievement_bit(double i) {
@@ -273,6 +289,9 @@ static double achievement_bit(double i) {
     }
     if (i == 3) {
         return ACH_LAST_HP;
+    }
+    if (i == 4) {
+        return ACH_EAX229;
     }
     return ACH_LEGENDS;
 }
@@ -287,6 +306,9 @@ static const char *achievement_title(double i) {
     if (i == 3) {
         return tr_achievement_last_hp();
     }
+    if (i == 4) {
+        return tr_achievement_eax229();
+    }
     return tr_achievement_legends();
 }
 
@@ -299,6 +321,9 @@ static const char *achievement_desc(double i) {
     }
     if (i == 3) {
         return tr_achievement_last_hp_desc();
+    }
+    if (i == 4) {
+        return tr_achievement_eax229_desc();
     }
     return tr_achievement_legends_desc();
 }

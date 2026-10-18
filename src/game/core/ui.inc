@@ -125,6 +125,10 @@ static void button_disabled_scaled(const char *label, double x, double y, double
 }
 
 static void button_scaled(const char *label, double x, double y, double w, double h, double scale) {
+    button_scaled_color(label, x, y, w, h, scale, text_color);
+}
+
+static void button_scaled_color(const char *label, double x, double y, double w, double h, double scale, uint32_t color) {
     double p = button_press_k(x, y, w, h);
     double s = 1 - PRESS_SQUEEZE * p;
     double bx = x + w * (1 - s) / 2;
@@ -133,7 +137,7 @@ static void button_scaled(const char *label, double x, double y, double w, doubl
     double bh = h * s;
     double col = shade(ui_purple, 1 - PRESS_SHADE * p);
     button_face(bx, by, bw, bh, col);
-    text_in_box(label, bx, by, bw, bh, shade(text_color, 1 - PRESS_SHADE * p), scale * s);
+    text_in_box(label, bx, by, bw, bh, shade(color, 1 - PRESS_SHADE * p), scale * s);
 }
 
 /* Cards and list rows answer a touch the same way a button does, so a shop

@@ -96,7 +96,9 @@ typedef struct {
 } ChatMsg;
 static int chat_keep = 20;
 static struct {
-    DSThread thread, rthread;
+    DSThread thread, rthread, sthread;
+    long long stream_live_at;
+    int stream_active;
     DSMutex lock;
     JavaVM *vm;
     int run, started, slot, status;
@@ -143,6 +145,8 @@ static char s_nick_ret[24];
 static char s_lg_nick_ret[24];
 static char s_lg_pass_ret[64];
 static char s_ban_target_ret[32];
+static char s_passwd_target_ret[24];
+static char s_passwd_new_ret[64];
 static char s_banner_text_ret[CHAT_TEXT_MAX];
 static char s_banner_color_ret[BANNER_COLOR_MAX];
 static char s_text_cmd_text_ret[CHAT_TEXT_MAX];
@@ -174,12 +178,13 @@ typedef struct {
     int santa_level, santa_levels_unlocked;
     int ebuc_level, ebuc_levels_unlocked;
     int bp_level, azum_skin;
+    int bp_xp;
 
     int astra, astra_level, astra_levels_unlocked;
 } Progress;
 static Progress pg = {.lock = DS_MUTEX_INIT};
 #define LEVEL_MAX 3
-#define BP_MAX 5
+#define BP_MAX 7
 #define SKIN_MAX 1
 
 #define SKIN_FLAGS_MAX 3
@@ -244,7 +249,7 @@ static void progress_write(int cups, int candies, int cls, int azum, int santa, 
                            int levels_unlocked, int ordinary_level, int ordinary_levels_unlocked, int azum_level,
                            int azum_levels_unlocked, int santa_level, int santa_levels_unlocked, int ebuc_level,
                            int ebuc_levels_unlocked, int bp_level, int azum_skin, int astra, int astra_level,
-                           int astra_levels_unlocked);
+                           int astra_levels_unlocked, int bp_xp);
 static void progress_read(void);
 
 typedef struct {

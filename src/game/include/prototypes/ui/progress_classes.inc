@@ -4,6 +4,7 @@ static double class_owned_of(double cls);
 static void set_class_owned(double cls, double owned);
 static void set_class_progress(double cls, double lv, double un);
 static double class_cost_of(double cls);
+static void update_flash_sale(void);
 static double class_pays_candies(double cls);
 static const char *class_currency_of(double cls);
 static const char *class_name_of(double cls);

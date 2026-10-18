@@ -2,7 +2,7 @@ static double disco_color(double phase) {
     double r = 127 + 127 * sin(phase);
     double g = 127 + 127 * sin(phase + 2.094);
     double b = 127 + 127 * sin(phase + 4.188);
-    double a = 55 + 90 * (0.5 + 0.5 * sin(disco_t * 16));
+    double a = 55 + 90 * (0.5 + 0.5 * sin(disco_t * 5));
     return ((((unsigned)(int)a) << 24) | (((unsigned)(int)r) << 16) | (((unsigned)(int)g) << 8) | ((unsigned)(int)b));
 }
 
@@ -10,9 +10,9 @@ static void draw_disco(void) {
     if (event_mode != 1) {
         return;
     }
-    double col = disco_color(disco_t * 18);
+    double col = disco_color(disco_t * 6);
     rect(0, 0, screen_w, screen_h, col);
-    double ct = disco_t * 12;
+    double ct = disco_t * 4;
     double r = 110 + 40 * sin(ct);
     ring(screen_w / 2, screen_h / 2, r, 7, 0xC0FFFFFF);
 }
@@ -32,7 +32,7 @@ static void update_event(void) {
         disco_t = 0;
     }
     tick_plates_event();
-    update_infect();
+    update_dice_event();
 }
 
 static double banner_named_color(const char *name) {
@@ -142,7 +142,7 @@ static void draw_online(void) {
     motion_blur_track();
     draw_arena_background();
     draw_disco();
-    draw_infect();
+    draw_dice_event();
     draw_field();
     draw_event_plates();
     draw_event_candies();
@@ -248,6 +248,7 @@ static void draw_online(void) {
     draw_fps_meter();
     draw_chat();
     draw_plates_hud();
+    draw_alone_wait();
     if (finished == 2) {
         draw_result(tr_defeat());
     }

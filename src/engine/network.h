@@ -86,8 +86,12 @@ void net_publish_codecracker_super(double on);
 void net_set_class(double cls);
 double net_status(void);
 double net_slot(void);
-/* Live root AzumBuff flag; defaults to off without a fresh successful read. */
+/* Live root flags (AzumBuff, FlashSale); each defaults to off without a
+ * fresh successful read of its own Firebase node. */
 double net_azum_buff(void);
+double net_flash_sale(void);
+/* Force an immediate re-read of both live flags (entering the shop). */
+void net_live_flags_refresh(void);
 double net_event(void);
 void net_event_set(double mode);
 double net_player_online(double slot);
@@ -157,6 +161,8 @@ double net_load_ebuc_level(void);
 double net_load_ebuc_levels_unlocked(void);
 
 double net_load_bp_level(void);
+void net_set_bp_xp(double v);
+double net_load_bp_xp(void);
 double net_load_azum_skin(void);
 
 double net_load_astra(void);
@@ -179,6 +185,19 @@ void net_save_azum_revives(double revives);
 double net_promo_2027_used(void);
 void net_promo_2027_mark_used(void);
 
+
+/* Room directory: many rooms instead of one shared "main", with optional
+ * password protection (hashed in rooms/<name>/meta). */
+void net_roomlist_fetch(const char *url);
+double net_roomlist_status(void);
+double net_roomlist_count(void);
+const char *net_roomlist_name(double idx);
+/* create=1 creates the room (fails if it exists), create=0 checks joining.
+ * Status: 0 idle, 1 busy, 2 ok, 3 wrong/needed password, 4 exists, 5 error, 6 bad name. */
+void net_room_prepare(const char *url, const char *name, const char *pass, double create);
+const char *net_current_room(void);
+double net_room_prep_status(void);
+void net_room_prep_reset(void);
 
 void net_leaderboard_fetch(const char *url);
 double net_leaderboard_status(void);
@@ -212,6 +231,20 @@ double net_delete_account_status(void);
  * 6 — не выполнен вход (результат отдаётся один раз). */
 void net_change_password(const char *old_pass, const char *new_pass);
 double net_change_password_status(void);
+/* Admin reset of ANOTHER player's account password. A game client cannot
+ * do this in Firebase Auth directly (it takes the account's own token),
+ * so the client calls the adminResetPassword Cloud Function, which
+ * verifies the caller's admin token and uses the Admin SDK. Deploy it
+ * from functions/ (see FIREBASE.md); if it is not deployed the call
+ * simply ends in the error status. Statuses mirror net_change_password:
+ * 0 idle, 1 running, 2 changed, 3 error/not deployed, 4 bad new password,
+ * 5 bad target nick. */
+#define NET_ADMIN_RESET_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/adminResetPassword"
+void net_admin_reset_password(const char *nick, const char *new_pass);
+double net_admin_reset_status(void);
+double net_chat_is_passwd(const char *msg);
+const char *net_chat_passwd_target(const char *msg);
+const char *net_chat_passwd_new(const char *msg);
 
 double net_banned(void);
 double net_is_banned(const char *nick);

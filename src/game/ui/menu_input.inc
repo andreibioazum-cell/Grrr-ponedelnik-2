@@ -86,9 +86,10 @@ static void login_open(void) {
     login_status = 0;
     login_nick = "";
     login_pass = "";
-    /* Галочка не стоит заранее (152-ФЗ, ст. 9): она отмечена, только если
-     * игрок уже дал согласие на действующую редакцию документов. */
-    login_consent = consent_ok();
+    /* Галочка сбрасывается при КАЖДОМ заходе на экран входа/регистрации
+     * (требование оператора; и 152-ФЗ, ст. 9 заодно: согласие не должно
+     * стоять заранее только потому, что его дали когда-то раньше). */
+    login_consent = 0;
     keyboard_clear();
     keyboard_hide();
 }
@@ -164,7 +165,7 @@ static void draw_studio(void) {
 
 static void open_online(void) {
     if (net_login_status() != 2) {
-        login_after = ST_ONLINE;
+        login_after = ST_ROOMS;
         start_transition(ST_LOGIN);
         return;
     }
@@ -178,7 +179,8 @@ static void open_online(void) {
         start_transition(ST_LOBBY);
         return;
     }
-    start_transition(ST_ONLINE);
+    /* Online is a room list now, not one shared room for everyone. */
+    start_transition(ST_ROOMS);
 }
 
 static void open_leaderboard(void) {
@@ -232,6 +234,9 @@ static void touch_lobby(double x, double y, double action) {
     }
     if (hit_menu_row(x, y, 4) == 1) {
         start_transition(ST_ACHIEVEMENTS);
+    }
+    if (hit_menu_row(x, y, 5) == 1) {
+        start_transition(ST_BPASS);
     }
 }
 

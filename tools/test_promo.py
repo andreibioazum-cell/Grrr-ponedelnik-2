@@ -27,6 +27,7 @@ typedef void *jbyteArray; typedef void *jthrowable; typedef void *jmethodID;
 struct JNINativeInterface {
     void *reserved0;
     jclass (*FindClass)(void *env, const char *name);
+    void *(*NewGlobalRef)(void *env, void *obj);
     jobject (*NewObject)(void *env, jclass cls, jmethodID id, ...);
     jclass (*GetObjectClass)(void *env, jobject obj);
     jmethodID (*GetMethodID)(void *env, jclass cls, const char *name, const char *sig);

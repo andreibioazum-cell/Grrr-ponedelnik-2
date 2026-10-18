@@ -5,6 +5,7 @@ double chat_bubble_pad;
 double chat_bubble_h;
 double chat_bubble_ink;
 const char *chat_seen_key;
+char chat_seen_key_buf[64];
 const char *bubble_msg0;
 const char *bubble_msg1;
 const char *bubble_msg2;

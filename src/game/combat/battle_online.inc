@@ -264,24 +264,51 @@ static void check_online_finish(void) {
             match_seen_foe = 1;
         }
         foes_gone_t = 0;
-        return;
-    }
-    if (match_seen_foe == 0) {
+        alone_t = 0;
         return;
     }
     if (net_status() != net_st_playing) {
         foes_gone_t = 0;
+        alone_t = 0;
         return;
     }
-    double wait = foes_gone_min;
-    if (count_online_remotes() > 0) {
-        wait = foes_dead_min;
-    }
-    foes_gone_t = foes_gone_t + dt;
-    if (foes_gone_t < wait) {
+    if (count_online_remotes() > 0 && match_seen_foe == 1) {
+        /* Opponents are still in the room but all dead: the match is
+         * really over, finish as before. */
+        alone_t = 0;
+        foes_gone_t = foes_gone_t + dt;
+        if (foes_gone_t >= foes_dead_min) {
+            finish_game(1);
+        }
         return;
     }
-    finish_game(1);
+    /* Nobody else to fight in this room. Do not kick instantly: give
+     * other players alone_wait_time seconds to join (the countdown is
+     * drawn by draw_alone_wait), and only then leave to the room list. */
+    foes_gone_t = 0;
+    alone_t = alone_t + dt;
+    if (alone_t >= alone_wait_time) {
+        alone_t = 0;
+        ds_log("online: alone in room for %g s, back to room list", alone_wait_time);
+        start_transition(ST_ROOMS);
+    }
+}
+
+static void draw_alone_wait(void) {
+    if (online_ready == 0 || finished != 0 || alone_t <= 0) {
+        return;
+    }
+    if (count_living_remotes() > 0) {
+        return;
+    }
+    double left = alone_wait_time - alone_t;
+    if (left < 0) {
+        left = 0;
+    }
+    const char *s = ds_concat(ds_concat(language == 1 ? "Ожидание игроков: " : "Waiting for players: ",
+                                        ds_num_to_string((double)(int)(left + 0.999))),
+                              language == 1 ? " с" : " s");
+    ctext_scaled(s, back_y + btn_h + 44, 0xFFFFFFFF, 0.6);
 }
 
 static void push_self(void) {
@@ -345,6 +372,7 @@ static void push_self(void) {
 }
 
 static void update_online(void) {
+    check_meet_eax229();
     if (net_banned() == 1) {
         banned_msg = tr_banned();
         start_transition(0);

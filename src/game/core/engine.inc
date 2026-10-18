@@ -29,6 +29,7 @@ static void logic_init(void) {
     net_autologin(FIREBASE);
     progress_from_storage();
     settings_from_storage();
+    start_gate_init();
     apply_theme();
     apply_winter_theme();
     start_music();
@@ -64,6 +65,8 @@ static void update_music(void) {
 
 static void logic_update(void) {
     update_warning();
+    update_start_screen();
+    lobby_lock_t = tick_down(lobby_lock_t);
     docs_tick();
     acct_tick();
     update_studio();
@@ -95,6 +98,8 @@ static void logic_update(void) {
         update_login();
     } else if (game_state == ST_PROMO) {
         update_promo();
+    } else if (game_state == ST_ROOMS) {
+        update_rooms();
     }
     update_newyear();
     update_weather();
@@ -115,6 +120,8 @@ static void draw_screen(void) {
         draw_classes();
     } else if (game_state == ST_LEVELS) {
         draw_levels();
+    } else if (game_state == ST_BPASS) {
+        draw_bpass();
     } else if (game_state == ST_SKINS) {
         draw_skins();
     } else if (game_state == ST_LEADERBOARD) {
@@ -123,6 +130,8 @@ static void draw_screen(void) {
         draw_achievements();
     } else if (game_state == ST_PROMO) {
         draw_promo();
+    } else if (game_state == ST_ROOMS) {
+        draw_rooms();
     } else {
         draw_online();
     }
@@ -131,6 +140,9 @@ static void draw_screen(void) {
 static void logic_draw(void) {
     /* The outgoing screen stays alive through the press hold and fade. */
     draw_screen();
+    if (start_open == 1) {
+        draw_start_screen();
+    }
     if (warn_open == 1) {
         draw_warning();
     }
@@ -228,7 +240,12 @@ static double logic_back(void) {
         start_transition(ST_CLASSES);
         return 1;
     }
-    if (game_state == ST_LEADERBOARD || game_state == ST_PROMO) {
+    if (game_state == ST_BPASS) {
+        start_transition(ST_LOBBY);
+        return 1;
+    }
+    if (game_state == ST_LEADERBOARD || game_state == ST_PROMO || game_state == ST_ROOMS) {
+        keyboard_hide();
         start_transition(ST_MODES);
         return 1;
     }
@@ -310,6 +327,24 @@ static void logic_touch(double x, double y, double action, double id) {
         return;
     }
     if (studio_open == 1) {
+        if (action == 0) {
+            press_new = 0;
+        }
+        return;
+    }
+    /* The tap-to-start screen swallows every touch until it fades out;
+     * the warning (first launch) and the documents sit above it and have
+     * already had their chance at the touch by this point. */
+    if (start_open == 1 && warn_open == 0) {
+        touch_start(action);
+        if (action == 0) {
+            press_new = 0;
+        }
+        return;
+    }
+    /* Just after the start screen fades, the lobby is visible but not yet
+     * tappable: Play and friends unlock once the settle beat has passed. */
+    if (lobby_lock_t > 0 && game_state == ST_LOBBY) {
         if (action == 0) {
             press_new = 0;
         }

@@ -228,6 +228,7 @@ static void acct_delete_page(void) { acct_go(ACCT_DELETE); }
 static void acct_delete_window(void) { acct_show(ACCT_DELETE); }
 static void acct_sign_out(void) {
     net_logout();
+    progress_reset_on_signout();
     acct_close();
 }
 

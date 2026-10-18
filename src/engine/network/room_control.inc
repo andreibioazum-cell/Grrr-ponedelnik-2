@@ -153,6 +153,12 @@ double net_chat_is_text_cmd(const char *msg) {
     if (strlen(msg) >= 5 && strncmp(msg, "text ", 5) == 0) {
         const char *t = msg + 5;
         while (*t == ' ' || *t == '\t') t++;
+        if (*t == '"') {
+            /* Quoted form: text "" is not a command, an unterminated quote
+             * is not a command either. */
+            const char *close = strchr(t + 1, '"');
+            return close && close > t + 1;
+        }
         if (*t)
             return 1;
     }
@@ -169,6 +175,32 @@ static void banner_split_cmd(const char *msg, char *text_out, size_t tcap, char 
         return;
     t = msg + 5;
     while (*t == ' ' || *t == '\t') t++;
+
+    if (*t == '"') {
+        /* Canonical form: text "the banner text" [color]. Everything up to
+         * the closing quote is the text (spaces inside are fine); the word
+         * after the quote, if it names a color, is the color. This used to
+         * fall through to the last-word heuristic, which kept the quotes in
+         * the banner and could mistake a word inside the text for a color. */
+        const char *close = strchr(t + 1, '"');
+        if (close) {
+            n = (size_t)(close - (t + 1));
+            if (n >= tcap)
+                n = tcap - 1;
+            memcpy(text_out, t + 1, n);
+            text_out[n] = 0;
+            c = close + 1;
+            while (*c == ' ' || *c == '\t') c++;
+            if (*c) {
+                snprintf(word, sizeof(word), "%s", c);
+                n = strlen(word);
+                while (n > 0 && (word[n - 1] == ' ' || word[n - 1] == '\t')) word[--n] = 0;
+                if (banner_color_known(word))
+                    snprintf(color_out, ccap, "%s", word);
+            }
+            return;
+        }
+    }
 
     for (c = t; *c; c++)
         if ((*c == ' ' || *c == '\t') && c[1] && c[1] != ' ' && c[1] != '\t')
@@ -289,6 +321,51 @@ const char *net_chat_unban_target(const char *msg) {
     }
     s_ban_target_ret[i] = 0;
     return s_ban_target_ret;
+}
+
+/* Admin command: passwd <nick> <new password> (no spaces in either). */
+static const char *passwd_args(const char *msg) {
+    if (!msg || strncmp(msg, "passwd ", 7) != 0)
+        return NULL;
+    const char *t = msg + 7;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? t : NULL;
+}
+double net_chat_is_passwd(const char *msg) {
+    const char *t = passwd_args(msg);
+    if (!t)
+        return 0;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? 1 : 0;
+}
+const char *net_chat_passwd_target(const char *msg) {
+    const char *t = passwd_args(msg);
+    size_t i = 0;
+    s_passwd_target_ret[0] = 0;
+    if (!t)
+        return s_passwd_target_ret;
+    while (t[i] && i < sizeof(s_passwd_target_ret) - 1 && t[i] != ' ' && t[i] != '\t') {
+        s_passwd_target_ret[i] = t[i];
+        i++;
+    }
+    s_passwd_target_ret[i] = 0;
+    return s_passwd_target_ret;
+}
+const char *net_chat_passwd_new(const char *msg) {
+    const char *t = passwd_args(msg);
+    size_t i = 0;
+    s_passwd_new_ret[0] = 0;
+    if (!t)
+        return s_passwd_new_ret;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(s_passwd_new_ret) - 1 && t[i] != ' ' && t[i] != '\t') {
+        s_passwd_new_ret[i] = t[i];
+        i++;
+    }
+    s_passwd_new_ret[i] = 0;
+    return s_passwd_new_ret;
 }
 
 typedef struct {

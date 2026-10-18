@@ -22,6 +22,28 @@ static void update_warning(void) {
     warn_ready = clamp(warn_t / warn_wait, 0, 1);
 }
 
+static void update_start_screen(void) {
+    if (start_open != 1) {
+        return;
+    }
+    if (start_closing == 1) {
+        start_close_t = clamp(start_close_t + dt / start_fade, 0, 1);
+        double p = start_close_t;
+        start_a = 1 - p * p * (3 - 2 * p);
+        if (start_close_t >= 1) {
+            start_a = 0;
+            start_open = 0;
+            start_closing = 0;
+            /* The lobby has only just appeared: keep its buttons dead for
+             * a beat so the first real tap lands on a settled screen. */
+            lobby_lock_t = 0.6;
+        }
+        return;
+    }
+    start_a = 1;
+    start_t = start_t + dt;
+}
+
 static void update_studio(void) {
     if (studio_open != 1) {
         return;
@@ -49,7 +71,7 @@ static void update_alpha_notice(void) {
     if (alpha_notice_done == 1) {
         return;
     }
-    if (warn_open == 1 || studio_open == 1) {
+    if (warn_open == 1 || studio_open == 1 || start_open == 1) {
         alpha_notice_t = 0;
         return;
     }
@@ -74,6 +96,9 @@ static const char *achievement_toast_text(void) {
     }
     if (ach_toast_bit == ACH_LAST_HP) {
         return tr_achievement_last_hp();
+    }
+    if (ach_toast_bit == ACH_EAX229) {
+        return tr_achievement_eax229();
     }
     return tr_achievement_legends();
 }

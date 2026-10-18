@@ -1,15 +1,22 @@
 /* A filled five-point star rasterized into short horizontal strokes. This
- * keeps the shop icon crisp and recognizable without a texture or glyph. */
+ * keeps the shop icon crisp and recognizable without a texture or glyph.
+ * The scanline step is sub-pixel on purpose: the old r/10 step (never below
+ * a full pixel, with matching line thickness) left visible horizontal bands
+ * - the "pixelated" look. Many thin, slightly overlapping strokes give a
+ * smooth silhouette instead, since the renderer's lines are smooth. */
 static void draw_star(double cx, double cy, double r, uint32_t c) {
     double px[10], py[10], xs[10];
-    double step = r / 10;
+    double step = r / 48;
     double y = -r;
     int i = 0;
     if (r <= 0) {
         return;
     }
-    if (step < 1) {
-        step = 1;
+    if (step < 0.2) {
+        step = 0.2;
+    }
+    if (step > 0.75) {
+        step = 0.75;
     }
     while (i < 10) {
         double a = -pi / 2 + i * pi / 5;
@@ -39,7 +46,7 @@ static void draw_star(double cx, double cy, double r, uint32_t c) {
         }
         i = 0;
         while (i + 1 < count) {
-            line(cx + xs[i], cy + y, cx + xs[i + 1], cy + y, step + 0.8, c);
+            line(cx + xs[i], cy + y, cx + xs[i + 1], cy + y, step + 0.35, c);
             i = i + 2;
         }
         y = y + step;

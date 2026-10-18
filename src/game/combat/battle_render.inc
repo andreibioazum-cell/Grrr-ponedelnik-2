@@ -133,6 +133,7 @@ static void award_battle_result(double result) {
         if (candies_on() == 1) {
             candies = candies + candy_win;
         }
+        bp_xp = bp_xp + 10;
         save_progress();
         grant_achievement(ACH_FIRST_WIN);
         /* Flawless win: keep full health and take no hits during the battle.

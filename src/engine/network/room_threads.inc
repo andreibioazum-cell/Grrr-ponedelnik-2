@@ -35,6 +35,7 @@ static void room_slot_delete_async(int slot) {
     }
     free(url);
 }
+static void *stream_thread(void *arg);
 static void *thread_main(void *arg) {
     unsigned gen = (unsigned)(uintptr_t)arg;
     int fails = 0, mine = -1;
@@ -127,7 +128,10 @@ static void *reader_thread(void *arg) {
             sleep_ms(50);
             continue;
         }
-        if (pull_state(resp, sizeof(resp)) && net_gen_ok(gen)) {
+        int pulled = stream_is_live() ? 2 : pull_state(resp, sizeof(resp));
+        if (pulled == 2) {
+            fails = 0; /* stream is live, or 304: state unchanged */
+        } else if (pulled == 1 && net_gen_ok(gen)) {
             read_players(resp, gen);
             fails = 0;
         } else {
@@ -220,6 +224,7 @@ void net_connect(const char *url, const char *room) {
 
     ban_invalidate();
 
+    state_etag[0] = 0;
     memset(claim_seen_seq, 0, sizeof(claim_seen_seq));
     memset(claim_seen_at, 0, sizeof(claim_seen_at));
     memset(claim_seen_uid, 0, sizeof(claim_seen_uid));
@@ -247,9 +252,49 @@ void net_connect(const char *url, const char *room) {
     LOG("connect %s/%s", net.base, net.room);
     net.thread = ds_thread_start(thread_main, (void *)(uintptr_t)gen);
     net.rthread = ds_thread_start(reader_thread, (void *)(uintptr_t)gen);
+    net.sthread = ds_thread_start(stream_thread, (void *)(uintptr_t)gen);
 }
+/* Streaming reader: keeps one SSE connection on players.json open and
+ * reconnects when it drops. While it is live the polling reader skips
+ * pull_state(), so state arrives pushed, not polled. */
+static void *stream_thread(void *arg) {
+    unsigned gen = (unsigned)(uintptr_t)arg;
+    char url[URL];
+    lock();
+    snprintf(url, sizeof(url), "%s/rooms/%s/players.json", net.base, net.room);
+    net.stream_live_at = 0;
+    unlock();
+    while (net_gen_ok(gen)) {
+        int slot;
+        lock();
+        slot = net.slot;
+        unlock();
+        if (slot < 0) {
+            sleep_ms(50);
+            continue;
+        }
+        stream_gen = gen;
+        memset(&sse, 0, sizeof(sse));
+        stream_players_cache[0] = 0;
+        LOG("players stream: connecting");
+        lock();
+        net.stream_active = 1;
+        unlock();
+        int code = fb_http_stream(url, stream_players_chunk, NULL);
+        lock();
+        net.stream_live_at = 0;
+        net.stream_active = 0;
+        unlock();
+        if (net_gen_ok(gen)) {
+            LOG("players stream: closed (HTTP %d), polling fallback", code);
+            sleep_ms(1000);
+        }
+    }
+    return NULL;
+}
+
 void net_disconnect(void) {
-    DSThread th, rth;
+    DSThread th, rth, sth;
     if (!net.started)
         return;
     net_fast = 1;
@@ -258,12 +303,17 @@ void net_disconnect(void) {
     net.slot = -1;
     th = net.thread;
     rth = net.rthread;
+    sth = net.sthread;
     net.thread = (DSThread)0;
     net.rthread = (DSThread)0;
+    net.sthread = (DSThread)0;
+    net.stream_live_at = 0;
+    net.stream_active = 0;
     unlock();
 
     ds_thread_detach(th);
     ds_thread_detach(rth);
+    ds_thread_detach(sth);
     net.started = 0;
     status(NET_OFFLINE);
     net_fast = 0;
@@ -280,3 +330,4 @@ void net_publish(double x, double y, double angle, double hp, double alive) {
         net.players[net.slot].online = 1;
     }
     unlock();
+

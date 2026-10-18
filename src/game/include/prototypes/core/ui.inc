@@ -16,6 +16,7 @@ static void draw_nick_msg(const char *nick, const char *rest, double x, double y
 static void button_face(double x, double y, double w, double h, double col);
 static void button(const char *label, double x, double y, double w, double h);
 static void button_scaled(const char *label, double x, double y, double w, double h, double scale);
+static void button_scaled_color(const char *label, double x, double y, double w, double h, double scale, uint32_t color);
 static void button_disabled_scaled(const char *label, double x, double y, double w, double h, double scale);
 static void roundrect_outline(double x, double y, double w, double h, double rad, double t, uint32_t c);
 static void outline_arc(double cx, double cy, double rr, double t, uint32_t c, double mx, double my);

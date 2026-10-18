@@ -50,10 +50,25 @@ static int push_state(void) {
     }
     return c == 200;
 }
+static char state_etag[96];
+
+/* Polling fallback for the players node (used while the SSE stream is
+ * down). Conditional GET: once we hold an ETag, unchanged state costs a
+ * tiny 304 instead of the full snapshot. Returns 1 = new data in resp,
+ * 2 = unchanged (304), 0 = failure. */
 static int pull_state(char *resp, size_t cap) {
-    char url[URL];
+    char url[URL], fresh[96];
     snprintf(url, sizeof(url), "%s/rooms/%s/players.json", net.base, net.room);
-    int c = fb_http("GET", url, NULL, resp, cap);
+    int c;
+    fresh[0] = 0;
+    if (state_etag[0])
+        c = fb_http_ex("GET", url, NULL, resp, cap, "if-none-match", state_etag, fresh, sizeof(fresh));
+    else
+        c = fb_http_ex("GET", url, NULL, resp, cap, "X-Firebase-ETag", "true", fresh, sizeof(fresh));
+    if (fresh[0])
+        snprintf(state_etag, sizeof(state_etag), "%s", fresh);
+    if (c == 304)
+        return 2;
     if (c != 200 && net_log_ok())
         LOGERR("pull state: HTTP %d", c);
     return c == 200;
@@ -323,3 +338,4 @@ static void read_players(const char *resp, unsigned gen) {
     }
     unlock();
 }
+

@@ -42,7 +42,30 @@ static void set_class_progress(double cls, double lv, double un) {
     arr_set(class_unlocked_tbl, cls, un);
 }
 
-static double class_cost_of(double cls) {
+/* Flash sale: while the live Firebase FlashSale flag is 1, EVERY price
+ * (classes and level unlocks) drops by 10%. The discounted price is
+ * rounded to the nearest whole unit: 65 -> 59, 100 -> 90, 30 -> 27.
+ * The flag is only ever read (GET) by the client: it is never created in
+ * Firebase by the game, and without a fresh successful read (offline,
+ * node missing, value not 1) prices stay at their normal values. */
+#define FLASH_SALE_FRACTION 0.10
+
+static void update_flash_sale(void) {
+    double active = net_flash_sale();
+    if (active != flash_sale_active) {
+        ds_log("flash sale %s (Firebase FlashSale read)", active == 1 ? "ON: all prices -10%" : "off");
+    }
+    flash_sale_active = active;
+}
+
+static double flash_sale_price(double cost) {
+    if (flash_sale_active == 1 && cost > 0) {
+        return floor(cost * (1 - FLASH_SALE_FRACTION) + 0.5);
+    }
+    return cost;
+}
+
+static double class_base_cost_of(double cls) {
     if (cls == CLASS_AZUM) {
         return azum_cost;
     }
@@ -57,6 +80,8 @@ static double class_cost_of(double cls) {
     }
     return 0;
 }
+
+static double class_cost_of(double cls) { return flash_sale_price(class_base_cost_of(cls)); }
 
 static double class_pays_candies(double cls) {
     if (cls == CLASS_SANTA) {
@@ -154,7 +179,8 @@ static double skin_unlocked_for(double cls, double skin) {
         return 1;
     }
     if (cls == CLASS_EBUC) {
-        return 1;
+        /* Elf Ebuc: battle-pass tier 4 reward. */
+        return bp_claimed >= 4 ? 1 : 0;
     }
     if (cls == CLASS_AZUM && has_achievement(ACH_LEGENDS) == 1) {
         return 1;
@@ -206,7 +232,7 @@ static double class_visible(double cls) {
     if (cls == CLASS_CODECRACKER) {
         return codecracker_allowed();
     }
-    if (cls == CLASS_SANTA && dev_access() == 0) {
+    if (cls == CLASS_SANTA && dev_access() == 0 && bp_claimed < 7) {
         return 0;
     }
     return 1;
@@ -302,7 +328,7 @@ static double visible_class_at(double vi) {
     return CLASS_ORDINARY;
 }
 
-static double level_cost(double n) { return level_base_cost + (n - 1) * level_cost_step; }
+static double level_cost(double n) { return flash_sale_price(level_base_cost + (n - 1) * level_cost_step); }
 
 static void sync_selected_class(void) {
     player_level = class_level_of(player_class);

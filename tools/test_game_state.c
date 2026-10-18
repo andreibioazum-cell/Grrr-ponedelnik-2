@@ -262,6 +262,10 @@ int keyboard_handle_key(int keycode, int action, int meta) {
 static void stub_kb_set(const char *text) { snprintf(stub_kb, sizeof(stub_kb), "%s", text ? text : ""); }
 static double stub_net_slot = -1;
 static double stub_online[4];
+static double stub_chat_count;
+static char stub_chat_keys[4][28];
+static char stub_chat_uids[4][24];
+static char stub_chat_texts[4][64];
 static double stub_level[4];
 static double stub_grab[4];
 static double stub_gx[4];
@@ -298,8 +302,16 @@ void net_mark_achievement_flag(double flag) {
 void net_save_azum_revives(double value) {
     (void)value;
 }
+double stub_bpx = 0;
 double net_load_bp_level(void) {
-    return 0;
+    return bp_claimed;
+}
+void net_set_bp_xp(double v) {
+    if (v > stub_bpx)
+        stub_bpx = v;
+}
+double net_load_bp_xp(void) {
+    return stub_bpx;
 }
 void net_set_class(double value) {
     (void)value;
@@ -365,7 +377,10 @@ void bye_notice_show(const char *text) {
     bye_calls++;
     snprintf(last_bye, sizeof(last_bye), "%s", text ? text : "");
 }
+static int fx_ring_count;
+static int fx_big_circle_count;
 void ring(float x, float y, float r, float t, uint32_t color) {
+    fx_ring_count++;
     (void)x;
     (void)y;
     (void)r;
@@ -514,6 +529,7 @@ static double candy_x_drawn;
 static double candy_y_drawn;
 static uint32_t candy_circle_color;
 void circle(float x, float y, float r, uint32_t color) {
+    if (r > 20) fx_big_circle_count++;
     candy_circle_color = color;
     candy_x_drawn = x;
     candy_y_drawn = y;
@@ -573,6 +589,10 @@ double net_auth(const char *url, const char *nick, const char *pass) {
 }
 static double stub_azum_buff;
 double net_azum_buff(void) { return stub_azum_buff; }
+static double stub_flash_sale;
+static int stub_live_refreshes;
+double net_flash_sale(void) { return stub_flash_sale; }
+void net_live_flags_refresh(void) { stub_live_refreshes++; }
 double net_event(void) { return 0; }
 void net_event_set(double mode) { (void)mode; }
 double net_load_cups(void) { return 0; }
@@ -616,6 +636,12 @@ void net_save_winter_theme(double on) { (void)on; }
 double net_load_new_theme(void) { return 1; }
 void net_save_new_theme(double on) { (void)on; }
 void settings_mark_legal(void) {}
+/* The game-state harness does not link the runtime pool tick; the promo
+ * test only needs the calls to exist so it can prove the message text is
+ * an owned copy, not a pooled pointer. */
+void ds_string_pool_tick(void) {}
+static double stub_legal_ts;
+double settings_legal_ts(void) { return stub_legal_ts; }
 /* Согласие на обработку ПД и удаление аккаунта: по умолчанию согласие дано,
  * чтобы старые проверки лобби не упирались в окно вопроса. */
 static double stub_pd_ver = LEGAL_DOCS_VERSION;
@@ -678,6 +704,48 @@ const char *net_chat_ban_target(const char *msg) {
 const char *net_chat_unban_target(const char *msg) {
     (void)msg;
     return "";
+}
+static int stub_admin_reset_calls;
+static char stub_admin_reset_nick[24], stub_admin_reset_new[64];
+static double stub_admin_reset_status;
+void net_admin_reset_password(const char *nick, const char *new_pass) {
+    stub_admin_reset_calls++;
+    snprintf(stub_admin_reset_nick, sizeof(stub_admin_reset_nick), "%s", nick ? nick : "");
+    snprintf(stub_admin_reset_new, sizeof(stub_admin_reset_new), "%s", new_pass ? new_pass : "");
+    stub_admin_reset_status = 1;
+}
+double net_admin_reset_status(void) {
+    double v = stub_admin_reset_status;
+    if (v >= 2) stub_admin_reset_status = 0;
+    return v;
+}
+double net_chat_is_passwd(const char *msg) {
+    if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
+    const char *t = msg + 7;
+    while (*t == ' ' || *t == '\t') t++;
+    if (!*t) return 0;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    return *t ? 1 : 0;
+}
+static char stub_passwd_target[24], stub_passwd_new[64];
+const char *net_chat_passwd_target(const char *msg) {
+    const char *t = msg ? msg + 7 : "";
+    size_t i = 0;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(stub_passwd_target) - 1 && t[i] != ' ' && t[i] != '\t') { stub_passwd_target[i] = t[i]; i++; }
+    stub_passwd_target[i] = 0;
+    return stub_passwd_target;
+}
+const char *net_chat_passwd_new(const char *msg) {
+    const char *t = msg ? msg + 7 : "";
+    size_t i = 0;
+    while (*t == ' ' || *t == '\t') t++;
+    while (*t && *t != ' ' && *t != '\t') t++;
+    while (*t == ' ' || *t == '\t') t++;
+    while (t[i] && i < sizeof(stub_passwd_new) - 1 && t[i] != ' ' && t[i] != '\t') { stub_passwd_new[i] = t[i]; i++; }
+    stub_passwd_new[i] = 0;
+    return stub_passwd_new;
 }
 double net_chat_is_text_cmd(const char *msg) {
     (void)msg;
@@ -899,6 +967,17 @@ static void test_account_screen(void) {
     assert(acct_open == ACCT_MENU && stub_logout_calls == logouts && t_dir == 1);
     finish_transition();
     assert(acct_open == 0 && stub_logout_calls == logouts + 1);
+    /* Sign-out zeroes the local progress: cups, candies, classes, levels. */
+    cups = 500;
+    candies = 90;
+    set_class_owned(CLASS_AZUM, 1);
+    set_class_progress(CLASS_AZUM, 2, 3);
+    player_class = CLASS_AZUM;
+    progress_reset_on_signout();
+    assert(cups == 0 && candies == 0);
+    assert(class_owned_of(CLASS_AZUM) == 0 && player_class == CLASS_ORDINARY);
+    assert(class_level_of(CLASS_AZUM) == 0 && class_unlocked_of(CLASS_AZUM) == 0);
+    assert(achievement_mask == 0 && azum_revive_count == 0);
     /* Без входа «Аккаунт» ведёт на экран входа. */
     stub_login_status = 0;
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(3) + btn_h / 2, 0, 77);
@@ -975,7 +1054,8 @@ static void test_legal(void) {
     assert(docs_open == 1 && docs_page == LEGAL_PAGE_CONSENT - 2 && str_eq(login_nick, "tester") == 1);
     docs_close();
     login_open();
-    assert(login_consent == 1);
+    /* The checkbox resets on every entry, even after consent was given. */
+    assert(login_consent == 0);
 
     /* Вошедшего до появления согласия спрашивают в лобби, один раз. */
     stub_pd_ver = 0;
@@ -1061,6 +1141,84 @@ static void test_legal(void) {
     puts("legal: chat filter, sign-in consent, lobby consent ask, documents window, account deletion");
 }
 
+/* Стартовый экран: предупреждение об эпилепсии только при первом заходе,
+ * «нажми, чтобы начать» - при каждом, касание плавно уводит в лобби. */
+static void test_start_gate(void) {
+    game_reset();
+    game_state = ST_LOBBY;
+    dt = 0.1;
+
+    /* First launch: no stored acceptance -> warning up, start screen armed. */
+    stub_legal_ts = 0;
+    start_gate_init();
+    assert(warn_open == 1 && start_open == 1 && start_closing == 0);
+    /* The warning owns touches while it is up: no tap-to-start yet. */
+    logic_touch(screen_w / 2, screen_h / 2, 0, 71);
+    assert(start_closing == 0 && start_open == 1);
+    warn_open = 0;
+    warn_a = 0;
+
+    /* Returning player: the warning is shown on EVERY launch again (the
+     * stored acceptance no longer skips it), start screen still up. */
+    stub_legal_ts = 1700000000;
+    start_gate_init();
+    assert(warn_open == 1 && start_open == 1);
+    warn_open = 0;
+    warn_a = 0;
+
+    /* A touch starts the fade but keeps the lobby covered until it ends. */
+    logic_touch(screen_w / 2, screen_h / 2, 0, 72);
+    assert(start_closing == 1 && start_open == 1 && game_state == ST_LOBBY);
+    for (int i = 0; i < 40 && start_open == 1; i++) {
+        update_start_screen();
+    }
+    assert(start_open == 0 && start_a == 0 && game_state == ST_LOBBY);
+
+    /* The lobby has appeared but is not tappable yet: the settle lock
+     * swallows the first taps, Play unlocks only after it runs out. */
+    assert(lobby_lock_t > 0);
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 73);
+    assert(t_dir == 0);
+    lobby_lock_t = 0;
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 74);
+    assert(t_dir == 1 && t_target == ST_CLASSES);
+    t_dir = 0;
+    t_target = 0;
+    press_new = 0;
+    stub_legal_ts = 0;
+    puts("start gate: epilepsy warning and tap-to-start every launch, lobby unlocks after a settle");
+}
+
+/* Промокод 2027: сообщение об успехе - собственная копия текста, а не
+ * указатель в строковый пул, поэтому после тиков пула оно не превращается
+ * в мусор и знак «?». */
+static void test_promo_message(void) {
+    game_state = ST_PROMO;
+    language = 0;
+    stub_login_status = 2;
+    stub_promo2027_used = 0;
+    promo_focus = 0;
+    promo_input = "2027";
+    double cups_before = cups;
+    promo_submit();
+    assert(cups == cups_before + 27 && stub_promo2027_used == 1);
+    assert(promo_msg_t > 0);
+    for (int i = 0; i < 4; i++) {
+        ds_string_pool_tick();
+        (void)ds_concat("frame noise ", ds_num_to_string((double)i));
+    }
+    assert(str_eq(promo_msg_text, "+27 cups!") == 1);
+    /* Second submit says "already redeemed" and also survives the pool. */
+    promo_submit();
+    for (int i = 0; i < 4; i++)
+        ds_string_pool_tick();
+    assert(str_eq(promo_msg_text, "Promo code already redeemed") == 1);
+    promo_msg_t = 0;
+    stub_login_status = 0;
+    game_state = ST_LOBBY;
+    puts("promo: 2027 message survives the string pool, no garbage or ? glyph");
+}
+
 static void test_azum_buff(void) {
     game_reset();
     assert(azum_buff_active == 0);
@@ -1112,6 +1270,280 @@ static void test_azum_buff(void) {
     player->hp = 0;
     enemy->hp = 0;
     assert(try_revive() == 0 && enemy_try_revive() == 0);
+
+    /* FlashSale: off keeps full prices, on cuts EVERY price by 10%
+     * (rounded to whole units), and buying charges the discounted price. */
+    assert(flash_sale_active == 0);
+    assert(class_cost_of(CLASS_AZUM) == azum_cost);
+    assert(level_cost(1) == level_base_cost);
+    stub_flash_sale = 1;
+    update_flash_sale();
+    assert(flash_sale_active == 1);
+    assert(class_cost_of(CLASS_AZUM) == 59);  /* 65 - 10% -> 58.5 -> 59 */
+    assert(class_cost_of(CLASS_SANTA) == 90); /* 100 candies - 10% */
+    assert(class_cost_of(CLASS_ASTRA) == 122); /* 135 - 10% -> 121.5 -> 122 */
+    assert(level_cost(1) == 27);              /* 30 - 10% */
+    assert(level_cost(3) == 45);              /* 50 - 10% */
+    assert(class_cost_of(CLASS_ORDINARY) == 0);
+    cups = 59;
+    pick_class(CLASS_AZUM);
+    assert(class_owned_of(CLASS_AZUM) == 1 && cups == 0);
+    stub_flash_sale = 0;
+    update_flash_sale();
+    assert(flash_sale_active == 0 && class_cost_of(CLASS_EBUC) == ebuc_cost);
+    assert(level_cost(1) == level_base_cost);
+    puts("flash sale: -10% on all prices and purchase OK");
+}
+
+/* Ульта CodeCracker: без кружка вокруг куба; звёздочки - гладкие. */
+static void test_codecracker_fx(void) {
+    fx_ring_count = 0;
+    fx_big_circle_count = 0;
+    draw_codecracker_fx_at(200, 200, 0.3, 0.7);
+    assert(fx_ring_count == 0);
+    assert(fx_big_circle_count == 0);
+
+    /* A smooth star needs many more strokes than its diameter in pixels:
+     * the old pixel step produced at most ~2*r strokes. */
+    double r = stat_star_r();
+    star_line_count = 0;
+    draw_star(0, 0, r, 0xFFF7C948);
+    assert(star_line_count > (int)(3 * r));
+    puts("codecracker fx: no halo circle in the ult; stars drawn smooth, not pixelated");
+}
+
+static int stub_roomlist_status;
+static int stub_roomlist_count;
+static char stub_room_names[6][25];
+static int stub_prep_status;
+static char stub_prep_name[25];
+static char stub_prep_pass[64];
+static int stub_prep_create;
+static int stub_prep_calls;
+void net_roomlist_fetch(const char *url) { (void)url; stub_roomlist_status = 2; }
+double net_roomlist_status(void) { return stub_roomlist_status; }
+double net_roomlist_count(void) { return stub_roomlist_count; }
+const char *net_roomlist_name(double idx) {
+    int i = (int)idx;
+    return (i >= 0 && i < stub_roomlist_count) ? stub_room_names[i] : "";
+}
+void net_room_prepare(const char *url, const char *name, const char *pass, double create) {
+    (void)url;
+    snprintf(stub_prep_name, sizeof(stub_prep_name), "%s", name ? name : "");
+    snprintf(stub_prep_pass, sizeof(stub_prep_pass), "%s", pass ? pass : "");
+    stub_prep_create = create ? 1 : 0;
+    stub_prep_calls++;
+    stub_prep_status = 1;
+}
+double net_room_prep_status(void) { return stub_prep_status; }
+static char stub_current_room[25];
+const char *net_current_room(void) { return stub_current_room; }
+void net_room_prep_reset(void) { stub_prep_status = 0; }
+
+/* Ачивка mov eax, 0x229 и экран комнат с паролями. */
+
+static void test_dice_alone_and_bubbles(void) {
+    /* Dice event: prizes, admin-only cubes, throw + collect. */
+    assert(dice_prize_of(DICE_CUBE_ORDINARY) == 2);
+    assert(dice_prize_of(DICE_CUBE_LEGENDARY) == 95);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+    stub_login_status = 2;
+    astra_ability_refresh();
+    assert(dev_access() == 0);
+    srand(12345);
+    double legendary = 0;
+    double saw_santa = 0;
+    double saw_cc = 0;
+    double i = 0;
+    while (i < 30000) {
+        double f = dice_roll_cube();
+        /* Every class rolls for everyone, admins included or not. */
+        if (f == DICE_CUBE_SANTA) saw_santa = 1;
+        if (f == DICE_CUBE_CODECRACKER) saw_cc = 1;
+        if (f == DICE_CUBE_LEGENDARY) legendary = legendary + 1;
+        i = i + 1;
+    }
+    assert(legendary > 0 && legendary < 80); /* 0.08% of 30000 = ~24 */
+    assert(saw_santa == 1 && saw_cc == 1);
+
+    screen_w = 800;
+    screen_h = 600;
+    event_mode = 4;
+    dice_event_reset();
+    dt = 0.7;
+    update_dice_event(); /* first cube is thrown */
+    assert(arr_get(dice_cubes, 0) == 1);
+    double cube = arr_get(dice_cubes, 1);
+    arr_set(dice_cubes, 2, dice_flight); /* landed */
+    player->x = 300;
+    player->y = 300;
+    player->size = 50;
+    arr_set(dice_cubes, 5, 300);
+    arr_set(dice_cubes, 6, 300);
+    double candies_before = candies;
+    update_dice_event();
+    assert(candies == candies_before + dice_prize_of(cube));
+    assert(arr_get(dice_cubes, 0) == 0);
+    event_mode = 0;
+    update_dice_event();
+    assert(dice_active == 0);
+
+    /* Alone in a room: 40 s of waiting, then out to the room list. */
+    stub_net_slot = 0;
+    double s = 0;
+    while (s < 4) { stub_online[(int)s] = 0; s = s + 1; }
+    s = 0;
+    while (s < max_players * remote_fields) { arr_set(remotes, s, 0); s = s + 1; }
+    online_ready = 1;
+    finished = 0;
+    game_state = ST_ONLINE;
+    match_seen_foe = 0;
+    foes_gone_t = 0;
+    alone_t = 0;
+    dt = 1;
+    t_dir = 0;
+    i = 0;
+    while (i < 39) { check_online_finish(); i = i + 1; }
+    assert(alone_t == 39 && t_dir == 0); /* still waiting, not kicked */
+    check_online_finish();
+    assert(t_target == ST_ROOMS && t_dir != 0); /* 40 s: out */
+    t_dir = 0;
+    alone_t = 5;
+    arr_set(remotes, remote_fields + 5, 1); /* someone joins alive */
+    check_online_finish();
+    assert(alone_t == 0);
+    arr_set(remotes, remote_fields + 5, 0);
+    online_ready = 0;
+    game_state = ST_LOBBY;
+
+    /* Admin passwd command: resets a normal account, never an admin. */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    stub_login_status = 2;
+    stub_admin_reset_calls = 0;
+    assert(admin_handle("passwd bob secret1") == 1);
+    assert(stub_admin_reset_calls == 1);
+    assert(strcmp(stub_admin_reset_nick, "bob") == 0);
+    assert(strcmp(stub_admin_reset_new, "secret1") == 0);
+    assert(admin_handle("passwd Dimasi4ek229 secret1") == 1);
+    assert(stub_admin_reset_calls == 1); /* protected admin account */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+
+    /* Chat bubbles: a second message must replace the bubble even though
+     * net_chat_key() reuses one static buffer (the old aliasing bug). */
+    snprintf(stub_nicks[1], sizeof(stub_nicks[1]), "%s", "bob");
+    stub_chat_count = 1;
+    snprintf(stub_chat_keys[0], sizeof(stub_chat_keys[0]), "%s", "k1");
+    snprintf(stub_chat_uids[0], sizeof(stub_chat_uids[0]), "%s", "bob");
+    snprintf(stub_chat_texts[0], sizeof(stub_chat_texts[0]), "%s", "first");
+    chat_bubbles_reset();
+    dt = 0.05;
+    chat_bubbles_watch();
+    assert(strcmp(bubble_msg(1), "first") == 0);
+    stub_chat_count = 2;
+    snprintf(stub_chat_keys[1], sizeof(stub_chat_keys[1]), "%s", "k2");
+    snprintf(stub_chat_uids[1], sizeof(stub_chat_uids[1]), "%s", "bob");
+    snprintf(stub_chat_texts[1], sizeof(stub_chat_texts[1]), "%s", "second");
+    chat_bubbles_watch();
+    assert(strcmp(bubble_msg(1), "second") == 0);
+    stub_chat_count = 0;
+    puts("dice event + alone wait + chat bubbles: OK");
+}
+
+static void test_eax229_and_rooms(void) {
+    game_reset();
+    screen_w = 1280;
+    screen_h = 720;
+    assert(achievement_count() == 5);
+    assert(strcmp(tr_achievement_eax229(), "mov eax, 0x229") == 0);
+    assert(strcmp(tr_achievement_eax229_desc(), "???") == 0);
+
+    /* Dimasi4ek229 himself: granted automatically (case-insensitive). */
+    achievement_mask = 0;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "dimasi4ek229");
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 1);
+
+    /* Anyone else: only when Dimasi4ek229 is in the same online room. */
+    achievement_mask = 0;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    game_state = ST_LOBBY;
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 0);
+    game_state = ST_ONLINE;
+    stub_net_slot = 0;
+    stub_online[1] = 1;
+    snprintf(stub_nicks[1], sizeof(stub_nicks[1]), "%s", "Dimasi4ek229");
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 1);
+    stub_online[1] = 0;
+    stub_nicks[1][0] = 0;
+    game_state = ST_LOBBY;
+
+    /* Rooms screen: join an open room, a password room, and create one. */
+    achievement_mask = 0;
+    game_state = ST_ROOMS;
+    t_dir = 0;
+    warn_open = 0;
+    studio_open = 0;
+    start_open = 0;
+    snprintf(stub_room_names[0], sizeof(stub_room_names[0]), "%s", "main");
+    snprintf(stub_room_names[1], sizeof(stub_room_names[1]), "%s", "closed-club");
+    stub_roomlist_count = 2;
+    stub_roomlist_status = 2;
+    rooms_open();
+    assert(rooms_mode == 0);
+    logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(0) + rooms_row_h() / 2, 0, 81);
+    press_new = 0;
+    assert(stub_prep_calls == 1 && stub_prep_create == 0 && strcmp(stub_prep_name, "main") == 0);
+    stub_prep_status = 2; /* open room: allowed in */
+    update_rooms();
+    assert(t_dir == 1 && t_target == ST_ONLINE && strcmp(ROOM, "main") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_ROOMS;
+    rooms_open();
+    logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(1) + rooms_row_h() / 2, 0, 82);
+    press_new = 0;
+    stub_prep_status = 3; /* password required */
+    update_rooms();
+    assert(rooms_mode == 2 && str_len(rooms_msg) > 0);
+    rooms_pass = "s3cret";
+    rooms_submit_join();
+    assert(stub_prep_create == 0 && strcmp(stub_prep_pass, "s3cret") == 0);
+    stub_prep_status = 2;
+    update_rooms();
+    assert(t_target == ST_ONLINE && strcmp(ROOM, "closed-club") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_ROOMS;
+    rooms_open();
+    rooms_mode = 1;
+    rooms_name = "my-room";
+    rooms_pass = "";
+    rooms_submit_create();
+    assert(stub_prep_create == 1 && strcmp(stub_prep_name, "my-room") == 0);
+    stub_prep_status = 2;
+    update_rooms();
+    assert(t_target == ST_ONLINE && strcmp(ROOM, "my-room") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_LOBBY;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+
+    /* Chat header: after creating a room, the chat title is that room. */
+    snprintf(stub_current_room, sizeof(stub_current_room), "%s", "my-room");
+    language = 0;
+    game_state = ST_ONLINE;
+    chat_open = 1;
+    adm_reset_log();
+    draw_chat();
+    assert(adm_has_text("Room: my-room") == 1);
+    chat_open = 0;
+    game_state = ST_LOBBY;
+    puts("eax229 + rooms: meet-admin achievement, room list, password join, create");
 }
 
 /* Drawing the complete UI retains every screen through draw_screen(). */
@@ -1126,9 +1558,16 @@ void rect_rot(float x, float y, float w, float h, float angle, uint32_t color) {
 }
 double lerp(double a, double b, double t) { return a + (b - a) * t; }
 int str_starts_with(const char *s, const char *pref) { return strncmp(s, pref, strlen(pref)) == 0; }
-double net_chat_count(void) { return 0; }
-const char *net_chat_uid(double idx) { (void)idx; return ""; }
-const char *net_chat_text(double idx) { (void)idx; return ""; }
+double net_chat_count(void) { return stub_chat_count; }
+const char *net_chat_uid(double idx) { return stub_chat_uids[(int)idx]; }
+const char *net_chat_text(double idx) { return stub_chat_texts[(int)idx]; }
+/* Like the real one: ONE shared static buffer for every call. */
+const char *net_chat_key(double idx) {
+    static char ret[28];
+    snprintf(ret, sizeof(ret), "%s", stub_chat_keys[(int)idx]);
+    return ret;
+}
+double net_status(void) { return net_st_playing; }
 double net_leaderboard_status(void) { return 0; }
 double net_leaderboard_count(void) { return 0; }
 const char *net_leaderboard_nick(double idx) { (void)idx; return ""; }
@@ -1740,7 +2179,7 @@ int main(void) {
         finish_game(1);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        assert(achievement_count() == 4);
+        assert(achievement_count() == 5);
         assert(achievement_bit(3) == ACH_LAST_HP);
         finished = 0;
         cups_awarded = 0;
@@ -1901,8 +2340,8 @@ int main(void) {
     classes_scroll = 0;
     codecracker_refresh();
     assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
-    assert(player_max_hp_for(CLASS_CODECRACKER) == 9 && codecracker_hp == 9);
-    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.6 && codecracker_touch_heal == 0.75);
+    assert(player_max_hp_for(CLASS_CODECRACKER) == 12 && codecracker_hp == 12);
+    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.63);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
     assert(class_has_super(CLASS_CODECRACKER) == 1 && codecracker_super_active() == 0);
     /* The overclock ultimate: 7 seconds of triple speed and half damage,
@@ -1913,6 +2352,7 @@ int main(void) {
     assert(fabs(player_walk_speed() - joy_speed * codecracker_speed_mult * admin_cheat_speed_mult()) < 1e-6);
     {
         double hp_before = player->hp;
+        player->max_hp = codecracker_hp;
         player->hp = codecracker_hp;
         take_damage(2);
         assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9); /* half absorbed */
@@ -2728,9 +3168,47 @@ int main(void) {
     }
 
     test_legal();
+    test_start_gate();
+    test_promo_message();
     test_azum_buff();
     test_class_stars();
+    test_codecracker_fx();
+    test_eax229_and_rooms();
+    test_dice_alone_and_bubbles();
     test_overlay_transitions();
+
+    /* New Year battle pass: wins give XP, tiers claim in order for
+     * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */
+    {
+        bp_xp = 0;
+        bp_claimed = 0;
+        candies = 1000;
+        cups = 0;
+        stub_bpx = 0;
+        award_battle_result(1);
+        assert(bp_xp == 10 && stub_bpx == 10);
+        double cups_after_win = cups;
+        assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        bp_claim(2); /* out of order: nothing happens */
+        assert(bp_claimed == 0 && candies == 1000);
+        bp_claim(1);
+        assert(bp_claimed == 1 && cups == cups_after_win + 10 && candies == 1000 - 12);
+        bp_xp = 300;
+        bp_claim(2);
+        bp_claim(3);
+        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        bp_claim(4);
+        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
+        assert(class_owned_of(CLASS_SANTA) == 0);
+        bp_claim(5);
+        bp_claim(6);
+        bp_claim(7);
+        assert(bp_claimed == 7 && class_owned_of(CLASS_SANTA) == 1);
+        assert(class_visible(CLASS_SANTA) == 1);
+        bp_xp = 0;
+        bp_claimed = 0;
+        stub_bpx = 0;
+    }
 
     state_destroy();
     state_ready = 0;

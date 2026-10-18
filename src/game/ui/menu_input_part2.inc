@@ -146,6 +146,9 @@ static double menu_button_hit(double x, double y) {
         }
         return 0;
     }
+    if (game_state == ST_BPASS) {
+        return bpass_any_hit(x, y);
+    }
     if (game_state == ST_SKINS) {
         if (back_hit(x, y) == 1) return 1;
         while (i < SKIN_COUNT) {
@@ -162,6 +165,9 @@ static double menu_button_hit(double x, double y) {
         double w = fit_w(560);
         double fx = center_x(w);
         return back_hit(x, y) == 1 || hit_button(x, y, fx, promo_btn_y(), w, btn_h) == 1;
+    }
+    if (game_state == ST_ROOMS) {
+        return rooms_any_hit(x, y);
     }
     if (game_state == ST_ACHIEVEMENTS || game_state == ST_LEADERBOARD) {
         return back_hit(x, y);
@@ -193,6 +199,10 @@ static void touch_menu(double x, double y, double action, double id) {
         touch_levels(x, y, action);
         return;
     }
+    if (game_state == ST_BPASS) {
+        touch_bpass(x, y, action);
+        return;
+    }
     if (game_state == ST_SKINS) {
         touch_skins(x, y, action);
         return;
@@ -207,5 +217,8 @@ static void touch_menu(double x, double y, double action, double id) {
     }
     if (game_state == ST_PROMO) {
         touch_promo(x, y, action);
+    }
+    if (game_state == ST_ROOMS) {
+        touch_rooms(x, y, action);
     }
 }
