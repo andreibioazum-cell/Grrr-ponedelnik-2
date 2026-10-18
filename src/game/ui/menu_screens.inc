@@ -1,5 +1,6 @@
 static void draw_menu_button(double row, const char *label) {
-    button(label, menu_x(), menu_row(row), menu_btn_w(), btn_h);
+    double w = menu_btn_w();
+    button_scaled(label, menu_x(), menu_row(row), w, btn_h, fit_text_scale(label, w - 24, 0.72));
 }
 
 static void draw_lobby_nick(void) {
