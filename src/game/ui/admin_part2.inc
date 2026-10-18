@@ -262,8 +262,7 @@ static void admin_draw_gifts(void) {
     for (int i = 0; i < 4; ++i) {
         const char *name = admin_gift_names[i];
         if (language == 1) name = i == 0 ? "Роза" : i == 1 ? "Торт" : i == 2 ? "Мишка" : "Ракета";
-        char label[96];
-        snprintf(label, sizeof(label), "%s%s", admin_gift_choice == i ? "> " : "", name);
+        const char *label = ds_concat(admin_gift_choice == i ? "> " : "", name);
         admin_btn(label, px, y + i * (rh + admin_gap()), w, rh, admin_gift_choice == i, 0.55);
     }
     double target_y = y + 4 * (rh + admin_gap());
