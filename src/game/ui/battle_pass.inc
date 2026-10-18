@@ -110,7 +110,7 @@ static void bp_claim(double t) {
  * line on short screens instead of running off the bottom. */
 static double bp_rows_top(void) { return content_top() + 88; }
 static double bp_row_h(void) {
-    double stride = (screen_h - bp_rows_top() - 56) / BP_TIERS;
+    double stride = (screen_h - bp_rows_top() - 70) / BP_TIERS;
     return clamp(stride - 6, 22, 58);
 }
 static double bp_row_y(double t) { return bp_rows_top() + (t - 1) * (bp_row_h() + 6); }
