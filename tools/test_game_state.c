@@ -1258,6 +1258,116 @@ static void test_codecracker_fx(void) {
     puts("codecracker fx: no halo circle in the ult; stars drawn smooth, not pixelated");
 }
 
+static int stub_roomlist_status;
+static int stub_roomlist_count;
+static char stub_room_names[6][25];
+static int stub_prep_status;
+static char stub_prep_name[25];
+static char stub_prep_pass[64];
+static int stub_prep_create;
+static int stub_prep_calls;
+void net_roomlist_fetch(const char *url) { (void)url; stub_roomlist_status = 2; }
+double net_roomlist_status(void) { return stub_roomlist_status; }
+double net_roomlist_count(void) { return stub_roomlist_count; }
+const char *net_roomlist_name(double idx) {
+    int i = (int)idx;
+    return (i >= 0 && i < stub_roomlist_count) ? stub_room_names[i] : "";
+}
+void net_room_prepare(const char *url, const char *name, const char *pass, double create) {
+    (void)url;
+    snprintf(stub_prep_name, sizeof(stub_prep_name), "%s", name ? name : "");
+    snprintf(stub_prep_pass, sizeof(stub_prep_pass), "%s", pass ? pass : "");
+    stub_prep_create = create ? 1 : 0;
+    stub_prep_calls++;
+    stub_prep_status = 1;
+}
+double net_room_prep_status(void) { return stub_prep_status; }
+void net_room_prep_reset(void) { stub_prep_status = 0; }
+
+/* Ачивка mov eax, 0x229 и экран комнат с паролями. */
+static void test_eax229_and_rooms(void) {
+    game_reset();
+    screen_w = 1280;
+    screen_h = 720;
+    assert(achievement_count() == 5);
+    assert(strcmp(tr_achievement_eax229(), "mov eax, 0x229") == 0);
+    assert(strcmp(tr_achievement_eax229_desc(), "???") == 0);
+
+    /* Dimasi4ek229 himself: granted automatically (case-insensitive). */
+    achievement_mask = 0;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "dimasi4ek229");
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 1);
+
+    /* Anyone else: only when Dimasi4ek229 is in the same online room. */
+    achievement_mask = 0;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    game_state = ST_LOBBY;
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 0);
+    game_state = ST_ONLINE;
+    stub_net_slot = 0;
+    stub_online[1] = 1;
+    snprintf(stub_nicks[1], sizeof(stub_nicks[1]), "%s", "Dimasi4ek229");
+    check_meet_eax229();
+    assert(has_achievement(ACH_EAX229) == 1);
+    stub_online[1] = 0;
+    stub_nicks[1][0] = 0;
+    game_state = ST_LOBBY;
+
+    /* Rooms screen: join an open room, a password room, and create one. */
+    achievement_mask = 0;
+    game_state = ST_ROOMS;
+    t_dir = 0;
+    warn_open = 0;
+    studio_open = 0;
+    start_open = 0;
+    snprintf(stub_room_names[0], sizeof(stub_room_names[0]), "%s", "main");
+    snprintf(stub_room_names[1], sizeof(stub_room_names[1]), "%s", "closed-club");
+    stub_roomlist_count = 2;
+    stub_roomlist_status = 2;
+    rooms_open();
+    assert(rooms_mode == 0);
+    logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(0) + rooms_row_h() / 2, 0, 81);
+    press_new = 0;
+    assert(stub_prep_calls == 1 && stub_prep_create == 0 && strcmp(stub_prep_name, "main") == 0);
+    stub_prep_status = 2; /* open room: allowed in */
+    update_rooms();
+    assert(t_dir == 1 && t_target == ST_ONLINE && strcmp(ROOM, "main") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_ROOMS;
+    rooms_open();
+    logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(1) + rooms_row_h() / 2, 0, 82);
+    press_new = 0;
+    stub_prep_status = 3; /* password required */
+    update_rooms();
+    assert(rooms_mode == 2 && str_len(rooms_msg) > 0);
+    rooms_pass = "s3cret";
+    rooms_submit_join();
+    assert(stub_prep_create == 0 && strcmp(stub_prep_pass, "s3cret") == 0);
+    stub_prep_status = 2;
+    update_rooms();
+    assert(t_target == ST_ONLINE && strcmp(ROOM, "closed-club") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_ROOMS;
+    rooms_open();
+    rooms_mode = 1;
+    rooms_name = "my-room";
+    rooms_pass = "";
+    rooms_submit_create();
+    assert(stub_prep_create == 1 && strcmp(stub_prep_name, "my-room") == 0);
+    stub_prep_status = 2;
+    update_rooms();
+    assert(t_target == ST_ONLINE && strcmp(ROOM, "my-room") == 0);
+    t_dir = 0;
+    t_target = 0;
+    game_state = ST_LOBBY;
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    puts("eax229 + rooms: meet-admin achievement, room list, password join, create");
+}
+
 /* Drawing the complete UI retains every screen through draw_screen(). */
 void text(const char *s, float x, float y, uint32_t color) { text_scaled(s, x, y, color, 1); }
 void tex_round(float x, float y, const char *name, float scale, float radius) {
@@ -1884,7 +1994,7 @@ int main(void) {
         finish_game(1);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        assert(achievement_count() == 4);
+        assert(achievement_count() == 5);
         assert(achievement_bit(3) == ACH_LAST_HP);
         finished = 0;
         cups_awarded = 0;
@@ -2878,6 +2988,7 @@ int main(void) {
     test_azum_buff();
     test_class_stars();
     test_codecracker_fx();
+    test_eax229_and_rooms();
     test_overlay_transitions();
 
     state_destroy();

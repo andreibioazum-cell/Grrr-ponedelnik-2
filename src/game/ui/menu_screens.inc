@@ -279,7 +279,7 @@ static void draw_skins(void) {
 }
 
 static double achievement_count(void) {
-    return 4;
+    return 5;
 }
 
 static double achievement_bit(double i) {
@@ -291,6 +291,9 @@ static double achievement_bit(double i) {
     }
     if (i == 3) {
         return ACH_LAST_HP;
+    }
+    if (i == 4) {
+        return ACH_EAX229;
     }
     return ACH_LEGENDS;
 }
@@ -305,6 +308,9 @@ static const char *achievement_title(double i) {
     if (i == 3) {
         return tr_achievement_last_hp();
     }
+    if (i == 4) {
+        return tr_achievement_eax229();
+    }
     return tr_achievement_legends();
 }
 
@@ -317,6 +323,9 @@ static const char *achievement_desc(double i) {
     }
     if (i == 3) {
         return tr_achievement_last_hp_desc();
+    }
+    if (i == 4) {
+        return tr_achievement_eax229_desc();
     }
     return tr_achievement_legends_desc();
 }

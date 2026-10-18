@@ -182,6 +182,10 @@ static const char *tr_achievement_last_hp_desc(void) {
     return "Win a battle at full HP without taking any damage";
 }
 
+static const char *tr_achievement_eax229(void) { return "mov eax, 0x229"; }
+
+static const char *tr_achievement_eax229_desc(void) { return "???"; }
+
 static const char *tr_achievement_open(void) {
     if (language == 1) {
         return "Получено";

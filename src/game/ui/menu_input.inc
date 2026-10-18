@@ -165,7 +165,7 @@ static void draw_studio(void) {
 
 static void open_online(void) {
     if (net_login_status() != 2) {
-        login_after = ST_ONLINE;
+        login_after = ST_ROOMS;
         start_transition(ST_LOGIN);
         return;
     }
@@ -179,7 +179,8 @@ static void open_online(void) {
         start_transition(ST_LOBBY);
         return;
     }
-    start_transition(ST_ONLINE);
+    /* Online is a room list now, not one shared room for everyone. */
+    start_transition(ST_ROOMS);
 }
 
 static void open_leaderboard(void) {

@@ -89,6 +89,16 @@
       ".read": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password'",
       "$room": {
         ".validate": "$room.matches(/^[A-Za-z0-9_-]{1,24}$/)",
+        "meta": {
+          ".read": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password'",
+          ".write": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password' && newData.child('w').val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc' && (!data.exists() || data.child('owner').val().toLowerCase() == auth.token.email.toLowerCase().replace('@cb4.game', ''))",
+          ".validate": "newData.hasChildren(['owner','ph','w'])",
+          "owner": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
+          "ph": { ".validate": "newData.isString() && newData.val().length <= 8" },
+          "w": { ".validate": "newData.isString() && newData.val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc'" },
+          "$other": { ".validate": false }
+        },
+
         "players": {
           ".read": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password'",
           ".write": "auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')",

@@ -22,6 +22,49 @@ static void check_achievements(void) {
     if (class_owned_of(CLASS_AZUM) == 1 && class_owned_of(CLASS_SANTA) == 1 && class_owned_of(CLASS_EBUC) == 1) {
         grant_achievement(ACH_ALL_CHARACTERS);
     }
+    check_meet_eax229();
+}
+
+static double nick_is_dimasi229(const char *nick) {
+    const char *want = ADMIN_NICK;
+    if (!nick) {
+        return 0;
+    }
+    while (*want && *nick) {
+        char a = *nick, b = *want;
+        if (a >= 'A' && a <= 'Z')
+            a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z')
+            b = (char)(b - 'A' + 'a');
+        if (a != b)
+            return 0;
+        nick++;
+        want++;
+    }
+    return *want == 0 && *nick == 0 ? 1 : 0;
+}
+
+/* mov eax, 0x229: be in one online room with Dimasi4ek229. For
+ * Dimasi4ek229 himself it is granted automatically. */
+static void check_meet_eax229(void) {
+    if (has_achievement(ACH_EAX229) == 1) {
+        return;
+    }
+    if (nick_is_dimasi229(net_login_nick()) == 1) {
+        grant_achievement(ACH_EAX229);
+        return;
+    }
+    if (game_state != ST_ONLINE) {
+        return;
+    }
+    double s = 0;
+    while (s < NET_SLOTS) {
+        if (s != net_slot() && net_player_online(s) == 1 && nick_is_dimasi229(net_player_nick(s)) == 1) {
+            grant_achievement(ACH_EAX229);
+            return;
+        }
+        s = s + 1;
+    }
 }
 
 static void save_progress(void) {

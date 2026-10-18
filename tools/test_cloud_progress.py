@@ -176,6 +176,25 @@ static int run_text_cmd(const char *dir) {
     return 0;
 }
 
+static int run_rooms_parse(const char *dir) {
+    (void)dir;
+    char names[16][25];
+    int n = parse_room_names("{\"main\":true,\"dima-room\":true,\"bad name!\":true,\"ok_2\":false}", names, 16);
+    assert(n == 3);
+    assert(strcmp(names[0], "main") == 0 && strcmp(names[1], "dima-room") == 0 && strcmp(names[2], "ok_2") == 0);
+    assert(parse_room_names("null", names, 16) == 0);
+    assert(room_name_valid("main") == 1 && room_name_valid("") == 0 && room_name_valid("bad name") == 0);
+    char h1[16], h2[16], h3[16];
+    room_pass_hash("s3cret", h1, sizeof(h1));
+    room_pass_hash("s3cret", h2, sizeof(h2));
+    room_pass_hash("other", h3, sizeof(h3));
+    assert(strcmp(h1, h2) == 0 && strcmp(h1, h3) != 0 && strlen(h1) == 8);
+    room_pass_hash("", h1, sizeof(h1));
+    assert(strcmp(h1, "00000000") == 0); /* empty password = open room */
+    puts("rooms: name parsing/validation and password hash OK");
+    return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: test <mode> <dir>\n"); return 2; }
     if (strcmp(argv[1], "first-save") == 0) return run_first_save(argv[2]);
@@ -186,6 +205,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "legacy-profile") == 0) return run_legacy_profile(argv[2]);
     if (strcmp(argv[1], "admin-ban-guard") == 0) return run_admin_ban_guard(argv[2]);
     if (strcmp(argv[1], "text-cmd") == 0) return run_text_cmd(argv[2]);
+    if (strcmp(argv[1], "rooms-parse") == 0) return run_rooms_parse(argv[2]);
     fprintf(stderr, "unknown mode '%s'\n", argv[1]);
     return 2;
 }
@@ -271,6 +291,10 @@ def main():
         textcmd = temp / "textcmd"
         textcmd.mkdir()
         subprocess.run([*run, "text-cmd", str(textcmd)], check=True)
+
+        roomsdir = temp / "roomsdir"
+        roomsdir.mkdir()
+        subprocess.run([*run, "rooms-parse", str(roomsdir)], check=True)
     return 0
 
 if __name__ == "__main__":

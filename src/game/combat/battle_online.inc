@@ -345,6 +345,7 @@ static void push_self(void) {
 }
 
 static void update_online(void) {
+    check_meet_eax229();
     if (net_banned() == 1) {
         banned_msg = tr_banned();
         start_transition(0);

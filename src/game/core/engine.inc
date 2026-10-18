@@ -98,6 +98,8 @@ static void logic_update(void) {
         update_login();
     } else if (game_state == ST_PROMO) {
         update_promo();
+    } else if (game_state == ST_ROOMS) {
+        update_rooms();
     }
     update_newyear();
     update_weather();
@@ -126,6 +128,8 @@ static void draw_screen(void) {
         draw_achievements();
     } else if (game_state == ST_PROMO) {
         draw_promo();
+    } else if (game_state == ST_ROOMS) {
+        draw_rooms();
     } else {
         draw_online();
     }
@@ -234,7 +238,8 @@ static double logic_back(void) {
         start_transition(ST_CLASSES);
         return 1;
     }
-    if (game_state == ST_LEADERBOARD || game_state == ST_PROMO) {
+    if (game_state == ST_LEADERBOARD || game_state == ST_PROMO || game_state == ST_ROOMS) {
+        keyboard_hide();
         start_transition(ST_MODES);
         return 1;
     }

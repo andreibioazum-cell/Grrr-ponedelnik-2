@@ -97,6 +97,9 @@ static const char *achievement_toast_text(void) {
     if (ach_toast_bit == ACH_LAST_HP) {
         return tr_achievement_last_hp();
     }
+    if (ach_toast_bit == ACH_EAX229) {
+        return tr_achievement_eax229();
+    }
     return tr_achievement_legends();
 }
 

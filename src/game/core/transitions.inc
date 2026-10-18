@@ -22,7 +22,7 @@ static void leave_screen(double state) {
     if (acct_open != 0) {
         acct_close();
     }
-    if (state == ST_LOGIN || state == ST_PROMO) {
+    if (state == ST_LOGIN || state == ST_PROMO || state == ST_ROOMS) {
         keyboard_hide();
     }
     if (state == ST_ONLINE) {
@@ -54,6 +54,10 @@ static double enter_screen(double state) {
         /* Every visit to the shop re-reads AzumBuff and FlashSale from
          * Firebase; prices must not come from a stale periodic poll. */
         net_live_flags_refresh();
+        return 1;
+    }
+    if (state == ST_ROOMS) {
+        rooms_open();
         return 1;
     }
     if (state == ST_LEADERBOARD) {

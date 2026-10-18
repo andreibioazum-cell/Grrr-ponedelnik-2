@@ -14,6 +14,7 @@
 #include "include/prototypes/ui/admin.inc"
 #include "include/prototypes/ui/menu_screens.inc"
 #include "include/prototypes/ui/menu_input.inc"
+#include "include/prototypes/ui/rooms.inc"
 #include "include/prototypes/combat/battle_rules.inc"
 #include "include/prototypes/combat/hit_geometry.inc"
 #include "include/prototypes/combat/battle_turrets.inc"

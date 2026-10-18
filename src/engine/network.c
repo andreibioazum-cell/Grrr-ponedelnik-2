@@ -20,6 +20,7 @@
 #include "engine/network/account_password.inc"
 #include "engine/network/room_control.inc"
 #include "engine/network/leaderboard.inc"
+#include "engine/network/room_directory.inc"
 #include "engine/network/room_sync.inc"
 #include "engine/network/room_chat.inc"
 #include "engine/network/room_threads.inc"

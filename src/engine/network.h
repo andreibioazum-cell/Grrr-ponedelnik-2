@@ -184,6 +184,18 @@ double net_promo_2027_used(void);
 void net_promo_2027_mark_used(void);
 
 
+/* Room directory: many rooms instead of one shared "main", with optional
+ * password protection (hashed in rooms/<name>/meta). */
+void net_roomlist_fetch(const char *url);
+double net_roomlist_status(void);
+double net_roomlist_count(void);
+const char *net_roomlist_name(double idx);
+/* create=1 creates the room (fails if it exists), create=0 checks joining.
+ * Status: 0 idle, 1 busy, 2 ok, 3 wrong/needed password, 4 exists, 5 error, 6 bad name. */
+void net_room_prepare(const char *url, const char *name, const char *pass, double create);
+double net_room_prep_status(void);
+void net_room_prep_reset(void);
+
 void net_leaderboard_fetch(const char *url);
 double net_leaderboard_status(void);
 double net_leaderboard_count(void);

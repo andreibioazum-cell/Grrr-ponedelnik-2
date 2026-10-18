@@ -10,6 +10,7 @@ ST_LEADERBOARD = 10;
 ST_ACHIEVEMENTS = 11;
 ST_SKINS = 13;
 ST_PROMO = 14;
+ST_ROOMS = 15;
 game_state = 0;
 language = 1;
 t_dir = 0;
@@ -18,7 +19,6 @@ t_action = NULL;
 t_fade = 0;
 t_hold = 0;
 transition_duration = 0.10;
-/* Пауза перед затуханием: кнопка успевает сжаться под пальцем. */
 transition_hold = 0.11;
 ui_purple = 0xFF5F10A0;
 bg_screen = 0x1A1A2E;
@@ -76,6 +76,7 @@ ACH_ALL_CHARACTERS = 8;
 ACH_LEGENDS = 16;
 /* Keep the saved achievement bit; it now means a flawless full-HP win. */
 ACH_LAST_HP = 32;
+ACH_EAX229 = 64;
 ACH_LEGENDS_NEED = 7;
 azum_revive_count = 0;
 ach_toast_bit = 0;
@@ -253,7 +254,6 @@ santa_poison_tick_interval = 0.6;
 santa_poison_dps = 2.0;
 santa_poison_damage_bonus = 0.30;
 santa_freeze_time_bonus = 0.50;
-/* Santa's stun (freeze) is ~8% shorter than it used to be. */
 santa_stun_scale = 0.92;
 santa_follow_delay = 0.4;
 santa_super_damage = 4.0;
