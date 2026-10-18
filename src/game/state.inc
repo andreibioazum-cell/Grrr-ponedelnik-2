@@ -11,6 +11,7 @@
 #include "state/globals/combat/battle_enemy_turrets.inc"
 #include "state/globals/combat/battle_fighter_look.inc"
 #include "state/globals/combat/battle_event_plates.inc"
+#include "state/globals/combat/battle_event_dice.inc"
 #include "state/globals/fx/weather.inc"
 #include "state/globals/fx/newyear.inc"
 #include "state/globals/ui/chat_bubbles.inc"
@@ -31,6 +32,7 @@ static void state_create(void) {
 #include "state/create/combat/battle_enemy_turrets.inc"
 #include "state/create/combat/battle_fighter_look.inc"
 #include "state/create/combat/battle_event_plates.inc"
+#include "state/create/combat/battle_event_dice.inc"
 #include "state/create/fx/weather.inc"
 #include "state/create/fx/newyear.inc"
 #include "state/create/ui/chat_bubbles.inc"
@@ -216,6 +218,10 @@ static void state_destroy(void) {
     if (plates_candies) {
         arr_free(plates_candies);
         plates_candies = NULL;
+    }
+    if (dice_cubes) {
+        arr_free(dice_cubes);
+        dice_cubes = NULL;
     }
     if (flake_cache) {
         arr_free(flake_cache);

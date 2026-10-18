@@ -117,7 +117,17 @@ static void chat_bubbles_watch(void) {
         chat_bubble_show(net_chat_uid(m), net_chat_text(m));
         m = m + 1;
     }
-    chat_seen_key = lastkey;
+    /* Copy, never store the pointer: net_chat_key() reuses one static
+     * buffer for every call, so chat_seen_key = lastkey aliased the NEXT
+     * key too and made every later check "already seen" - bubbles above
+     * players almost never appeared. */
+    double ki = 0;
+    while (lastkey[(int)ki] != 0 && ki < (double)(sizeof(chat_seen_key_buf) - 1)) {
+        chat_seen_key_buf[(int)ki] = lastkey[(int)ki];
+        ki = ki + 1;
+    }
+    chat_seen_key_buf[(int)ki] = 0;
+    chat_seen_key = chat_seen_key_buf;
 }
 
 static void draw_chat_bubble_at(double x, double y, const char *msg, double t) {
@@ -172,6 +182,7 @@ static void draw_chat_bubble_at(double x, double y, const char *msg, double t) {
 }
 
 static void chat_bubbles_reset(void) {
+    chat_seen_key_buf[0] = 0;
     bubble_msg0 = "";
     bubble_msg1 = "";
     bubble_msg2 = "";

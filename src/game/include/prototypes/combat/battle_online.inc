@@ -10,5 +10,6 @@ static void smooth_remotes(void);
 static double count_living_remotes(void);
 static double count_online_remotes(void);
 static void check_online_finish(void);
+static void draw_alone_wait(void);
 static void push_self(void);
 static void update_online(void);

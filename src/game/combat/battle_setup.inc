@@ -53,6 +53,7 @@ static void reset_battle(void) {
     match_seen_foe = 0;
     foes_seen_t = 0;
     foes_gone_t = 0;
+    alone_t = 0;
     gift->active = 0;
     gift->t = 0;
     gift->shot = 0;
@@ -160,7 +161,7 @@ static void reset_battle(void) {
     snow_t = 0;
     plates_prev_mode = 0;
     plates_event_reset();
-    infect_t = -1;
+    dice_event_reset();
     ds_gfx_gray(0);
     ds_gfx_shake(0, 0);
     player_block = 0;

@@ -1,0 +1,9 @@
+double dice_active;
+double dice_throw_cd;
+double dice_next;
+double dice_throw_interval;
+double dice_flight;
+double dice_cube_lifetime;
+double dice_cubes_max;
+double dice_fields;
+DSArray *dice_cubes;

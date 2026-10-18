@@ -82,8 +82,8 @@ static double admin_handle(const char *msg) {
     }
     if (str_eq(msg, "event 4") == 1) {
         net_event_set(4);
-        net_chat_send(ds_concat(ds_concat("СОБЫТИЕ «ЗАРАЖЕНИЕ» от ", by), "!"));
-        ds_log("admin: event 4 infection");
+        net_chat_send(ds_concat(ds_concat("СОБЫТИЕ «КУБИК» от ", by), "!"));
+        ds_log("admin: event 4 dice");
         return 1;
     }
     if (net_chat_is_ban(msg) == 1) {

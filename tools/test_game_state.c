@@ -262,6 +262,10 @@ int keyboard_handle_key(int keycode, int action, int meta) {
 static void stub_kb_set(const char *text) { snprintf(stub_kb, sizeof(stub_kb), "%s", text ? text : ""); }
 static double stub_net_slot = -1;
 static double stub_online[4];
+static double stub_chat_count;
+static char stub_chat_keys[4][28];
+static char stub_chat_uids[4][24];
+static char stub_chat_texts[4][64];
 static double stub_level[4];
 static double stub_grab[4];
 static double stub_gx[4];
@@ -1287,6 +1291,115 @@ const char *net_current_room(void) { return stub_current_room; }
 void net_room_prep_reset(void) { stub_prep_status = 0; }
 
 /* Ачивка mov eax, 0x229 и экран комнат с паролями. */
+
+static void test_dice_alone_and_bubbles(void) {
+    /* Dice event: prizes, admin-only cubes, throw + collect. */
+    assert(dice_prize_of(DICE_CUBE_ORDINARY) == 2);
+    assert(dice_prize_of(DICE_CUBE_LEGENDARY) == 95);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+    stub_login_status = 2;
+    astra_ability_refresh();
+    assert(dev_access() == 0);
+    srand(12345);
+    double legendary = 0;
+    double i = 0;
+    while (i < 30000) {
+        double f = dice_roll_cube();
+        assert(f != DICE_CUBE_SANTA && f != DICE_CUBE_CODECRACKER);
+        if (f == DICE_CUBE_LEGENDARY) legendary = legendary + 1;
+        i = i + 1;
+    }
+    assert(legendary > 0 && legendary < 80); /* 0.08% of 30000 = ~24 */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    astra_ability_refresh();
+    assert(dev_access() == 1);
+    double saw_santa = 0;
+    double saw_cc = 0;
+    i = 0;
+    while (i < 30000) {
+        double f = dice_roll_cube();
+        if (f == DICE_CUBE_SANTA) saw_santa = 1;
+        if (f == DICE_CUBE_CODECRACKER) saw_cc = 1;
+        i = i + 1;
+    }
+    assert(saw_santa == 1 && saw_cc == 1);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+    astra_ability_refresh();
+
+    screen_w = 800;
+    screen_h = 600;
+    event_mode = 4;
+    dice_event_reset();
+    dt = 0.7;
+    update_dice_event(); /* first cube is thrown */
+    assert(arr_get(dice_cubes, 0) == 1);
+    double cube = arr_get(dice_cubes, 1);
+    arr_set(dice_cubes, 2, dice_flight); /* landed */
+    player->x = 300;
+    player->y = 300;
+    player->size = 50;
+    arr_set(dice_cubes, 5, 300);
+    arr_set(dice_cubes, 6, 300);
+    double candies_before = candies;
+    update_dice_event();
+    assert(candies == candies_before + dice_prize_of(cube));
+    assert(arr_get(dice_cubes, 0) == 0);
+    event_mode = 0;
+    update_dice_event();
+    assert(dice_active == 0);
+
+    /* Alone in a room: 40 s of waiting, then out to the room list. */
+    stub_net_slot = 0;
+    double s = 0;
+    while (s < 4) { stub_online[(int)s] = 0; s = s + 1; }
+    s = 0;
+    while (s < max_players * remote_fields) { arr_set(remotes, s, 0); s = s + 1; }
+    online_ready = 1;
+    finished = 0;
+    game_state = ST_ONLINE;
+    match_seen_foe = 0;
+    foes_gone_t = 0;
+    alone_t = 0;
+    dt = 1;
+    t_dir = 0;
+    i = 0;
+    while (i < 39) { check_online_finish(); i = i + 1; }
+    assert(alone_t == 39 && t_dir == 0); /* still waiting, not kicked */
+    check_online_finish();
+    assert(t_target == ST_ROOMS && t_dir != 0); /* 40 s: out */
+    t_dir = 0;
+    alone_t = 5;
+    arr_set(remotes, remote_fields + 5, 1); /* someone joins alive */
+    check_online_finish();
+    assert(alone_t == 0);
+    arr_set(remotes, remote_fields + 5, 0);
+    online_ready = 0;
+    game_state = ST_LOBBY;
+
+    /* Chat bubbles: a second message must replace the bubble even though
+     * net_chat_key() reuses one static buffer (the old aliasing bug). */
+    snprintf(stub_nicks[1], sizeof(stub_nicks[1]), "%s", "bob");
+    stub_chat_count = 1;
+    snprintf(stub_chat_keys[0], sizeof(stub_chat_keys[0]), "%s", "k1");
+    snprintf(stub_chat_uids[0], sizeof(stub_chat_uids[0]), "%s", "bob");
+    snprintf(stub_chat_texts[0], sizeof(stub_chat_texts[0]), "%s", "first");
+    chat_bubbles_reset();
+    dt = 0.05;
+    chat_bubbles_watch();
+    assert(strcmp(bubble_msg(1), "first") == 0);
+    stub_chat_count = 2;
+    snprintf(stub_chat_keys[1], sizeof(stub_chat_keys[1]), "%s", "k2");
+    snprintf(stub_chat_uids[1], sizeof(stub_chat_uids[1]), "%s", "bob");
+    snprintf(stub_chat_texts[1], sizeof(stub_chat_texts[1]), "%s", "second");
+    chat_bubbles_watch();
+    assert(strcmp(bubble_msg(1), "second") == 0);
+    stub_chat_count = 0;
+    puts("dice event + alone wait + chat bubbles: OK");
+}
+
 static void test_eax229_and_rooms(void) {
     game_reset();
     screen_w = 1280;
@@ -1393,9 +1506,16 @@ void rect_rot(float x, float y, float w, float h, float angle, uint32_t color) {
 }
 double lerp(double a, double b, double t) { return a + (b - a) * t; }
 int str_starts_with(const char *s, const char *pref) { return strncmp(s, pref, strlen(pref)) == 0; }
-double net_chat_count(void) { return 0; }
-const char *net_chat_uid(double idx) { (void)idx; return ""; }
-const char *net_chat_text(double idx) { (void)idx; return ""; }
+double net_chat_count(void) { return stub_chat_count; }
+const char *net_chat_uid(double idx) { return stub_chat_uids[(int)idx]; }
+const char *net_chat_text(double idx) { return stub_chat_texts[(int)idx]; }
+/* Like the real one: ONE shared static buffer for every call. */
+const char *net_chat_key(double idx) {
+    static char ret[28];
+    snprintf(ret, sizeof(ret), "%s", stub_chat_keys[(int)idx]);
+    return ret;
+}
+double net_status(void) { return net_st_playing; }
 double net_leaderboard_status(void) { return 0; }
 double net_leaderboard_count(void) { return 0; }
 const char *net_leaderboard_nick(double idx) { (void)idx; return ""; }
@@ -3002,6 +3122,7 @@ int main(void) {
     test_class_stars();
     test_codecracker_fx();
     test_eax229_and_rooms();
+    test_dice_alone_and_bubbles();
     test_overlay_transitions();
 
     state_destroy();

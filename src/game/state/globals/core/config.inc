@@ -394,8 +394,6 @@ double banner_t;
 double block_guard;
 double block_speed_k;
 double block_front_angle;
-double infect_spread_time;
-double infect_gray_time;
 double login_field;
 double login_status;
 double login_after;
