@@ -11,6 +11,9 @@ static double acct_gift_scroll = 0;
 static double acct_gift_drag_id = -1;
 static double acct_gift_drag_y = 0;
 static double acct_gift_drag_start_y = 0;
+static double acct_gift_velocity = 0;
+static double acct_gift_bar_drag_id = -1;
+static double acct_gift_bar_grab = 0;
 static double acct_gift_list_top(void);
 static double acct_gift_card_h(void);
 static double acct_gift_step(void);
@@ -22,6 +25,12 @@ static double acct_gift_y(double i);
 static double hit_acct_gift_buy(double x, double y);
 static double hit_acct_gift_send(double x, double y);
 static double hit_acct_gift(double x, double y, double i);
+static double hit_acct_gift_scrollbar(double x, double y);
+static void acct_gift_scroll_to(double y);
+static double acct_gift_scroll_max(void);
+static double acct_gift_thumb_h(void);
+static double acct_gift_thumb_y(void);
+static double touch_acct_gift_scroll(double x, double y, double action, double id);
 static void acct_gifts_page(void);
 static void acct_gift_buy(void);
 static void acct_gift_send(void);
@@ -134,7 +143,7 @@ static double acct_button_hit(double x, double y) {
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
            hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
            hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1 ||
-           hit_acct_gift(x, y, 4) == 1 || hit_acct_gift(x, y, 5) == 1 || hit_acct_gift(x, y, 6) == 1 || hit_acct_gift(x, y, 7) == 1 || hit_acct_gift(x, y, 8) == 1;
+           hit_acct_gift(x, y, 4) == 1 || hit_acct_gift(x, y, 5) == 1 || hit_acct_gift(x, y, 6) == 1 || hit_acct_gift(x, y, 7) == 1 || hit_acct_gift(x, y, 8) == 1 || hit_acct_gift_scrollbar(x, y) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -232,12 +241,7 @@ static void touch_acct_menu(double x, double y) {
     }
 }
 static void touch_account(double x, double y, double action, double id) {
-    if (action == 2 && id == acct_gift_drag_id && acct_open == ACCT_GIFTS) {
-        double delta = y - acct_gift_drag_y;
-        if (delta > acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll - 1, 0, 9 - acct_gift_visible()); acct_gift_drag_y = y; }
-        else if (delta < -acct_gift_step() * 0.45) { acct_gift_scroll = clamp(acct_gift_scroll + 1, 0, 9 - acct_gift_visible()); acct_gift_drag_y = y; }
-        return;
-    }
+    if (touch_acct_gift_scroll(x, y, action, id) == 1 && action != 0) return;
     if (action == 2) {
         if (id == acct_drag) {
             acct_knob = clamp((x - acct_grab - acct_x() - 4) / (acct_w() - acct_knob_w() - 8), 0, 1);
@@ -245,15 +249,6 @@ static void touch_account(double x, double y, double action, double id) {
         return;
     }
     if (action == 1 || action == 3) {
-        if (id == acct_gift_drag_id) {
-            if (action == 1 && fabs(y - acct_gift_drag_start_y) < 12) {
-                double row = floor((y - acct_gift_list_top()) / acct_gift_step()) + acct_gift_scroll;
-                if (row >= 0 && row < 4) { acct_gift_choice = row; acct_gift_is_owned = 0; }
-                else if (row > 4 && row < 9) { acct_gift_choice = row - 5; acct_gift_is_owned = 1; }
-            }
-            acct_gift_drag_id = -1;
-            return;
-        }
         if (id == acct_drag) {
             acct_drag = -1;
             if (action == 1 && acct_knob >= 0.95) {
@@ -276,9 +271,7 @@ static void touch_account(double x, double y, double action, double id) {
     if (acct_busy != 0 || acct_done == 1 || acct_gift_busy != 0) {
         return;
     }
-    if (acct_open == ACCT_GIFTS && hit_rect(x, y, acct_x(), acct_gift_list_top(), acct_w(), acct_gift_visible() * acct_gift_step() - 8) == 1) {
-        acct_gift_drag_id = id; acct_gift_drag_start_y = y; acct_gift_drag_y = y; return;
-    }
+    if (touch_acct_gift_scroll(x, y, action, id) == 1) return;
     double i = 0;
     while (i < acct_fields()) {
         if (hit_acct_field(x, y, i) == 1) {
@@ -331,6 +324,11 @@ static void acct_poll_password(void) {
     }
 }
 static void acct_tick(void) {
+    if (acct_open == ACCT_GIFTS && acct_gift_drag_id == -1 && acct_gift_bar_drag_id == -1 && fabs(acct_gift_velocity) > 0.01) {
+        acct_gift_scroll = clamp(acct_gift_scroll + acct_gift_velocity * dt, 0, acct_gift_scroll_max());
+        acct_gift_velocity = acct_gift_velocity * exp(-5.2 * dt);
+        if (acct_gift_scroll <= 0 || acct_gift_scroll >= acct_gift_scroll_max()) acct_gift_velocity = 0;
+    }
     if (acct_gift_busy == 1) {
         double gift_status = net_gift_action_status();
         if (gift_status >= 2) {
