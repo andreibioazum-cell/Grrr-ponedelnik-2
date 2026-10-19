@@ -66,7 +66,7 @@ static void codecracker_tick_solo(void) {
     }
     codecracker_touch_cd_left = codecracker_touch_cd;
     codecracker_heal();
-    enemy_apply_damage_at(codecracker_touch_damage, player->x, player->y);
+    enemy_apply_damage_at(codecracker_bite_damage(player_level), player->x, player->y);
 }
 
 /* Online: slot i's outbound timer (i) heals me when I am the CodeCracker,
@@ -100,8 +100,10 @@ static void codecracker_tick_online(void) {
                 arr_set(codecracker_touch_cds, max_players + s, codecracker_touch_cd);
                 /* Through take_damage_at, so a raised block facing the
                  * CodeCracker cuts the bite online just like a punch. */
-                if (take_damage_at(codecracker_touch_damage, arr_get(remotes, b + 1),
-                                   arr_get(remotes, b + 2)) == 1) {
+                /* The bite of a remote CodeCracker hurts as much as his own
+                 * level says, exactly like the punch damage of a remote. */
+                if (take_damage_at(codecracker_bite_damage(net_player_level(s)),
+                                   arr_get(remotes, b + 1), arr_get(remotes, b + 2)) == 1) {
                     return;
                 }
             }

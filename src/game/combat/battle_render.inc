@@ -137,11 +137,17 @@ static void award_battle_result(double result) {
         save_progress();
         grant_achievement(ACH_FIRST_WIN);
         /* Flawless win: keep full health and take no hits during the battle.
-         * player_was_hit includes damage intercepted by Ebuc's turrets. */
+         * player_was_hit includes damage intercepted by буК's turrets. */
         if (player->hp >= player->max_hp && player_was_hit == 0) {
             grant_achievement(ACH_LAST_HP);
         }
         ds_log("win +%g cups +%g candies", cup_win, candy_win);
+        return;
+    }
+    if (dev_access() == 1) {
+        /* Админ не теряет кубки за поражение: выигрыш по-прежнему платит,
+         * но проигрыш больше ничего не отнимает. */
+        ds_log("lose: no cups taken away, admin mode");
         return;
     }
     if (admin_cups_allowed() == 0) {
@@ -326,13 +332,21 @@ static void draw_controls(void) {
     draw_battle_back();
 }
 
+/* Экран итога боя всегда фиолетовый, в обеих темах: в старой теме розовая
+ * кнопка «Назад» и чёрная заливка превращали экран победы или поражения в
+ * розовый. Заливка - тёмно-фиолетовая, панель и кнопка - фиолетовые. */
+#define RESULT_CURTAIN 0xCC1A1A2E
+/* Тёмно-розовая заливка старой темы под её розовым окном поражения. */
+#define RESULT_ROSE_CURTAIN 0xCC3A1530
+
 static void draw_result(const char *title) {
-    rect(0, 0, screen_w, screen_h, 0x99000000);
+    double face = result_face_color();
+    rect(0, 0, screen_w, screen_h, face == RESULT_PURPLE ? RESULT_CURTAIN : RESULT_ROSE_CURTAIN);
     double w = 430;
     double h = 250;
     double x = (screen_w - w) / 2;
     double y = screen_h / 2 - h / 2;
-    roundrect(x, y, w, h, 30, 0x5F10A0);
+    roundrect(x, y, w, h, 30, face);
     double reward = 0;
     if (finished == 1) {
         reward = cup_win;
@@ -340,7 +354,9 @@ static void draw_result(const char *title) {
         reward = 0 - cup_lose;
     }
     ctext_scaled(title, y + 36, 0xFFFFFF, 1.12);
-    if (finished == 2) {
+    if (finished == 2 && dev_access() == 1) {
+        ctext_scaled(tr_cups_admin(), y + 126, 0xFFFFFF, 0.9);
+    } else if (finished == 2) {
         ctext_scaled(tr_cups_lose(reward), y + 126, 0xFFFFFF, 0.9);
     } else if (admin_cups_allowed() == 0) {
         ctext_scaled(tr_cups_cheated(), y + 126, 0xFFFFFF, 0.9);

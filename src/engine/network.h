@@ -169,6 +169,11 @@ double net_load_astra(void);
 double net_load_astra_level(void);
 double net_load_astra_levels_unlocked(void);
 void net_save_astra(double owned, double level, double levels_unlocked);
+
+/* Ветка уровней CodeCracker: своя, не общая с обычным кубом. */
+double net_load_codecracker_level(void);
+double net_load_codecracker_levels_unlocked(void);
+void net_save_codecracker(double level, double levels_unlocked);
 /* Forget a pending cloud save: the device holds nothing worth pushing. */
 void net_mark_progress_synced(void);
 void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
@@ -250,9 +255,13 @@ double net_change_password_status(void);
  * 4 recipient not found, 5 not enough cups, 6 no sticker in inventory,
  * 7 bad recipient (or gifting yourself), 8 collection full (999). */
 double net_gift_count(double gift);
+/* Local count change: a sticker was bought, sold or sent, so the collection
+ * changes right away. Only that one counter moves; the rest stay as they are. */
+void net_gift_count_add(double gift, double delta);
 void net_gift_refresh(void);
-void net_gift_action(double gift, const char *recipient, double grant);
+double net_gift_action(double gift, const char *recipient, double grant, double hue);
 double net_gift_action_status(void);
+double net_gift_hue(void);
 /* Catalogue of five stickers: 0 poop, 1 cake, 2 bear, 3 rocket, 4 emerald
  * (the most expensive one). net_gift_types() is the list length; the price
  * is what the shop charges, the refund is half of it. */

@@ -61,6 +61,13 @@ static double hit_settings_row(double px, double py, double i) {
 
 static double lobby_title_y(void) { return menu_top() - 70; }
 
+/* Надписи лобби (заголовок, приветствие, кубки) стоят ровно посередине
+ * колонки кнопок: в новой теме это середина экрана, в старой - середина
+ * прижатой влево колонки, а не её левый край. */
+static double lobby_label_x(double w) {
+    return menu_x() + (btn_w - w) / 2;
+}
+
 static double lobby_hello_y(void) { return 18; }
 
 static double lobby_money_y(void) { return menu_row(lobby_rows - 1) + btn_h + 12; }

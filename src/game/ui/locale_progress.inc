@@ -87,10 +87,18 @@ static const char *tr_level_unlock_cost(double cost) {
 
 static const char *tr_class_level_effect(double cls, double n) {
     if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
-    }
-    if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
+        /* His levels are his own, not the ordinary cube's: a bite that hits
+         * harder, an overclock that comes back sooner and thicker overclock
+         * armour. */
+        if (n == 1) {
+            return language == 1 ? "Укус: урон +10%" : "Bite: damage +10%";
+        }
+        if (n == 2) {
+            return language == 1 ? "Ульта: перезарядка 3 с" : "Ult: cooldown 3 s";
+        }
+        if (n == 3) {
+            return language == 1 ? "Ульта: поглощение урона 60%" : "Ult: damage absorb 60%";
+        }
     }
     if (cls == 1 && n == 1) {
         if (language == 1) {
@@ -271,9 +279,9 @@ static const char *tr_skin_elf(void) {
 
 static const char *tr_skin_elf_hint(void) {
     if (language == 1) {
-        return "Подарок ебуКа";
+        return "Подарок буКа";
     }
-    return "ebuC's gift";
+    return "буК's gift";
 }
 
 static const char *tr_skin_legends_hint(void) {
@@ -307,6 +315,15 @@ static const char *tr_cups_cheated(void) {
         return "Читы: кубки не начисляются";
     }
     return "Cheats used: no Cups";
+}
+
+/* The admin keeps the cups after a loss, so the result screen says so
+ * instead of promising a deduction that never happens. */
+static const char *tr_cups_admin(void) {
+    if (language == 1) {
+        return "Админ: кубки не снимаются";
+    }
+    return "Admin: no Cups lost";
 }
 
 static const char *tr_cups_lose(double amount) {

@@ -42,6 +42,33 @@
 > Поэтому если с правилами возиться сейчас не хочется, обнови APK, а правила
 > опубликуй позже.
 
+### Новые ключи этой версии правил
+
+В `firebase.rules.json` из этой ветки появились ключи CodeCracker —
+`codecracker_level` и `codecracker_levels` (у него своя ветка уровней, не
+общая с обычным кубом), а диапазон `azum_skin` расширен с 0..1 до 0..3
+(раньше игра не могла записать скин, и PATCH прогресса отклонялся целиком).
+
+Пока эти правила не опубликованы, игра шлёт в базу профиль с ключами
+CodeCracker, и Firebase отклоняет **весь** запрос: не поделать, профиль
+не сохранится. Поэтому после обновления APK опубликуй правила целиком
+(шаг 1 выше) — или точечно добавь в редакторе два `validate`:
+
+```
+"codecracker_level": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" },
+"codecracker_levels": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" },
+```
+
+и поправь диапазон скина на `"azum_skin": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" }`.
+
+Оттенок изумруда, который выбирает админ, лежит рядом со счётчиками стикеров -
+`gifts/emerald_hue` (0..7, 0 - обычная радуга). Его тоже нужно разрешить в
+правилах, иначе админ не сможет выдать изумруд с оттенком:
+
+```
+"emerald_hue": { ".write": "auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')", ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7" },
+```
+
 ## 2. Вернуть кубки (визуальный редактор данных)
 
 Консоль пишет в базу **в обход правил**, поэтому руками можно поставить любое

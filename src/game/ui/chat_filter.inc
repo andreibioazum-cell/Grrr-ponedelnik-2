@@ -230,7 +230,8 @@ static int cf_is_link(const char *raw) {
     return 0;
 }
 
-/* Латинские слова на «eb» из самой игры и из обихода: ebuC, eBay, ebook. */
+/* Латинские слова на «eb»: eBay, ebook и старое латинское имя класса буК
+ * (ebuC) - чтобы старое название в чате не маскировалось. */
 static int cf_latin_eb_ok(const char *raw) {
     static const char *const ok[] = {"ebuc", "ebay", "ebook", 0};
     const char *const *k;

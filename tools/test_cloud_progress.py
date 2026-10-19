@@ -39,6 +39,20 @@ static const char *CLOUD_NO_ASTRA =
     "{\"nick\":\"tester\",\"cups\":100,\"candies\":20,\"cls\":0,\"azum\":0,\"santa\":0,"
     "\"ebuc\":0,\"level\":0,\"levels\":0}";
 
+static const char *CLOUD_CODECRACKER =
+    "{\"nick\":\"tester\",\"cups\":100,\"candies\":20,\"cls\":6,\"azum\":0,\"santa\":0,"
+    "\"ebuc\":0,\"level\":1,\"levels\":1,\"ordinary_level\":0,\"ordinary_levels\":0,"
+    "\"azum_level\":0,\"azum_levels\":0,\"santa_level\":0,\"santa_levels\":0,"
+    "\"ebuc_level\":0,\"ebuc_levels\":0,\"astra_level\":0,\"astra_levels\":0,"
+    "\"codecracker_level\":1,\"codecracker_levels\":2}";
+
+static const char *CLOUD_CODECRACKER_HI =
+    "{\"nick\":\"tester\",\"cups\":100,\"candies\":20,\"cls\":6,\"azum\":0,\"santa\":0,"
+    "\"ebuc\":0,\"level\":3,\"levels\":3,\"ordinary_level\":0,\"ordinary_levels\":0,"
+    "\"azum_level\":0,\"azum_levels\":0,\"santa_level\":0,\"santa_levels\":0,"
+    "\"ebuc_level\":0,\"ebuc_levels\":0,\"astra_level\":0,\"astra_levels\":0,"
+    "\"codecracker_level\":3,\"codecracker_levels\":3}";
+
 static const char *CLOUD_LEGACY_ASTRA =
     "{\"nick\":\"tester\",\"cups\":100,\"candies\":20,\"cls\":5,\"azum\":0,\"santa\":0,"
     "\"ebuc\":0,\"astra\":0,\"azum_skin\":1,\"level\":2,\"levels\":3,\"astra_level\":2,"
@@ -67,7 +81,7 @@ static int run_offline_buy(const char *dir) {
     assert(net_load_class() == 3);
     assert(net_load_candies() == 50);
     assert(net_load_cups() == 100);
-    puts("offline buy: the ebuC, its selection and the spent candies come back from the device");
+    puts("offline buy: буК, its selection and the spent candies come back from the device");
     return 0;
 }
 
@@ -142,6 +156,32 @@ static int run_astra(const char *dir) {
     assert(net_load_astra_level() == 3);
     assert(net_load_class() == 4);
     puts("astra: an offline purchase, selection and levels survive an older cloud profile");
+    return 0;
+}
+
+static int run_codecracker(const char *dir) {
+    net_set_data_path(dir);
+    assert(net_load_codecracker_level() == 0);
+    assert(net_load_codecracker_levels_unlocked() == 0);
+    /* The CodeCracker's branch is saved on its own: the ordinary cube keeps
+     * its own levels, and the selected class takes the CodeCracker's. */
+    net_save_codecracker(2, 2);
+    net_save_progress_all(90, 20, 6, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    assert(net_load_codecracker_level() == 2);
+    assert(net_load_codecracker_levels_unlocked() == 2);
+    assert(net_load_ordinary_level() == 0);
+    assert(net_load_ordinary_levels_unlocked() == 0);
+    assert(net_load_level() == 2 && net_load_levels_unlocked() == 2);
+    /* A cloud profile with a lower branch does not drag the device branch
+     * down: a level bought on the device is never lost. */
+    assert(apply_user_json_keep_local(CLOUD_CODECRACKER) == 1);
+    assert(net_load_codecracker_level() == 2);
+    assert(net_load_codecracker_levels_unlocked() == 2);
+    /* A higher cloud branch wins, and there is nothing to push back. */
+    assert(apply_user_json_keep_local(CLOUD_CODECRACKER_HI) == 0);
+    assert(net_load_codecracker_level() == 3);
+    assert(net_load_codecracker_levels_unlocked() == 3);
+    puts("codecracker: its own level branch is saved and restored apart from the ordinary cube");
     return 0;
 }
 
@@ -253,6 +293,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "lower-cups") == 0) return run_lower_cups(argv[2]);
     if (strcmp(argv[1], "clean") == 0) return run_clean(argv[2]);
     if (strcmp(argv[1], "astra") == 0) return run_astra(argv[2]);
+    if (strcmp(argv[1], "codecracker") == 0) return run_codecracker(argv[2]);
     if (strcmp(argv[1], "legacy-local") == 0) return run_legacy_local(argv[2]);
     if (strcmp(argv[1], "legacy-profile") == 0) return run_legacy_profile(argv[2]);
     if (strcmp(argv[1], "admin-ban-guard") == 0) return run_admin_ban_guard(argv[2]);
@@ -347,7 +388,13 @@ def main():
         astra.mkdir()
         subprocess.run([*run, "astra", str(astra)], check=True)
         saved = (astra / "progress.dat").read_text(encoding="utf-8").split()
-        assert len(saved) == 22 and saved[18:] == ["1", "3", "3", "0"], saved
+        assert len(saved) == 24 and saved[18:] == ["1", "3", "3", "0", "0", "0"], saved
+
+        codecracker = temp / "codecracker"
+        codecracker.mkdir()
+        subprocess.run([*run, "codecracker", str(codecracker)], check=True)
+        saved = (codecracker / "progress.dat").read_text(encoding="utf-8").split()
+        assert len(saved) == 24 and saved[22:24] == ["3", "3"], saved
 
         legacy_local = temp / "legacy-local"
         legacy_local.mkdir()

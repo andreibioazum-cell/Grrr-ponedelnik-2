@@ -9,3 +9,6 @@ static double admin_cheat_nocd(void);
 static double admin_any_cheat_on(void);
 static void admin_battle_stain_reset(void);
 static double admin_cups_allowed(void);
+static double admin_hue_row_y(void);
+static double admin_hue_swatch_w(void);
+static double admin_hue_at(double x, double y);

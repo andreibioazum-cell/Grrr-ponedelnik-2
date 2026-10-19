@@ -289,8 +289,12 @@ static void draw_acct_gifts(void) {
     }
     double total = acct_gift_own_total();
     if (total < 1) {
+        /* Пустая коллекция: подпись живёт под заголовком «МОИ ПОДАРКИ», в
+         * правой колонке. По середине экрана она попадала на магазин и
+         * выглядела как сообщение обо всей странице. */
         const char *empty = language == 1 ? "Пока нет подарков" : "No stickers yet";
-        ctext_scaled(empty, vt + acct_gift_view_h() / 2 - 8, text_color, fit_text_scale(empty, acct_gift_col_w() - 16, 0.55));
+        text_in_box(empty, acct_gift_x(1), vt, acct_gift_col_w(), 22, text_color,
+                    fit_text_scale(empty, acct_gift_col_w() - 12, 0.5));
     } else {
         double row = floor(acct_gift_scroll / acct_gift_step());
         double cy = vt + row * acct_gift_step() - acct_gift_scroll;

@@ -232,6 +232,7 @@ static int put_default_user(const char *req_url, const char *nick, const char *p
              "\"level\":0,\"levels\":0,\"ordinary_level\":0,\"ordinary_levels\":0,"
              "\"azum_level\":0,\"azum_levels\":0,\"santa_level\":0,\"santa_levels\":0,"
              "\"ebuc_level\":0,\"ebuc_levels\":0,\"astra_level\":0,\"astra_levels\":0,"
+             "\"codecracker_level\":0,\"codecracker_levels\":0,"
              "\"bp\":0,\"azum_skin\":0,"
              "\"ach_flags\":0,\"ach_revives\":0%s%s}",
              enick, fb_enabled() ? "" : ",\"pass\":\"", fb_enabled() ? "" : epass);
@@ -309,12 +310,14 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
     pg.astra = 0;
     pg.astra_level = 0;
     pg.astra_levels_unlocked = 0;
+    pg.codecracker_level = 0;
+    pg.codecracker_levels_unlocked = 0;
     pg.loaded = 1;
     pg_unlock();
     pending_cls = 0;
     pending_level = 0;
     pending_skin = 0;
-    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    progress_write(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     lg_lock();
     snprintf(lg.session_nick, sizeof(lg.session_nick), "%s", nick);
     snprintf(lg.session_pass, sizeof(lg.session_pass), "%s", pass);

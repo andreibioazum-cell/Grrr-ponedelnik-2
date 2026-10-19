@@ -500,10 +500,24 @@ void roundrect(float x, float y, float w, float h, float rad, uint32_t color) {
 static float stub_text_x;
 static float stub_text_y;
 static float stub_text_scale;
+/* Position of the last drawn line that contains a watched word. */
+static char stub_watch_name[32];
+static float stub_watch_x;
+static float stub_watch_y;
+static int stub_watch_hit;
+static void text_watch(const char *name) {
+    snprintf(stub_watch_name, sizeof(stub_watch_name), "%s", name ? name : "");
+    stub_watch_hit = 0;
+}
 void text_scaled(const char *s, float x, float y, uint32_t c, float scale) {
     stub_text_x = x;
     stub_text_y = y;
     stub_text_scale = scale;
+    if (stub_watch_name[0] && s && strstr(s, stub_watch_name)) {
+        stub_watch_x = x;
+        stub_watch_y = y;
+        stub_watch_hit = 1;
+    }
     adm_record_text(s);
     adm_record_color(c);
 }
@@ -646,6 +660,12 @@ double net_load_azum_skin(void) { return 0; }
 double net_load_astra(void) { return 0; }
 double net_load_astra_level(void) { return 0; }
 double net_load_astra_levels_unlocked(void) { return 0; }
+double net_load_codecracker_level(void) { return 0; }
+double net_load_codecracker_levels_unlocked(void) { return 0; }
+void net_save_codecracker(double level, double levels_unlocked) {
+    (void)level;
+    (void)levels_unlocked;
+}
 double net_load_achievement_flags(void) { return 0; }
 double net_load_azum_revives(void) { return 0; }
 void net_connect(const char *url, const char *room) { (void)url; (void)room; }
@@ -755,11 +775,24 @@ double net_gift_count(double gift) {
     int i = (int)gift;
     return i >= 0 && i < 8 ? stub_gift_counts[i] : 0;
 }
+/* A local change of one counter: the rest of the collection stays as it is. */
+void net_gift_count_add(double gift, double delta) {
+    int i = (int)gift;
+    if (i < 0 || i >= 8) return;
+    stub_gift_counts[i] = stub_gift_counts[i] + delta;
+    if (stub_gift_counts[i] < 0) stub_gift_counts[i] = 0;
+}
 double net_gift_types(void) { return 5; }
 void net_gift_refresh(void) {}
-void net_gift_action(double gift, const char *recipient, double grant) {
-    (void)gift; (void)recipient; (void)grant;
+/* The action can be refused (another gift operation is already running). */
+static double stub_gift_action_ok = 1;
+double net_gift_action(double gift, const char *recipient, double grant, double hue) {
+    (void)gift; (void)recipient; (void)grant; (void)hue;
+    return stub_gift_action_ok;
 }
+/* The emerald's hue: 0 - the usual rainbow, 1..7 - the one the admin picked. */
+static double stub_gift_hue = 0;
+double net_gift_hue(void) { return stub_gift_hue; }
 static double stub_gift_status;
 double net_gift_action_status(void) {
     double v = stub_gift_status;
@@ -1103,6 +1136,15 @@ static void test_gifts_page(void) {
     /* Пять карточек магазина - пять картинок, без повторов. */
     assert(gift_tex_draws == 5);
     assert(str_eq(last_gift_tex, "gift_emerald.png") == 1);
+    /* Пустая коллекция пишет «Пока нет подарков» под заголовком
+     * «МОИ ПОДАРКИ», в правой колонке, а не посередине экрана. */
+    text_watch("Пока нет подарков");
+    draw_acct_gifts();
+    assert(stub_watch_hit == 1);
+    assert(stub_watch_x >= acct_gift_x(1) - 1);
+    assert(stub_watch_x <= acct_gift_x(1) + acct_gift_col_w());
+    assert(stub_watch_y < acct_gift_view_top() + 30);
+    text_watch("");
 
     /* Две какашки - две отдельные карточки, изумруд - третья. */
     stub_gift_counts[0] = 2;
@@ -1168,6 +1210,47 @@ static void test_gifts_page(void) {
     stub_gift_status = 2;
     acct_poll_gifts();
     assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
+    acct_msg = "";
+
+    /* Продажа убирает из коллекции только проданный стикер: вторая какашка
+     * и изумруд остаются на месте. Раньше список обнулялся целиком, и
+     * казалось, что вместе с какашкой продали ещё и изумруд. */
+    stub_gift_counts[0] = 2;
+    stub_gift_counts[4] = 1;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 3;
+    stub_gift_cups = 137;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[0] == 1 && stub_gift_counts[4] == 1);
+    assert(acct_gift_own_total() == 2);
+    assert(acct_gift_own_id(0) == 0 && acct_gift_own_id(1) == 4);
+    acct_msg = "";
+
+    /* Отказ в действии (уже идёт другая операция) не оставляет страницу
+     * занятой надписью «Продаём...». */
+    stub_gift_action_ok = 0;
+    stub_gift_counts[0] = 1;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_sell();
+    assert(acct_gift_busy == 0 && acct_gift_busy_mode == 3);
+    stub_gift_action_ok = 1;
+    acct_msg = "";
+
+    /* Покупка добавляет ровно один стикер и не трогает остальные. */
+    acct_gift_choice = 4;
+    acct_gift_is_owned = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 2;
+    stub_gift_cups = 900;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[4] == 2 && stub_gift_counts[0] == 1);
     acct_msg = "";
 
     /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после
@@ -2583,7 +2666,7 @@ int main(void) {
         assert(player->hp == player->max_hp);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        /* Ebuc's turret shield leaves player HP untouched, but the blocked
+        /* буК's turret shield leaves player HP untouched, but the blocked
          * hit still disqualifies the achievement. */
         finished = 0;
         cups_awarded = 0;
@@ -2771,8 +2854,10 @@ int main(void) {
     codecracker_refresh();
     assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
     assert(player_max_hp_for(CLASS_CODECRACKER) == 12 && codecracker_hp == 12);
-    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.63);
+    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.529);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
+    /* The overclock recharges in 4 seconds. */
+    assert(codecracker_super_cd == 4);
     assert(class_has_super(CLASS_CODECRACKER) == 1 && codecracker_super_active() == 0);
     /* The overclock ultimate: 7 seconds of triple speed and half damage,
      * then it is just an ordinary cube with a small HP pool again. */
@@ -2790,6 +2875,114 @@ int main(void) {
     }
     codecracker_super_t = 0;
     assert(fabs(player_walk_speed() - joy_speed * admin_cheat_speed_mult()) < 1e-6);
+    /* The CodeCracker has a level branch of its own: the ordinary cube keeps
+     * its own levels, and the two never move together. */
+    {
+        double ordinary_lv = class_level_of(CLASS_ORDINARY);
+        double ordinary_un = class_unlocked_of(CLASS_ORDINARY);
+        set_class_progress(CLASS_ORDINARY, 1, 2);
+        set_class_progress(CLASS_CODECRACKER, 3, 3);
+        assert(class_level_of(CLASS_ORDINARY) == 1 && class_unlocked_of(CLASS_ORDINARY) == 2);
+        assert(class_level_of(CLASS_CODECRACKER) == 3 && class_unlocked_of(CLASS_CODECRACKER) == 3);
+        player_class = CLASS_CODECRACKER;
+        sync_selected_class();
+        assert(player_level == 3 && levels_unlocked == 3);
+        player_class = CLASS_ORDINARY;
+        sync_selected_class();
+        assert(player_level == 1 && levels_unlocked == 2);
+        set_class_progress(CLASS_ORDINARY, ordinary_lv, ordinary_un);
+        set_class_progress(CLASS_CODECRACKER, 0, 0);
+    }
+    /* Every CodeCracker level gives a bonus of his own: level 1 - a harder
+     * bite, level 2 - the overclock comes back sooner (4 s -> 3 s), level 3 -
+     * thicker overclock armour (half of the damage -> 60%). */
+    {
+        assert(fabs(codecracker_bite_damage(0) - codecracker_touch_damage) < 1e-9);
+        assert(fabs(codecracker_bite_damage(1) - codecracker_touch_damage * 1.10) < 1e-9);
+        assert(fabs(codecracker_bite_damage(3) - codecracker_bite_damage(1)) < 1e-9);
+        assert(codecracker_super_cd_for(0) == codecracker_super_cd);
+        assert(codecracker_super_cd_for(1) == codecracker_super_cd);
+        assert(codecracker_super_cd_for(2) == 3 && codecracker_super_cd_for(3) == 3);
+        assert(codecracker_absorb_for(0) == codecracker_super_absorb);
+        assert(codecracker_absorb_for(2) == codecracker_super_absorb);
+        assert(codecracker_absorb_for(3) == 0.6);
+        /* The levels screen tells the CodeCracker his own bonuses, not the
+         * ordinary cube's ones. */
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 1),
+                      tr_class_level_effect(CLASS_ORDINARY, 1)) != 0);
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 2),
+                      tr_class_level_effect(CLASS_ORDINARY, 2)) != 0);
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 3),
+                      tr_class_level_effect(CLASS_ORDINARY, 3)) != 0);
+        /* A level 3 CodeCracker really takes 60% of the damage instead of
+         * half of it while the overclock runs. */
+        player_class = CLASS_CODECRACKER;
+        player_level = 3;
+        codecracker_super_t = codecracker_super_time;
+        player->max_hp = codecracker_hp;
+        player->hp = codecracker_hp;
+        take_damage(2);
+        assert(fabs(player->hp - (codecracker_hp - 0.8)) < 1e-9);
+        player_level = 0;
+        player->hp = codecracker_hp;
+        take_damage(2);
+        assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
+        codecracker_super_t = 0;
+    }
+    /* The result window: purple for a win and in the new theme, rose for a
+     * loss in the old theme. */
+    {
+        new_theme = 0;
+        apply_theme();
+        finished = 2;
+        assert(result_face_color() == 0xFFD4508A);
+        finished = 1;
+        assert(result_face_color() == 0xFF5F10A0);
+        new_theme = 1;
+        apply_theme();
+        finished = 2;
+        assert(result_face_color() == 0xFF5F10A0);
+        finished = 0;
+    }
+    /* The emerald: its colour is the one the admin picked, and the picture
+     * shimmers with it. */
+    {
+        stub_gift_hue = 0;
+        assert(gift_rarity(4) == 3 && strcmp(gift_tex(4), "gift_emerald.png") == 0);
+        assert(gift_emerald_base_hue() == 0);
+        assert(gift_hue_color(0.0) == 0xFFFF0000u);
+        assert(gift_hue_color(1.0 / 3.0) == 0xFF00FF00u);
+        stub_gift_hue = 4;
+        assert(fabs(gift_emerald_base_hue() - 0.5) < 1e-9);
+        assert(gift_hue_color(0.5) == 0xFF00FFFFu);
+        stub_gift_hue = 0;
+    }
+    /* The admin picks the emerald's hue: the swatches sit in their own row
+     * and the chosen one is remembered. */
+    {
+        int saved_w = screen_w, saved_h = screen_h;
+        screen_w = 1280;
+        screen_h = 720;
+        admin_tab = 1;
+        admin_gift_choice = 4;
+        admin_gift_hue = 0;
+        double sw = admin_hue_swatch_w();
+        double hy = admin_hue_row_y() + admin_row_h() / 2;
+        double hx = admin_panel_x() + admin_pad() + sw / 2;
+        assert(admin_hue_at(hx, hy) == 0);
+        assert(admin_hue_at(hx + 3 * (sw + ADMIN_HUE_GAP), hy) == 3);
+        assert(admin_hue_at(admin_panel_x() + admin_pad() - 5, hy) == -1);
+        admin_panel_press(hx + 3 * (sw + ADMIN_HUE_GAP), hy);
+        assert(admin_gift_hue == 3);
+        /* The hue row belongs to the emerald only. */
+        admin_gift_choice = 1;
+        assert(admin_hue_at(hx, hy) == -1);
+        admin_gift_choice = 4;
+        admin_gift_hue = 0;
+        admin_tab = 0;
+        screen_w = saved_w;
+        screen_h = saved_h;
+    }
     player_class = CLASS_ORDINARY;
     assert(class_owned_of(CLASS_CODECRACKER) == 1 && class_visible(CLASS_CODECRACKER) == 1);
     assert(visible_class_at(5) == CLASS_CODECRACKER);
@@ -3241,6 +3434,12 @@ int main(void) {
     cups = 0;
     award_battle_result(1);
     assert(cups == 50);
+    /* In admin mode a loss does not take the cups away. */
+    if (dev_access() == 1) {
+        cups = 30;
+        award_battle_result(2);
+        assert(cups == 30);
+    }
     /* Entering a battle with a cheat already on stains it as well. */
     cheat_stain = 0;
     cheat_speed = 1;
@@ -3530,9 +3729,18 @@ int main(void) {
         assert(new_theme == 0 && t_dir == 0);
         assert(ui_purple == 0xFFD4508A && bg_screen == 0xFF3A1530);
         assert(menu_x() == screen_margin);
+        /* The lobby labels stand exactly in the middle of the button column:
+         * centred on the buttons, not to the left of them; the battle pass
+         * button stays in its corner. */
+        assert(lobby_label_x(100) == menu_x() + (btn_w - 100) / 2);
+        assert(bpass_corner_x() == screen_w - screen_margin - bpass_corner_w());
+        /* The old theme is the rose one, so its cards are rose too. */
+        assert(card_bg == 0xFF44203A);
         press_new = 0;
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(4) + settings_btn_h() / 2, 0, 21);
         assert(new_theme == 1 && ui_purple == 0xFF5F10A0);
+        assert(lobby_label_x(100) == center_x(100));
+        assert(card_bg == 0xFF2A2A40);
         press_new = 0;
         /* Row 5 opens the legal documents window over the settings. */
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(5) + settings_btn_h() / 2, 0, 22);
@@ -3613,7 +3821,7 @@ int main(void) {
     test_admin_keyboard();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
-     * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */
+     * candies; tier 4 unlocks the Elf буК skin, tier 7 grants Santa. */
     {
         bp_xp = 0;
         bp_claimed = 0;

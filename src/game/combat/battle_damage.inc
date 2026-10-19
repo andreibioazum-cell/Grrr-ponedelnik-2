@@ -31,7 +31,7 @@ static double take_damage(double dmg) {
         dmg_from_k = 0;
         return 0;
     }
-    /* Track the hit before Ebuc's turrets absorb it: shielded damage still
+    /* Track the hit before буК's turrets absorb it: shielded damage still
      * disqualifies the no-damage victory achievement. */
     if (dmg > 0) {
         player_was_hit = 1;
@@ -44,7 +44,7 @@ static double take_damage(double dmg) {
     dmg_from_k = 0;
     if (player_class == CLASS_CODECRACKER && codecracker_super_t > 0) {
         /* The running overclock absorbs half of everything that lands. */
-        real = real * (1 - codecracker_super_absorb);
+        real = real * (1 - codecracker_absorb_for(player_level));
     }
     if (player_class == CLASS_EBUC) {
         real = player_shield_absorb(real);
