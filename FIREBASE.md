@@ -125,6 +125,11 @@ python3 tools/rotate_db_secret.py --show
 
 ### 1. Опубликовать правила
 
+> Терминал не обязателен: то же самое делается мышкой в веб-консоли —
+> **Realtime Database → Rules → вставить `firebase.rules.json` → Publish**.
+> Пошагово, вместе с восстановлением кубков, — в
+> [docs/firebase-console.md](docs/firebase-console.md).
+
 1. <https://console.firebase.google.com> → проект `cubicbattleserver-19ae2`.
 2. **Build → Realtime Database → Rules** (слева, в разделе Build).
 3. Удалить старый текст, вставить содержимое `firebase.rules.json` целиком.
