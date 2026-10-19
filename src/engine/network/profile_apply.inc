@@ -227,6 +227,7 @@ static int apply_user_json_keep_local(const char *resp) {
     int local_al = 0, local_au = 0, local_sl = 0, local_su = 0, local_el = 0, local_eu = 0;
     int local_atl = 0, local_atu = 0;
     int local_cups = 0, local_candies = 0, local_ol = 0, local_ou = 0, local_sk = 0;
+    int local_lv = 0, local_lu = 0, local_bp = 0;
     progress_read();
     pg_lock();
     if (pg.loaded) {
@@ -246,6 +247,9 @@ static int apply_user_json_keep_local(const char *resp) {
         local_eu = pg.ebuc_levels_unlocked;
         local_cups = pg.cups;
         local_candies = pg.candies;
+        local_lv = pg.level;
+        local_lu = pg.levels_unlocked;
+        local_bp = pg.bp_level;
         local_ol = pg.ordinary_level;
         local_ou = pg.ordinary_levels_unlocked;
         local_sk = pg.azum_skin;
@@ -254,6 +258,18 @@ static int apply_user_json_keep_local(const char *resp) {
     apply_user_json(resp);
     if (!had)
         return 0;
+    /* A device with nothing on it (a fresh install, or the zeroed profile a
+     * sign-out leaves behind) must never overwrite the account: adopt the
+     * cloud copy and drop any stale "waiting for the cloud" marker. */
+    int local_has_progress = local_cups > 0 || local_candies > 0 || local_azum || local_santa || local_ebuc ||
+                             local_astra || local_cls != 0 || local_bp > 0 || local_lv > 0 || local_lu > 0 ||
+                             local_ol > 0 || local_ou > 0 || local_al > 0 || local_au > 0 || local_sl > 0 ||
+                             local_su > 0 || local_el > 0 || local_eu > 0 || local_atl > 0 || local_atu > 0 ||
+                             local_sk != 0;
+    if (!local_has_progress) {
+        cloud_dirty_set(0);
+        return 0;
+    }
     int cloud_azum, cloud_santa, cloud_ebuc, cloud_astra;
     pg_lock();
     cloud_azum = pg.azum;
@@ -262,7 +278,10 @@ static int apply_user_json_keep_local(const char *resp) {
     cloud_astra = pg.astra;
 
     if (dirty) {
-        if (pg.cups != local_cups) {
+        /* Cups are only ever spent through the shop, which writes the new
+         * balance straight to the database; a smaller local number is a stale
+         * copy (or a wiped device), so it may not drag the account down. */
+        if (local_cups > pg.cups) {
             pg.cups = local_cups;
             restored = 1;
         }

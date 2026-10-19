@@ -413,38 +413,3 @@ static int geo_tex_round(float x, float y, float sc, float tw, float th_, float 
 #undef GEO_TEX_RUV_Y
     return 1;
 }
-
-static int geo_text(const char *s, float x, float y, uint32_t c, float sc, const DSFont *fnt) {
-    if (!s || !fnt || !isfinite(x + y + sc) || sc <= 0)
-        return 1;
-    float asc = ds_font_ascent(fnt), lb = 0;
-    const DSFontGlyph *ref = ds_font_glyph(fnt, 'S');
-    if (ref) {
-        asc = ref->bearing_top;
-        lb = ref->bearing_x;
-    }
-    float pen = x - lb * sc, base = y + asc * sc;
-    for (const char *cur = s; *cur;) {
-        int cp = utf8_dec(&cur);
-        if (cp == '\n') {
-            pen = x - lb * sc;
-            base += ds_font_lineh(fnt) * sc;
-            continue;
-        }
-        const DSFontGlyph *g = ds_font_glyph(fnt, (uint32_t)cp);
-        if (!g)
-            continue;
-        if (g->width > 0 && g->height > 0) {
-            GeoVert q[4] = {
-                {pen + g->bearing_x * sc, base - g->bearing_top * sc, g->u0, g->v0, c},
-                {pen + (g->bearing_x + g->width) * sc, base - g->bearing_top * sc, g->u1, g->v0, c},
-                {pen + (g->bearing_x + g->width) * sc, base - (g->bearing_top - g->height) * sc, g->u1, g->v1, c},
-                {pen + g->bearing_x * sc, base - (g->bearing_top - g->height) * sc, g->u0, g->v1, c},
-            };
-            if (!geo_quad(q))
-                return 0;
-        }
-        pen += g->advance * sc;
-    }
-    return 1;
-}

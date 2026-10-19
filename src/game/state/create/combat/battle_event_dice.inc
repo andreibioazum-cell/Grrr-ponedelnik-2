@@ -1,4 +1,5 @@
 dice_active = 0;
+dice_off_t = 0;
 dice_throw_cd = 0;
 dice_next = 0;
 dice_throw_interval = 2.2;

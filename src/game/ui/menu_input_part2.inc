@@ -107,7 +107,7 @@ static double menu_button_hit(double x, double y) {
             if (hit_menu_row(x, y, i) == 1) return 1;
             i = i + 1;
         }
-        return 0;
+        return hit_bpass_corner(x, y);
     }
     if (game_state == ST_MODES) {
         /* Rows 0..4 and the promo button in the corner; the winter row is

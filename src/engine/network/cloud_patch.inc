@@ -341,8 +341,9 @@ void net_save_progress_all(double cups, double candies, double cls, double azum,
 
         cloud_dirty_set(1);
         queue_progress_patch(url, body);
-    } else {
-
-        cloud_dirty_set(1);
     }
+    /* No session: the save above only touched the device. Marking it dirty
+     * here is what used to wipe accounts: a sign-out zeroes the local profile,
+     * the marker survives on disk, and the next login pushes those zeros into
+     * the cloud (the merge below trusts a "dirty" device). */
 }

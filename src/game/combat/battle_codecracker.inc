@@ -128,44 +128,25 @@ static double codecracker_tint_slot(double slot) {
     return 0;
 }
 
-/* Overclock FX: a cool-blue particle stream and rotating energy arcs. It is
- * deterministic instead of random, so every frame is smooth and the same
- * effect can be drawn for a remote CodeCracker without syncing particles. */
+/* Overclock FX: a cool-blue particle stream. It is deterministic instead of
+ * random, so every frame is smooth and the same effect can be drawn for a
+ * remote CodeCracker without syncing particles. */
 static double codecracker_fx_color(double alpha, double rgb) {
     double a = clamp(alpha, 0, 255);
     return (((unsigned)(int)a) << 24) | ((unsigned)(int)rgb);
-}
-
-static void codecracker_fx_arc(double cx, double cy, double radius, double start, double sweep,
-                               double alpha, double rgb) {
-    double i = 0;
-    double steps = 9;
-    while (i < steps) {
-        double p0 = i / steps;
-        double p1 = (i + 1) / steps;
-        double a0 = start + sweep * p0;
-        double a1 = start + sweep * p1;
-        double aa = alpha * (0.32 + 0.68 * sin(p0 * pi));
-        line(cx + cos(a0) * radius, cy + sin(a0) * radius,
-             cx + cos(a1) * radius, cy + sin(a1) * radius, 2.2, codecracker_fx_color(aa, rgb));
-        i = i + 1;
-    }
 }
 
 static void draw_codecracker_fx_at(double cx, double cy, double angle, double phase) {
     double dx = cos(angle);
     double dy = sin(angle);
     double pulse = 0.5 + 0.5 * sin(phase * 8.5);
-    double spin = phase * 3.7;
     double blue = 0x0068D8FF;
     double cyan = 0x0000E5FF;
     double ice = 0x00C8F7FF;
 
-    /* No halo disc or ring around the cube (removed on request): the
-     * rotating arcs, sparks and orbiting motes carry the effect alone. */
-    codecracker_fx_arc(cx, cy, 43 + pulse * 4, spin, 1.55, 190, ice);
-    codecracker_fx_arc(cx, cy, 43 + pulse * 4, spin + 2.1, 1.0, 145, cyan);
-    codecracker_fx_arc(cx, cy, 37 - pulse * 2, 0 - spin * 1.35, 1.2, 125, blue);
+    /* No ring of any kind around the cube (removed on request): not the halo
+     * disc, not the rotating arcs, not a rim of orbiting motes. The speed is
+     * read from the spark stream behind the cube alone. */
 
     /* Fast sparks stream out behind the direction the cube is facing. */
     double i = 0;
@@ -194,23 +175,6 @@ static void draw_codecracker_fx_at(double cx, double cy, double angle, double ph
                 circle(px, py, size * 0.38, codecracker_fx_color(alpha + 70, 0x00FFFFFF));
             }
         }
-        i = i + 1;
-    }
-
-    /* Eight orbiting motes give the aura a jewel-like rim instead of a flat
-     * circle. Their tangent streaks make the acceleration read immediately. */
-    i = 0;
-    while (i < 8) {
-        double h = hash01(i * 47 + 101);
-        double a = spin * (0.75 + h * 0.18) + i * (2 * pi / 8);
-        double r = 34 + 7 * sin(phase * 5 + h * 2 * pi);
-        double px = cx + cos(a) * r;
-        double py = cy + sin(a) * r;
-        double tx = -sin(a) * (7 + h * 8);
-        double ty = cos(a) * (7 + h * 8);
-        double alpha = 135 + 80 * (0.5 + 0.5 * sin(phase * 7 + h * 6));
-        line(px - tx, py - ty, px + tx, py + ty, 1.5, codecracker_fx_color(alpha * 0.72, cyan));
-        circle(px, py, 2.2 + h * 1.8, codecracker_fx_color(alpha, ice));
         i = i + 1;
     }
 }

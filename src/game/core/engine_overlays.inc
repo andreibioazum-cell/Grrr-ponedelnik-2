@@ -1,6 +1,6 @@
 /* Overlay screens and HUD notices: the legal warning, the studio splash,
- * the alpha-test notice, the achievement toast and the FPS meter. Split out
- * of engine.inc to keep sources under the 450-line project limit. */
+ * the achievement toast and the FPS meter. Split out of engine.inc to keep
+ * sources under the 450-line project limit. */
 
 static void update_warning(void) {
     if (warn_open != 1) {
@@ -20,28 +20,6 @@ static void update_warning(void) {
     warn_a = 1;
     warn_t = warn_t + dt;
     warn_ready = clamp(warn_t / warn_wait, 0, 1);
-}
-
-static void update_start_screen(void) {
-    if (start_open != 1) {
-        return;
-    }
-    if (start_closing == 1) {
-        start_close_t = clamp(start_close_t + dt / start_fade, 0, 1);
-        double p = start_close_t;
-        start_a = 1 - p * p * (3 - 2 * p);
-        if (start_close_t >= 1) {
-            start_a = 0;
-            start_open = 0;
-            start_closing = 0;
-            /* The lobby has only just appeared: keep its buttons dead for
-             * a beat so the first real tap lands on a settled screen. */
-            lobby_lock_t = 0.6;
-        }
-        return;
-    }
-    start_a = 1;
-    start_t = start_t + dt;
 }
 
 static void update_studio(void) {
@@ -65,22 +43,6 @@ static void update_studio(void) {
         studio_bg_a = 0;
         studio_open = 0;
     }
-}
-
-static void update_alpha_notice(void) {
-    if (alpha_notice_done == 1) {
-        return;
-    }
-    if (warn_open == 1 || studio_open == 1 || start_open == 1) {
-        alpha_notice_t = 0;
-        return;
-    }
-    alpha_notice_t = alpha_notice_t + dt;
-    if (alpha_notice_t < alpha_notice_delay) {
-        return;
-    }
-    alpha_notice_done = 1;
-    alpha_notice_show(language);
 }
 
 static void tick_achievement_toast(void) {
@@ -141,11 +103,16 @@ static void draw_achievement_toast(void) {
 }
 
 
-/* Счётчик FPS в бою, внизу справа. Кадры копятся полсекунды, и только потом
- * число обновляется: так оно читается, а не мельтешит каждый кадр. Ниже
- * кнопки удара (её нижний край на 78 px выше края экрана), поэтому ничего не
- * перекрывает. */
+/* Счётчик FPS в бою, внизу справа. Считается по настоящим меткам кадров
+ * (ds_frame_seconds), а не по игровому dt: dt обрезан до 0.1 с, поэтому при
+ * просадке ниже десяти кадров счётчик по нему замирал бы на «10» и врал ровно
+ * тогда, когда нужен. Кадры копятся полсекунды, и только потом число
+ * обновляется: так оно читается, а не мельтешит каждый кадр. Разрыв длиннее
+ * полсекунды - это пауза, а не медленный кадр: окно начинается заново, иначе
+ * свернутое приложение оставляло бы на экране «0 FPS». Ниже кнопки удара
+ * (её нижний край на 78 px выше края экрана), поэтому ничего не перекрывает. */
 #define FPS_WINDOW 0.5
+#define FPS_GAP_MAX 0.5
 #define FPS_SCALE 0.45
 #define FPS_MARGIN 12
 
@@ -154,10 +121,13 @@ static double fps_frames;
 static double fps_shown;
 
 static void tick_fps_meter(void) {
-    if (dt <= 0) {
+    double frame = ds_frame_seconds();
+    if (!(frame > 0) || frame > FPS_GAP_MAX) {
+        fps_acc = 0;
+        fps_frames = 0;
         return;
     }
-    fps_acc = fps_acc + dt;
+    fps_acc = fps_acc + frame;
     fps_frames = fps_frames + 1;
     if (fps_acc >= FPS_WINDOW) {
         fps_shown = floor(fps_frames / fps_acc + 0.5);

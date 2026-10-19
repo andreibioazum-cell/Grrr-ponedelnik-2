@@ -190,6 +190,9 @@ static void discard_commands(void) {
         if (cmds[i].t == DS_CMD_TEXT) {
             free(cmds[i].v.tt.s);
             cmds[i].v.tt.s = NULL;
+        } else if (cmds[i].t == DS_CMD_TEXT_RAINBOW) {
+            free(cmds[i].v.tr.s);
+            cmds[i].v.tr.s = NULL;
         }
     }
     cmd_n = 0;

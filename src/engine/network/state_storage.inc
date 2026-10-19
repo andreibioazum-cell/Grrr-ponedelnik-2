@@ -277,6 +277,7 @@ static void cloud_dirty_set(int on) {
     else
         remove(path);
 }
+void net_mark_progress_synced(void) { cloud_dirty_set(0); }
 static int cloud_dirty_get(void) {
     char path[320];
     FILE *f;

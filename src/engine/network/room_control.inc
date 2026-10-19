@@ -79,12 +79,22 @@ void net_ban_set(const char *nick, double banned) {
     }
 }
 
+/* One flaky request used to lose the switch: the local value expired after a
+ * few seconds, the poller restored the previous event and, for example, the
+ * cube event turned back into plates. Retry a couple of times before giving
+ * up, so a short network hiccup no longer changes which event is running. */
 static void *event_write_job(void *arg) {
     HttpJob *j = (HttpJob *)arg;
-    int code;
+    int code = 0, attempt;
     if (!j)
         return NULL;
-    code = fb_http("PUT", j->url, j->body, NULL, 0);
+    for (attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0)
+            sleep_ms(250 * attempt);
+        code = fb_http("PUT", j->url, j->body, NULL, 0);
+        if (code == 200)
+            break;
+    }
     if (code == 200)
         LOG("event saved to cloud (%s)", j->body);
     else
@@ -118,9 +128,11 @@ void net_event_set(double mode) {
     int m = (int)mode;
     if (m < 0)
         m = 0;
-    /* 4 is the infection event: it used to be clamped down to 3 here, and 3
-     * has no handler on the game side, so "event 4" looked like it did
-     * nothing at all while the chat still announced it. */
+    /* 0 off, 1 disco, 2 plates, 3 Ded Moroz, 4 cube. The clamp used to stop at
+     * 3, and 3 had no handler, so "event 4" looked like it did nothing while
+     * the chat announced it. firebase.rules.json must allow the same range:
+     * a rule that stopped at 3 silently rejected the cube event, and the
+     * poller then brought the previous event (often the plates) back. */
     if (m > 4)
         m = 4;
     if (!net.base[0])

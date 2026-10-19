@@ -153,8 +153,11 @@ static void *reader_thread(void *arg) {
         if (start >= next_event) {
             if (pull_event(event_resp, sizeof(event_resp)) && net_gen_ok(gen)) {
                 int ev = num_int(event_resp, "", 0);
+                /* 0 off, 1 disco, 2 plates, 3 Ded Moroz, 4 cube. */
                 if (ev < 0)
                     ev = 0;
+                if (ev > 4)
+                    ev = 4;
                 lock();
                 /* An event this client just switched is still being written;
                  * overwriting it with the server's previous value here made

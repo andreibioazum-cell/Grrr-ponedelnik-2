@@ -65,12 +65,9 @@ static void update_music(void) {
 
 static void logic_update(void) {
     update_warning();
-    update_start_screen();
-    lobby_lock_t = tick_down(lobby_lock_t);
     docs_tick();
     acct_tick();
     update_studio();
-    update_alpha_notice();
     update_transition();
     update_music();
     reload_textures();
@@ -140,17 +137,13 @@ static void draw_screen(void) {
 static void logic_draw(void) {
     /* The outgoing screen stays alive through the press hold and fade. */
     draw_screen();
-    if (start_open == 1) {
-        draw_start_screen();
-    }
     if (warn_open == 1) {
         draw_warning();
     }
     if (studio_open == 1) {
         draw_studio();
     }
-    /* Snow above the studio splash, but never above the curtain or the
-     * epilepsy warning. */
+    /* Snow above the studio splash, but never above the epilepsy warning. */
     draw_newyear_over_notices();
     /* The documents window covers everything but the admin orb: it opens
      * over the epilepsy warning and over the login screen alike. */
@@ -327,24 +320,6 @@ static void logic_touch(double x, double y, double action, double id) {
         return;
     }
     if (studio_open == 1) {
-        if (action == 0) {
-            press_new = 0;
-        }
-        return;
-    }
-    /* The tap-to-start screen swallows every touch until it fades out;
-     * the warning (first launch) and the documents sit above it and have
-     * already had their chance at the touch by this point. */
-    if (start_open == 1 && warn_open == 0) {
-        touch_start(action);
-        if (action == 0) {
-            press_new = 0;
-        }
-        return;
-    }
-    /* Just after the start screen fades, the lobby is visible but not yet
-     * tappable: Play and friends unlock once the settle beat has passed. */
-    if (lobby_lock_t > 0 && game_state == ST_LOBBY) {
         if (action == 0) {
             press_new = 0;
         }

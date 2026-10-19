@@ -19,6 +19,7 @@
 
 static void dice_event_reset(void) {
     dice_active = 1;
+    dice_off_t = 0;
     dice_throw_cd = 0.6;
     dice_next = 0;
     arr_clear(dice_cubes);
@@ -139,11 +140,26 @@ static void dice_throw_cube(void) {
            dice_prize_of(arr_get(dice_cubes, b + 1)));
 }
 
+/* How long the round survives with the event turned off. A poll that still
+ * sees the previous event while the admin's write is in flight used to wipe
+ * every cube in one frame; a blink shorter than this keeps the round. */
+#define DICE_OFF_GRACE 1.0
+
 static void update_dice_event(void) {
     if (event_mode != 4) {
+        if (dice_active == 0) {
+            dice_off_t = 0;
+            return;
+        }
+        dice_off_t = dice_off_t + dt;
+        if (dice_off_t < DICE_OFF_GRACE) {
+            return;
+        }
+        dice_off_t = 0;
         dice_active = 0;
         return;
     }
+    dice_off_t = 0;
     if (dice_active == 0) {
         dice_event_reset();
     }

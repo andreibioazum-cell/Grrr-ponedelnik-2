@@ -27,10 +27,16 @@ static double admin_handle(const char *msg) {
         ds_log("admin: event 1 disco");
         return 1;
     }
-    if (str_eq(msg, "event 2") == 1 || str_eq(msg, "event 3") == 1) {
+    if (str_eq(msg, "event 2") == 1) {
         net_event_set(2);
         net_chat_send(ds_concat("СОБЫТИЕ «ПЛИТЫ» от ", by));
         ds_log("admin: event 2 plates");
+        return 1;
+    }
+    if (str_eq(msg, "event 3") == 1) {
+        net_event_set(3);
+        net_chat_send(ds_concat("СОБЫТИЕ «ДЕД МОРОЗ» от ", by));
+        ds_log("admin: event 3 santa");
         return 1;
     }
     if (str_eq(msg, "event 4") == 1) {
@@ -93,7 +99,19 @@ static double admin_handle(const char *msg) {
     return 0;
 }
 
+/* The panel owns a text field (gift recipient), so closing it any way -
+ * the X, a tap outside, the back button - must also drop the soft
+ * keyboard. Otherwise the keyboard stayed on screen over the lobby and
+ * swallowed touches after the panel was gone. */
+static void admin_keyboard_drop(void) {
+    if (keyboard_visible() == 1) {
+        keyboard_get_text_to(admin_gift_target, sizeof(admin_gift_target));
+        keyboard_hide();
+    }
+}
+
 static void admin_panel_close(void) {
+    admin_keyboard_drop();
     admin_panel_open = 0;
 }
 
@@ -116,6 +134,7 @@ static void admin_panel_press(double x, double y) {
     }
     double tab_y = admin_content_top();
     if (y >= tab_y && y <= tab_y + admin_row_h()) {
+        if (admin_tab == 1) admin_keyboard_drop();
         admin_tab = x < px + pw / 2 ? 0 : 1;
         play_button_click();
         return;
@@ -124,17 +143,17 @@ static void admin_panel_press(double x, double y) {
         double ty = admin_content_top();
         double rhg = admin_row_h();
         double row_index = floor((y - ty) / (rhg + admin_gap()));
-        if (row_index >= 1 && row_index <= 4) {
+        if (row_index >= 1 && row_index <= 5) {
             admin_gift_choice = row_index - 1;
             return;
         }
-        if (row_index == 5) {
+        if (row_index == 6) {
             keyboard_clear();
             if (admin_gift_target[0]) keyboard_type(admin_gift_target);
             keyboard_show();
             return;
         }
-        if (row_index == 6) {
+        if (row_index == 7) {
             keyboard_hide();
             if (admin_gift_target[0] && admin_gift_busy != 1) {
                 net_gift_action(admin_gift_choice, admin_gift_target, 1);
@@ -259,13 +278,13 @@ static void admin_draw_gifts(void) {
     double y = admin_content_top() + admin_row_h() + admin_gap();
     double w = admin_panel_w() - 2 * admin_pad();
     double rh = admin_row_h();
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 5; ++i) {
         const char *name = admin_gift_names[i];
-        if (language == 1) name = i == 0 ? "Роза" : i == 1 ? "Торт" : i == 2 ? "Мишка" : "Ракета";
+        if (language == 1) name = i == 0 ? "Какашка" : i == 1 ? "Торт" : i == 2 ? "Мишка" : i == 3 ? "Ракета" : "Изумруд";
         const char *label = ds_concat(admin_gift_choice == i ? "> " : "", name);
         admin_btn(label, px, y + i * (rh + admin_gap()), w, rh, admin_gift_choice == i, 0.55);
     }
-    double target_y = y + 4 * (rh + admin_gap());
+    double target_y = y + 5 * (rh + admin_gap());
     roundrect(px, target_y, w, rh, 8, admin_off());
     roundrect_outline(px, target_y, w, rh, 8, 2, admin_frame());
     const char *target_label = admin_gift_target[0] ? admin_gift_target : (language == 1 ? "Ник получателя" : "Recipient nickname");

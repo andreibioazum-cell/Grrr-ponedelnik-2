@@ -63,7 +63,6 @@ const char *str_sub(const char *s, double start, double len);
 const char *str_trim(const char *s);
 const char *str_upper(const char *s);
 void ds_set_activity(void *activity);
-void alpha_notice_show(double russian);
 void bye_notice_show(const char *text);
 void keyboard_show(void);
 void keyboard_hide(void);
@@ -118,12 +117,20 @@ void ds_sound_set_java_vm(void *vm);
 #define DS_FONT_PIXEL_HEIGHT 32
 void text(const char *string, float x, float y, uint32_t color);
 void text_scaled(const char *string, float x, float y, uint32_t color, float scale);
+/* Same as text_scaled, but every glyph takes the next hue step, so the line
+ * reads as a rainbow that starts at `hue` (0..1). */
+void text_rainbow(const char *string, float x, float y, float scale, float hue);
 
 int text_ink_width(const char *string);
 int text_ink_height(const char *string);
 int text_ink_top(const char *string);
 
 void ds_graphics_report_frame_interval(double seconds);
+/* Сколько длился последний настоящий кадр, в секундах: от начала прошлой
+ * итерации цикла до начала этой, вместе с ожиданием презентации. Ничего не
+ * обрезает, в отличие от игрового dt (тот ограничен 0.1 с). 0 - кадр ещё не
+ * измерен, окно только что восстановлено или часы не ответили. */
+double ds_frame_seconds(void);
 int ds_graphics_pixel_scale(void);
 
 int ds_graphics_init(AAssetManager *assets, ANativeWindow *window);

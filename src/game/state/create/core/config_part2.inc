@@ -45,18 +45,6 @@ warn_closing = 0;
 warn_close_t = 0;
 warn_fade = 1.25;
 warn_frame_th = 2;
-alpha_notice_done = 0;
-alpha_notice_t = 0;
-alpha_notice_delay = 0.1;
-/* The tap-to-start screen is armed by start_gate_init() at launch, not by
- * state_create(): a mid-session state reset must not trap the player. */
-start_open = 0;
-start_a = 1;
-start_t = 0;
-start_closing = 0;
-start_close_t = 0;
-start_fade = 0.8;
-lobby_lock_t = 0;
 studio_open = 0;
 studio_t = 0;
 studio_a = 0;

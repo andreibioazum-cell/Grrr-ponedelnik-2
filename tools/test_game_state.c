@@ -141,6 +141,11 @@ static double snowflake_centres[64];
 static int snowflake_centre_n;
 static int star_line_count;
 static double star_max_y;
+/* Обводка, у которой оба конца лежат на одной окружности вокруг центра FX, -
+ * это кусок кольца. У ульты CodeCracker таких быть не должно. */
+static int fx_orbit_lines;
+static double fx_center_x = 200;
+static double fx_center_y = 200;
 
 struct DSArray {
     double *data;
@@ -218,6 +223,9 @@ double dist(double x, double y, double a, double b) {
 double ds_mod(double value, double divisor) {
     return (double)((int)value % (int)divisor);
 }
+/* Длина настоящего кадра, которую счётчик FPS берёт у движка. */
+static double stub_frame_seconds;
+double ds_frame_seconds(void) { return stub_frame_seconds; }
 int str_eq(const char *a, const char *b) {
     return a && b && strcmp(a, b) == 0 ? 1 : 0;
 }
@@ -402,6 +410,7 @@ void tex_tint(float x, float y, const char *name, float angle, float scale, uint
         }
     }
 }
+void net_mark_progress_synced(void) {}
 void net_save_progress_all(double a, double b, double c, double d, double e, double f, double g, double h, double i,
                            double j, double k, double l, double m, double n, double o, double p, double q, double r) {
     (void)a;
@@ -488,12 +497,28 @@ void roundrect(float x, float y, float w, float h, float rad, uint32_t color) {
     adm_rr_n++;
 }
 
+static float stub_text_x;
+static float stub_text_y;
+static float stub_text_scale;
 void text_scaled(const char *s, float x, float y, uint32_t c, float scale) {
+    stub_text_x = x;
+    stub_text_y = y;
+    stub_text_scale = scale;
+    adm_record_text(s);
+    adm_record_color(c);
+}
+
+/* Rainbow lettering runs through the engine's own command in the game, so the
+ * host build only needs a stub that records the line. */
+static int rainbow_text_n;
+static char rainbow_text[16][48];
+void text_rainbow(const char *s, float x, float y, float scale, float hue) {
     (void)x;
     (void)y;
     (void)scale;
-    adm_record_text(s);
-    adm_record_color(c);
+    (void)hue;
+    if (s && rainbow_text_n < 16)
+        snprintf(rainbow_text[rainbow_text_n++], sizeof(rainbow_text[0]), "%s", s);
 }
 
 int text_ink_width(const char *s) {
@@ -511,14 +536,13 @@ int text_ink_top(const char *s) {
 }
 
 void line(float x1, float y1, float x2, float y2, float thickness, uint32_t color) {
-    (void)x1;
-    (void)y1;
-    (void)x2;
-    (void)y2;
+    double d1 = hypot(x1 - fx_center_x, y1 - fx_center_y);
+    double d2 = hypot(x2 - fx_center_x, y2 - fx_center_y);
     (void)thickness;
     star_line_count++;
     if (y1 > star_max_y) star_max_y = y1;
     if (y2 > star_max_y) star_max_y = y2;
+    if (d1 > 30 && d1 < 50 && fabs(d1 - d2) < 0.75) fx_orbit_lines++;
     adm_record_color(color);
 }
 
@@ -561,6 +585,8 @@ void tex_alpha(float x, float y, const char *name, float angle, float scale, dou
     }
 }
 
+static int gift_tex_draws;
+static const char *last_gift_tex;
 void tex(float x, float y, const char *name, float angle, float scale) {
     (void)x;
     (void)y;
@@ -568,6 +594,10 @@ void tex(float x, float y, const char *name, float angle, float scale) {
     (void)scale;
     ground_tiles++;
     last_ground = name;
+    if (name && strncmp(name, "gift_", 5) == 0) {
+        gift_tex_draws++;
+        last_gift_tex = name;
+    }
     if (name && SNOWFLAKE_TEX && strcmp(name, SNOWFLAKE_TEX) == 0) {
         snowflake_draws++;
         if (snowflake_centre_n < 64) {
@@ -593,8 +623,9 @@ static double stub_flash_sale;
 static int stub_live_refreshes;
 double net_flash_sale(void) { return stub_flash_sale; }
 void net_live_flags_refresh(void) { stub_live_refreshes++; }
-double net_event(void) { return 0; }
-void net_event_set(double mode) { (void)mode; }
+static double stub_event_mode;
+double net_event(void) { return stub_event_mode; }
+void net_event_set(double mode) { stub_event_mode = mode; }
 double net_load_cups(void) { return 0; }
 double net_load_candies(void) { return 0; }
 double net_load_class(void) { return 0; }
@@ -719,12 +750,34 @@ double net_admin_reset_status(void) {
     if (v >= 2) stub_admin_reset_status = 0;
     return v;
 }
-double net_gift_count(double gift) { (void)gift; return 0; }
+static double stub_gift_counts[8];
+double net_gift_count(double gift) {
+    int i = (int)gift;
+    return i >= 0 && i < 8 ? stub_gift_counts[i] : 0;
+}
+double net_gift_types(void) { return 5; }
 void net_gift_refresh(void) {}
 void net_gift_action(double gift, const char *recipient, double grant) {
     (void)gift; (void)recipient; (void)grant;
 }
-double net_gift_action_status(void) { return 0; }
+static double stub_gift_status;
+double net_gift_action_status(void) {
+    double v = stub_gift_status;
+    if (v >= 2) stub_gift_status = 0;
+    return v;
+}
+/* Balance the database holds after a buy/sell; -1 means "not a shop action". */
+static double stub_gift_cups = -1;
+double net_gift_cups(void) {
+    double v = stub_gift_cups;
+    stub_gift_cups = -1;
+    return v;
+}
+double net_gift_price(double gift) {
+    int i = (int)gift;
+    return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 400 : i == 4 ? 500 : 0;
+}
+double net_gift_refund(double gift) { return (double)((int)net_gift_price(gift) / 2); }
 double net_chat_is_passwd(const char *msg) {
     if (!msg || strncmp(msg, "passwd ", 7) != 0) return 0;
     const char *t = msg + 7;
@@ -995,6 +1048,180 @@ static void test_account_screen(void) {
     puts("account: menu, password change checks, sign-out, delete needs password + full swipe right");
 }
 
+/* Подарки: две колонки, магазин слева влезает целиком, коллекция справа
+ * прокручивается плавно. Каждая карточка рисуется одной PNG-картинкой и
+ * подписью в цвете редкости; кнопок на карточках нет - тап выбирает, а
+ * действия стоят внизу страницы. */
+static void test_gifts_page(void) {
+    double saved_w = screen_w, saved_h = screen_h;
+    double saved_lang = language;
+    screen_w = 720;
+    screen_h = 1280;
+    language = 1;
+    memset(stub_gift_counts, 0, sizeof(stub_gift_counts));
+    acct_open = ACCT_GIFTS;
+    acct_gifts_page();
+    assert(acct_gift_choice < 0 && acct_gift_own_row < 0);
+    assert(str_eq(acct_gift_name(0), "Какашка") == 1);
+    assert(str_eq(acct_gift_name(4), "Изумруд") == 1);
+    assert(net_gift_price(0) == 25 && net_gift_price(3) == 400 && net_gift_price(4) == 500);
+    /* Продажа возвращает половину цены, покупка остаётся дороже. */
+    assert(net_gift_refund(0) == 12 && net_gift_refund(1) == 50);
+    assert(net_gift_refund(2) == 125 && net_gift_refund(3) == 200 && net_gift_refund(4) == 250);
+    /* Стикеры - настоящие PNG, по одной картинке на подарок. */
+    assert(str_eq(gift_tex(0), "gift_poop.png") == 1);
+    assert(str_eq(gift_tex(1), "gift_cake.png") == 1);
+    assert(str_eq(gift_tex(2), "gift_bear.png") == 1);
+    assert(str_eq(gift_tex(3), "gift_rocket.png") == 1);
+    assert(str_eq(gift_tex(4), "gift_emerald.png") == 1);
+    /* Редкость: обычная белая, редкая голубая, эпическая фиолетовая,
+     * эксклюзивная радужная (её подпись рисуется text_rainbow). */
+    assert(gift_rarity(0) == 0 && gift_rarity(1) == 1 && gift_rarity(2) == 2);
+    assert(gift_rarity(3) == 2 && gift_rarity(4) == 3);
+    assert(str_eq(gift_rarity_name(0), "ОБЫЧНЫЙ") == 1);
+    assert(str_eq(gift_rarity_name(1), "РЕДКИЙ") == 1);
+    assert(str_eq(gift_rarity_name(2), "ЭПИЧЕСКИЙ") == 1);
+    assert(str_eq(gift_rarity_name(4), "ЭКСКЛЮЗИВНЫЙ") == 1);
+    assert(gift_rarity_color(0) == 0xFFFFFFFF);
+    assert(gift_rarity_color(1) == 0xFF5CC8FF);
+    assert(gift_rarity_color(2) == 0xFFC08CFF);
+    /* Колонки стоят рядом и не наезжают друг на друга. */
+    assert(acct_gift_x(0) + acct_gift_col_w() < acct_gift_x(1));
+    assert(acct_gift_x(1) + acct_gift_col_w() <= acct_x() + acct_w() + 1e-9);
+    /* Весь каталог (пять стикеров) влезает в окно без прокрутки. */
+    for (double i = 0; i < 5; i++) {
+        double cy = acct_gift_view_top() + i * acct_gift_step();
+        assert(cy >= acct_gift_view_top());
+        assert(cy + acct_gift_card_h() <= acct_gift_view_bottom() + 1e-9);
+        assert(hit_acct_gift(acct_gift_x(0) + 10, cy + 5, i) == 1);
+    }
+    /* Пустая коллекция: ни строк, ни прокрутки. */
+    assert(acct_gift_own_total() == 0 && acct_gift_scroll_max() == 0);
+    gift_tex_draws = 0;
+    last_gift_tex = "";
+    draw_acct_gifts();
+    /* Пять карточек магазина - пять картинок, без повторов. */
+    assert(gift_tex_draws == 5);
+    assert(str_eq(last_gift_tex, "gift_emerald.png") == 1);
+
+    /* Две какашки - две отдельные карточки, изумруд - третья. */
+    stub_gift_counts[0] = 2;
+    stub_gift_counts[4] = 1;
+    assert(acct_gift_own_total() == 3);
+    assert(acct_gift_own_id(0) == 0 && acct_gift_own_id(1) == 0);
+    assert(acct_gift_own_id(2) == 4 && acct_gift_own_id(3) == -1);
+    gift_tex_draws = 0;
+    rainbow_text_n = 0;
+    draw_acct_gifts();
+    /* Пять магазинных и три своих карточки, каждая со своей картинкой. */
+    assert(gift_tex_draws == 8);
+    /* Изумруд - эксклюзивный, поэтому его подпись уходит в радужную. */
+    int rainbow_emerald = 0;
+    for (int i = 0; i < rainbow_text_n; i++)
+        if (str_eq(rainbow_text[i], "Изумруд") == 1 || str_eq(rainbow_text[i], "ЭКСКЛЮЗИВНЫЙ") == 1)
+            rainbow_emerald = 1;
+    assert(rainbow_emerald == 1);
+
+    /* Магазинная карточка: выбор и «Купить» под колонками. */
+    double y = acct_gift_view_top() + 1 * acct_gift_step() + acct_gift_card_h() / 2;
+    assert(touch_acct_gift_list(acct_gift_x(0) + 20, y, 0, 11) == 1);
+    assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
+    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 0);
+
+    /* Тап по своей карточке только выбирает: кнопки внизу, в футере. */
+    double oy = acct_gift_view_top() + 6;
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, oy, 0, 12) == 1);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, oy + 2, 1, 12) == 1);
+    assert(acct_gift_own_sel() == 0 && acct_gift_sel_id() == 0 && acct_gift_picked() == 1);
+    assert(acct_gift_drag < 0 && acct_gift_busy == 0);
+    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + acct_gift_col_w() / 2, acct_below_fields() + 5) == 1);
+    assert(acct_x() + 2 * acct_gift_btn_w() <= acct_x() + acct_w() + 1e-9);
+    /* «Продать» из футера продаёт именно выбранную карточку. */
+    acct_gift_sell();
+    assert(acct_gift_busy == 1 && acct_gift_busy_mode == 3);
+    acct_gift_busy = 0;
+    acct_gift_busy_mode = 0;
+    acct_msg = "";
+
+    /* Покупка и продажа берут баланс из базы: даже если локальные кубки
+     * почему-то обнулились, серверное число не затирается нулём. */
+    cups = 0;
+    acct_gift_choice = 4;
+    acct_gift_is_owned = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 2;
+    stub_gift_cups = 900;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(acct_gift_busy == 0 && cups == 900);
+    cups = 0;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 3;
+    stub_gift_cups = 137;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
+    acct_msg = "";
+
+    /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после
+     * короткого рывка список едет медленно, а не улетает. */
+    stub_gift_counts[0] = 9;
+    assert(acct_gift_scroll_max() > 0);
+    acct_gift_scroll = 0;
+    acct_gift_vel = 0;
+    double sy = acct_gift_view_top() + 40;
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy, 0, 14) == 1);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy - 60, 2, 14) == 1);
+    assert(fabs(acct_gift_scroll - 60) < 1e-9);
+    assert(fabs(acct_gift_vel) <= 22 + 1e-9);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, sy - 60, 1, 14) == 1);
+    assert(acct_gift_drag < 0);
+    assert(fabs(acct_gift_scroll - 60) < 1e-9);
+    double before = acct_gift_scroll;
+    acct_gift_scroll_tick();
+    double moved = acct_gift_scroll - before;
+    /* Один тик даёт не больше, чем потолок скорости: рывок не улетает. */
+    assert(moved > 0 && moved <= 22 * dt + 1e-9);
+    assert(fabs(fmod(acct_gift_scroll, acct_gift_step())) > 1e-6); /* не выровнено по строке */
+    /* Прокрутка не вылезает за пределы списка. */
+    acct_gift_scroll = 0;
+    acct_gift_vel = -500;
+    for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
+    assert(acct_gift_scroll == 0);
+    acct_gift_scroll = acct_gift_scroll_max();
+    acct_gift_vel = 500;
+    for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
+    assert(fabs(acct_gift_scroll - acct_gift_scroll_max()) < 1e-9);
+    /* После прокрутки тап выбирает именно ту строку, что под пальцем. */
+    acct_gift_scroll = acct_gift_step() * 3;
+    double ty = acct_gift_view_top() + acct_gift_step() / 2;
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, ty, 0, 15) == 1);
+    assert(touch_acct_gift_list(acct_gift_x(1) + 20, ty, 1, 15) == 1);
+    assert(acct_gift_own_sel() == 3 && acct_gift_sel_id() == 0);
+
+    draw_acct_gifts();
+    acct_open = 0;
+    acct_gift_choice = -1;
+    acct_gift_own_row = -1;
+    acct_gift_is_owned = 0;
+    acct_gift_scroll = 0;
+    acct_gift_vel = 0;
+    acct_gift_drag = -1;
+    acct_gift_busy = 0;
+    memset(stub_gift_counts, 0, sizeof(stub_gift_counts));
+    language = saved_lang;
+    screen_w = saved_w;
+    screen_h = saved_h;
+    puts("gifts: PNG stickers, rarity colours, footer actions and a soft scroll");
+}
+
 /* Правовая часть: фильтр чата, согласие при входе, вопрос в лобби, окно
  * документов поверх предупреждения и удаление аккаунта. */
 static void test_legal(void) {
@@ -1147,52 +1374,81 @@ static void test_legal(void) {
     puts("legal: chat filter, sign-in consent, lobby consent ask, documents window, account deletion");
 }
 
-/* Стартовый экран: предупреждение об эпилепсии только при первом заходе,
- * «нажми, чтобы начать» - при каждом, касание плавно уводит в лобби. */
+/* Запуск игры: предупреждение об эпилепсии, затем сразу лобби. Экрана
+ * «нажми, чтобы начать» больше нет, поэтому после предупреждения лобби
+ * живое с первого касания. */
 static void test_start_gate(void) {
     game_reset();
     game_state = ST_LOBBY;
     dt = 0.1;
 
-    /* First launch: no stored acceptance -> warning up, start screen armed. */
+    /* Каждый заход начинается с предупреждения и ничем его не накрывает. */
     stub_legal_ts = 0;
     start_gate_init();
-    assert(warn_open == 1 && start_open == 1 && start_closing == 0);
-    /* The warning owns touches while it is up: no tap-to-start yet. */
-    logic_touch(screen_w / 2, screen_h / 2, 0, 71);
-    assert(start_closing == 0 && start_open == 1);
-    warn_open = 0;
-    warn_a = 0;
-
-    /* Returning player: the warning is shown on EVERY launch again (the
-     * stored acceptance no longer skips it), start screen still up. */
-    stub_legal_ts = 1700000000;
-    start_gate_init();
-    assert(warn_open == 1 && start_open == 1);
-    warn_open = 0;
-    warn_a = 0;
-
-    /* A touch starts the fade but keeps the lobby covered until it ends. */
-    logic_touch(screen_w / 2, screen_h / 2, 0, 72);
-    assert(start_closing == 1 && start_open == 1 && game_state == ST_LOBBY);
-    for (int i = 0; i < 40 && start_open == 1; i++) {
-        update_start_screen();
-    }
-    assert(start_open == 0 && start_a == 0 && game_state == ST_LOBBY);
-
-    /* The lobby has appeared but is not tappable yet: the settle lock
-     * swallows the first taps, Play unlocks only after it runs out. */
-    assert(lobby_lock_t > 0);
-    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 73);
+    assert(warn_open == 1 && warn_closing == 0 && warn_a == 1);
+    /* Касание по предупреждению не проваливается в лобби. */
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 71);
     assert(t_dir == 0);
-    lobby_lock_t = 0;
-    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 74);
+    /* Кнопка «принять» ждёт, пока предупреждение дочитано, затем плавно
+     * уводит его и лобби открывается без всякой занавески. */
+    int i = 0;
+    while (i < 40 && warn_ready < 1) {
+        update_warning();
+        i = i + 1;
+    }
+    assert(warn_ready >= 1);
+    legal_accept();
+    while (i < 120 && warn_open == 1) {
+        update_warning();
+        i = i + 1;
+    }
+    assert(warn_open == 0 && warn_a == 0 && game_state == ST_LOBBY);
+    logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 72);
     assert(t_dir == 1 && t_target == ST_CLASSES);
     t_dir = 0;
     t_target = 0;
+    t_fade = 0;
     press_new = 0;
     stub_legal_ts = 0;
-    puts("start gate: epilepsy warning and tap-to-start every launch, lobby unlocks after a settle");
+    puts("start gate: epilepsy warning only, the lobby is live right after it");
+}
+
+/* Админка: закрытие любой дорогой гасит клавиатуру. Раньше она оставалась
+ * висеть поверх лобби и съедала касания после закрытия панели. */
+static void test_admin_keyboard(void) {
+    double saved_stat = game_state;
+    double saved_open = admin_panel_open;
+    double saved_dir = t_dir;
+    t_dir = 0;
+    game_state = ST_LOBBY;
+
+    /* Кнопка «назад» на Android. */
+    admin_panel_open = 1;
+    admin_tab = 1;
+    keyboard_show();
+    assert(keyboard_visible() == 1);
+    logic_back();
+    assert(admin_panel_open == 0 && keyboard_visible() == 0);
+
+    /* Крестик в шапке панели. */
+    admin_panel_open = 1;
+    keyboard_show();
+    admin_panel_close();
+    assert(admin_panel_open == 0 && keyboard_visible() == 0);
+
+    /* Переключение на вкладку Players тоже не должно оставлять клавиатуру
+     * от поля подарков. */
+    admin_panel_open = 1;
+    admin_tab = 1;
+    keyboard_show();
+    admin_panel_press(admin_panel_x() + 4, admin_content_top() + 4);
+    assert(admin_tab == 0 && keyboard_visible() == 0);
+
+    admin_panel_open = saved_open;
+    game_state = saved_stat;
+    t_dir = saved_dir;
+    keyboard_hide();
+    puts("admin panel: every way of closing it also hides the keyboard");
 }
 
 /* Промокод 2027: сообщение об успехе - собственная копия текста, а не
@@ -1301,13 +1557,20 @@ static void test_azum_buff(void) {
     puts("flash sale: -10% on all prices and purchase OK");
 }
 
-/* Ульта CodeCracker: без кружка вокруг куба; звёздочки - гладкие. */
+/* Ульта CodeCracker: без кружка вокруг куба - ни диска, ни кольца, ни дуг,
+ * ни обода из точек; звёздочки - гладкие. */
 static void test_codecracker_fx(void) {
     fx_ring_count = 0;
     fx_big_circle_count = 0;
+    fx_orbit_lines = 0;
+    fx_center_x = 200;
+    fx_center_y = 200;
     draw_codecracker_fx_at(200, 200, 0.3, 0.7);
     assert(fx_ring_count == 0);
     assert(fx_big_circle_count == 0);
+    /* Ни один штрих не идёт по окружности вокруг куба: кольцо из дуг
+     * начинается именно так. Искры летят назад и такой обводки не дают. */
+    assert(fx_orbit_lines == 0);
 
     /* A smooth star needs many more strokes than its diameter in pixels:
      * the old pixel step produced at most ~2*r strokes. */
@@ -1316,6 +1579,62 @@ static void test_codecracker_fx(void) {
     draw_star(0, 0, r, 0xFFF7C948);
     assert(star_line_count > (int)(3 * r));
     puts("codecracker fx: no halo circle in the ult; stars drawn smooth, not pixelated");
+}
+
+/* FPS в бою: считается по настоящей длине кадра, а не по обрезанному dt. */
+static void test_fps_meter(void) {
+    int i;
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 30.0;
+    i = 0;
+    while (i < 16) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 30);
+
+    /* Справа снизу, тем же мелким шрифтом: подпись упирается в угол. */
+    int saved_w = screen_w;
+    int saved_h = screen_h;
+    screen_w = 1280;
+    screen_h = 720;
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 60.0;
+    i = 0;
+    while (i < 31) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 60);
+    assert(stub_text_x > screen_w * 0.9f && stub_text_y > screen_h * 0.9f);
+    assert(stub_text_scale == (float)FPS_SCALE);
+    screen_w = saved_w;
+    screen_h = saved_h;
+
+    /* 8 кадров в секунду: dt обрезан до 0.1 с и по нему выходило бы 10. */
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 8.0;
+    i = 0;
+    while (i < 5) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 8);
+    /* Свернутое приложение - не «0 FPS»: окно просто начинается заново. */
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 30.0;
+    draw_fps_meter();
+    assert(fps_shown == 0);
+    stub_frame_seconds = 0;
+    puts("fps meter: real frame times, 8 fps stays 8, a pause is not a slow frame");
 }
 
 static int stub_roomlist_status;
@@ -1392,6 +1711,7 @@ static void test_dice_alone_and_bubbles(void) {
     assert(candies == candies_before + dice_prize_of(cube));
     assert(arr_get(dice_cubes, 0) == 0);
     event_mode = 0;
+    dt = 1.0; /* the cube round survives a short blink, then stops */
     update_dice_event();
     assert(dice_active == 0);
 
@@ -1458,6 +1778,110 @@ static void test_dice_alone_and_bubbles(void) {
     puts("dice event + alone wait + chat bubbles: OK");
 }
 
+/* Ивенты: 2 - плиты, 3 - Дед Мороз, 4 - кубик. Раньше "event 3" включал те
+ * же плиты, а правило базы пускало только 0..3, поэтому запись кубика
+ * отклонялась и поллер возвращал предыдущий ивент (часто плиты). */
+static void test_battle_events(void) {
+    double saved_w = screen_w, saved_h = screen_h;
+    screen_w = 1280;
+    screen_h = 720;
+    game_reset();
+    stub_net_slot = 0;
+    player_class = CLASS_ORDINARY;
+    reset_battle();
+
+    /* Азум: на 2% меньше HP (13 -> 12.74). */
+    assert(fabs(azum_hp - 12.74) < 1e-9);
+    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74) < 1e-9);
+
+    /* Команды админа выбирают три РАЗНЫХ ивента. */
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    stub_login_status = 2;
+    stub_event_mode = 0;
+    assert(admin_handle("event 2") == 1 && stub_event_mode == 2);
+    assert(admin_handle("event 3") == 1 && stub_event_mode == 3);
+    assert(admin_handle("event 4") == 1 && stub_event_mode == 4);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "x");
+    stub_login_status = 2;
+    stub_event_mode = 0;
+
+    /* Ивент 3: Дед Мороз появляется сразу, плиты не заряжаются. */
+    event_mode = 3;
+    plates_event_reset();
+    plates_prev_mode = 0;
+    plates_phase = 0;
+    dt = 0.05;
+    tick_plates_event();
+    assert(plates_phase == 3);
+    assert(plates_thrown == 0);
+    for (int i = 0; i < 40; i++) tick_plates_event();
+    assert(plates_thrown > 0);
+    draw_event_plates(); /* плит в режиме 3 нет */
+    draw_event_candies();
+    draw_event_santa();
+    draw_plates_hud();
+    /* Раунд заканчивается один раз: пока ивент включён, он не повторяется. */
+    plates_santa_gone = 1;
+    for (int i = 0; i < plates_candy_max; i++) arr_set(plates_candies, i * plates_candy_fields, 0);
+    tick_plates_event();
+    assert(plates_finished == 1 && plates_phase == 4);
+    for (int i = 0; i < 10; i++) tick_plates_event();
+    assert(plates_phase == 4);
+    /* Выключили и включили снова - новый раунд с самого начала. */
+    event_mode = 0;
+    tick_plates_event();
+    event_mode = 3;
+    tick_plates_event();
+    assert(plates_phase == 3);
+
+    /* Ивент 4: плиты под ним не тикают, а кубик переживает короткое
+     * мигание значения event (поллер ещё видит старый ивент). */
+    event_mode = 4;
+    tick_plates_event();
+    assert(plates_phase == 0 && plates_prev_mode == 4);
+    dice_event_reset();
+    dt = 0.1;
+    update_dice_event();
+    assert(dice_active == 1);
+    event_mode = 0;
+    for (int i = 0; i < 5; i++) update_dice_event();
+    assert(dice_active == 1);
+    dt = 1.0;
+    update_dice_event();
+    assert(dice_active == 0);
+
+    /* Ивент 2: обе плиты заняты -> заряд -> Санта и конфеты. */
+    event_mode = 2;
+    plates_prev_mode = 4;
+    dt = 0.05;
+    tick_plates_event();
+    assert(plates_phase == 0);
+    player->x = plate_ax();
+    player->y = plate_ay();
+    arr_set(remotes, remote_fields + 1, plate_bx());
+    arr_set(remotes, remote_fields + 2, plate_by());
+    arr_set(remotes, remote_fields + 5, 1);
+    tick_plates_event();
+    assert(plates_phase == 1);
+    for (int i = 0; i < 41; i++) tick_plates_event();
+    assert(plates_phase == 2);
+    for (int i = 0; i < 20; i++) tick_plates_event();
+    assert(plates_phase == 3);
+    for (int i = 0; i < 10; i++) tick_plates_event();
+    assert(plates_thrown > 0);
+    arr_set(remotes, remote_fields + 5, 0);
+    event_mode = 0;
+    tick_plates_event();
+    assert(plates_prev_mode == 0 && plates_phase == 0);
+    stub_net_slot = -1;
+    game_state = ST_LOBBY;
+    screen_w = saved_w;
+    screen_h = saved_h;
+    puts("events: plates 2, Santa 3, cube 4, Azum HP -2%");
+}
+
 static void test_eax229_and_rooms(void) {
     game_reset();
     screen_w = 1280;
@@ -1494,7 +1918,6 @@ static void test_eax229_and_rooms(void) {
     t_dir = 0;
     warn_open = 0;
     studio_open = 0;
-    start_open = 0;
     snprintf(stub_room_names[0], sizeof(stub_room_names[0]), "%s", "main");
     snprintf(stub_room_names[1], sizeof(stub_room_names[1]), "%s", "closed-club");
     stub_roomlist_count = 2;
@@ -1753,9 +2176,10 @@ int main(void) {
     assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp);
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
      * astra 18, ebuc 24) and the ability numbers scaled with them, while the
-     * basic attacks kept their old damage - that is what makes fights last. */
+     * basic attacks kept their old damage - that is what makes fights last.
+     * Azum then got a 2% nerf: 13 -> 12.74. */
     assert(player_max_hp_for(CLASS_ORDINARY) == 20 && player_max_hp_for(CLASS_SANTA) == 20);
-    assert(azum_hp == 13 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
+    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
     assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
     assert(ebuc_universe_damage >= ebuc_hp);
     azum_tex_ok = azum_punch_tex_ok = 1;
@@ -3180,9 +3604,13 @@ int main(void) {
     test_azum_buff();
     test_class_stars();
     test_codecracker_fx();
+    test_fps_meter();
     test_eax229_and_rooms();
     test_dice_alone_and_bubbles();
+    test_battle_events();
     test_overlay_transitions();
+    test_gifts_page();
+    test_admin_keyboard();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
      * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */

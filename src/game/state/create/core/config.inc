@@ -34,7 +34,7 @@ btn_gap = 15;
 btn_radius = 20;
 back_y = 24;
 title_gap = 12;
-lobby_rows = 6;
+lobby_rows = 5;
 modes_rows = 5;
 screen_margin = 40;
 class_action_gap = 40;
@@ -308,7 +308,7 @@ azum_dash_time = 0.45;
 azum_dash_speed = 850;
 azum_dash_damage = 3.0;
 azum_dash_stun = 0.45;
-azum_hp = 13;
+azum_hp = 12.74; /* 13 - 2%: a small durability nerf */
 astra_hp = 18;
 /* CodeCracker (admin-only): an ordinary cube with only 12 HP; its ultimate is a
  * 7-second overclock: x3 speed, half incoming damage absorbed, biting touches. */

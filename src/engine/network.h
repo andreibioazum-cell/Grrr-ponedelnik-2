@@ -169,6 +169,8 @@ double net_load_astra(void);
 double net_load_astra_level(void);
 double net_load_astra_levels_unlocked(void);
 void net_save_astra(double owned, double level, double levels_unlocked);
+/* Forget a pending cloud save: the device holds nothing worth pushing. */
+void net_mark_progress_synced(void);
 void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
                            double level, double levels_unlocked, double ordinary_level, double ordinary_levels_unlocked,
                            double azum_level, double azum_levels_unlocked, double santa_level,
@@ -240,11 +242,26 @@ double net_change_password_status(void);
  * 0 idle, 1 running, 2 changed, 3 error/not deployed, 4 bad new password,
  * 5 bad target nick. */
 #define NET_ADMIN_RESET_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/adminResetPassword"
-#define NET_GIFT_ACTION_URL "https://us-central1-cubicbattleserver-19ae2.cloudfunctions.net/giftAction"
+/* Gifts live in the Realtime Database (users/<nick>/gifts), so no Cloud
+ * Function is involved: buy/send/grant are plain authenticated writes.
+ * net_gift_action: grant 0 = send one owned sticker, 3 = sell one sticker
+ * back for half its price, 1 = admin grant,
+ * 2 = buy for yourself. Statuses: 2 ok, 3 network/server error,
+ * 4 recipient not found, 5 not enough cups, 6 no sticker in inventory,
+ * 7 bad recipient (or gifting yourself), 8 collection full (999). */
 double net_gift_count(double gift);
 void net_gift_refresh(void);
 void net_gift_action(double gift, const char *recipient, double grant);
 double net_gift_action_status(void);
+/* Catalogue of five stickers: 0 poop, 1 cake, 2 bear, 3 rocket, 4 emerald
+ * (the most expensive one). net_gift_types() is the list length; the price
+ * is what the shop charges, the refund is half of it. */
+double net_gift_types(void);
+double net_gift_price(double gift);
+double net_gift_refund(double gift);
+/* Cup balance the database holds after the last successful buy/sell, or -1
+ * when the finished action was not one. */
+double net_gift_cups(void);
 void net_admin_reset_password(const char *nick, const char *new_pass);
 double net_admin_reset_status(void);
 double net_chat_is_passwd(const char *msg);

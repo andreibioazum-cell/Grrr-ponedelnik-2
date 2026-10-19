@@ -100,6 +100,13 @@ static int ds_vk_build_geometry(void) {
                 geo_text(c->v.tt.s, c->v.tt.x, c->v.tt.y, c->v.tt.c, c->v.tt.sc, font);
             }
             break;
+        case DS_CMD_TEXT_RAINBOW:
+            if (font && font_desc) {
+                pipeline = 1;
+                desc = font_desc;
+                geo_text_rainbow(c->v.tr.s, c->v.tr.x, c->v.tr.y, c->v.tr.sc, c->v.tr.hue, font);
+            }
+            break;
         }
         if (!ds_vk_batch_push(pipeline, desc, is, geo_in - is))
             return 0;

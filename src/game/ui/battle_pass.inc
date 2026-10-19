@@ -105,10 +105,46 @@ static void bp_claim(double t) {
     ds_log("battle pass: tier %g claimed, xp %g", t, bp_xp);
 }
 
-static double bp_row_y(double t) { return content_top() + 92 + (t - 1) * 66; }
-static double bp_row_h(void) { return 58; }
+/* Rows are ordinary game buttons now: same purple face, same press squeeze,
+ * same disabled grey. They shrink so all seven tiers fit above the status
+ * line on short screens instead of running off the bottom. */
+static double bp_rows_top(void) { return content_top() + 88; }
+static double bp_row_h(void) {
+    double stride = (screen_h - bp_rows_top() - 70) / BP_TIERS;
+    return clamp(stride - 6, 22, 58);
+}
+static double bp_row_y(double t) { return bp_rows_top() + (t - 1) * (bp_row_h() + 6); }
 static double bp_row_x(void) { return center_x(fit_w(620)); }
 static double bp_row_w(void) { return fit_w(620); }
+
+static const char *bp_status_text(double t) {
+    if (t <= bp_claimed) {
+        return language == 1 ? "получено" : "claimed";
+    }
+    if (bp_xp < bp_xp_req(t)) {
+        return ds_concat(ds_concat(language == 1 ? "нужно " : "needs ", ds_num_to_string(bp_xp_req(t))), " XP");
+    }
+    if (t > bp_claimed + 1) {
+        return language == 1 ? "сначала прошлый" : "previous first";
+    }
+    return ds_concat(ds_concat(ds_num_to_string(bp_cost(t)), ds_concat(" ", tr_candies_unit())),
+                     language == 1 ? " · открыть" : " · open");
+}
+
+/* One tier as a normal button: "3. +30 кубков · 35 конфет · открыть". The
+ * row is dead grey until it can actually be claimed. */
+static void bp_draw_row(double t) {
+    double x = bp_row_x(), y = bp_row_y(t), w = bp_row_w(), h = bp_row_h();
+    const char *title = ds_concat(ds_concat(ds_num_to_string(t), ". "), bp_reward_text(t));
+    const char *label = ds_concat(title, ds_concat(" · ", bp_status_text(t)));
+    double sc = fit_text_scale(label, w - 24, 0.58);
+    double ready = t == bp_claimed + 1 && bp_xp >= bp_xp_req(t);
+    if (ready == 1) {
+        button_scaled(label, x, y, w, h, sc);
+    } else {
+        button_disabled_scaled(label, x, y, w, h, sc);
+    }
+}
 
 static void draw_bpass(void) {
     screen_fill();
@@ -127,30 +163,7 @@ static void draw_bpass(void) {
                  text_color, 0.55);
     double t = 1;
     while (t <= BP_TIERS) {
-        double x = bp_row_x();
-        double y = bp_row_y(t);
-        double w = bp_row_w();
-        double claimed = t <= bp_claimed;
-        card_state(x, y, w, bp_row_h(), claimed, 0, 1);
-        const char *title = ds_concat(ds_concat(ds_num_to_string(t), ". "), bp_reward_text(t));
-        text_scaled(title, x + 16, y + 8, text_color, fit_text_scale(title, w * 0.55, 0.55));
-        const char *status;
-        uint32_t sc = text_color;
-        if (claimed) {
-            status = language == 1 ? "Получено ✓" : "Claimed ✓";
-            sc = 0xFF7ED321;
-        } else if (bp_xp < bp_xp_req(t)) {
-            status = ds_concat(ds_concat(ds_concat("XP ", ds_num_to_string((double)(int)bp_xp)), "/"),
-                               ds_num_to_string(bp_xp_req(t)));
-        } else if (t > next) {
-            status = language == 1 ? "Сначала прошлый" : "Previous first";
-        } else {
-            status = ds_concat(ds_concat(language == 1 ? "Открыть · " : "Open · ", ds_num_to_string(bp_cost(t))),
-                               ds_concat(" ", tr_candies_unit()));
-            sc = 0xFFFFD54A;
-        }
-        double sw = text_ink_width(status) * 0.5;
-        text_scaled(status, x + w - sw - 16, y + 14, sc, 0.5);
+        bp_draw_row(t);
         t = t + 1;
     }
     bp_msg_t = tick_down(bp_msg_t);
@@ -168,7 +181,7 @@ static void touch_bpass(double x, double y, double action) {
     }
     double t = 1;
     while (t <= BP_TIERS) {
-        if (hit_rect(x, y, bp_row_x(), bp_row_y(t), bp_row_w(), bp_row_h()) == 1) {
+        if (hit_button(x, y, bp_row_x(), bp_row_y(t), bp_row_w(), bp_row_h()) == 1) {
             bp_claim(t);
             return;
         }
@@ -182,7 +195,7 @@ static double bpass_any_hit(double x, double y) {
     }
     double t = 1;
     while (t <= BP_TIERS) {
-        if (hit_rect(x, y, bp_row_x(), bp_row_y(t), bp_row_w(), bp_row_h()) == 1) {
+        if (hit_button(x, y, bp_row_x(), bp_row_y(t), bp_row_w(), bp_row_h()) == 1) {
             return 1;
         }
         t = t + 1;

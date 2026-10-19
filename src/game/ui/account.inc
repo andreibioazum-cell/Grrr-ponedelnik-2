@@ -3,38 +3,29 @@
 #define ACCT_DELETE 3
 #define ACCT_GIFTS 4
 #define ACCT_BUF 64
-static double acct_gift_choice = 0;
+static double acct_gift_choice = -1; /* выбранный магазинный стикер, -1 - никакой */
+static double acct_gift_is_owned = 0; /* 1 - выбран стикер из коллекции */
+static double acct_gift_own_row = -1; /* какая строка коллекции выбрана */
+static double acct_gift_scroll = 0;
+static double acct_gift_vel = 0;
+static double acct_gift_drag = -1;
+static double acct_gift_drag_y = 0;
+static double acct_gift_drag_move = 0;
 static double acct_gift_busy = 0;
 static double acct_gift_busy_mode = 0;
-static double acct_gift_is_owned = 0;
-static double acct_gift_scroll = 0;
-static double acct_gift_drag_id = -1;
-static double acct_gift_drag_y = 0;
-static double acct_gift_drag_start_y = 0;
-static double acct_gift_velocity = 0;
-static double acct_gift_bar_drag_id = -1;
-static double acct_gift_bar_grab = 0;
-static double acct_gift_list_top(void);
-static double acct_gift_card_h(void);
-static double acct_gift_step(void);
-static double acct_gift_visible(void);
 static double acct_gift_footer_top(void);
-static double acct_gift_btn_w(void);
-static double acct_gift_price(double i);
-static double acct_gift_y(double i);
+static double hit_acct_gift_any(double x, double y);
 static double hit_acct_gift_buy(double x, double y);
 static double hit_acct_gift_send(double x, double y);
-static double hit_acct_gift(double x, double y, double i);
-static double hit_acct_gift_scrollbar(double x, double y);
-static void acct_gift_scroll_to(double y);
-static double acct_gift_scroll_max(void);
-static double acct_gift_thumb_h(void);
-static double acct_gift_thumb_y(void);
-static double touch_acct_gift_scroll(double x, double y, double action, double id);
+static double hit_acct_gift_sell(double x, double y);
+static double touch_acct_gift_list(double x, double y, double action, double id);
 static void acct_gifts_page(void);
 static void acct_gift_buy(void);
 static void acct_gift_send(void);
+static void acct_gift_sell(void);
 static void draw_acct_gifts(void);
+static void acct_poll_gifts(void);
+static void acct_gift_scroll_tick(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
 static double acct_field; /* поле ввода в фокусе */
 static char acct_buf[3][ACCT_BUF];
@@ -142,8 +133,7 @@ static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
            hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
-           hit_acct_gift(x, y, 0) == 1 || hit_acct_gift(x, y, 1) == 1 || hit_acct_gift(x, y, 2) == 1 || hit_acct_gift(x, y, 3) == 1 ||
-           hit_acct_gift(x, y, 4) == 1 || hit_acct_gift(x, y, 5) == 1 || hit_acct_gift(x, y, 6) == 1 || hit_acct_gift(x, y, 7) == 1 || hit_acct_gift(x, y, 8) == 1 || hit_acct_gift_scrollbar(x, y) == 1;
+           hit_acct_gift_sell(x, y) == 1 || hit_acct_gift_any(x, y) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -241,7 +231,9 @@ static void touch_acct_menu(double x, double y) {
     }
 }
 static void touch_account(double x, double y, double action, double id) {
-    if (touch_acct_gift_scroll(x, y, action, id) == 1 && action != 0) return;
+    /* The collection scrolls with its own down/move/up machine, so it gets
+     * the move and up events before the usual press handling below. */
+    if (action != 0 && touch_acct_gift_list(x, y, action, id) == 1) return;
     if (action == 2) {
         if (id == acct_drag) {
             acct_knob = clamp((x - acct_grab - acct_x() - 4) / (acct_w() - acct_knob_w() - 8), 0, 1);
@@ -271,7 +263,7 @@ static void touch_account(double x, double y, double action, double id) {
     if (acct_busy != 0 || acct_done == 1 || acct_gift_busy != 0) {
         return;
     }
-    if (touch_acct_gift_scroll(x, y, action, id) == 1) return;
+    if (touch_acct_gift_list(x, y, action, id) == 1) return;
     double i = 0;
     while (i < acct_fields()) {
         if (hit_acct_field(x, y, i) == 1) {
@@ -282,6 +274,7 @@ static void touch_account(double x, double y, double action, double id) {
     }
     if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
     if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
+    if (hit_acct_gift_sell(x, y) == 1) { acct_gift_sell(); return; }
     if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();
@@ -324,42 +317,8 @@ static void acct_poll_password(void) {
     }
 }
 static void acct_tick(void) {
-    if (acct_open == ACCT_GIFTS && acct_gift_drag_id == -1 && acct_gift_bar_drag_id == -1 && fabs(acct_gift_velocity) > 0.01) {
-        acct_gift_scroll = clamp(acct_gift_scroll + acct_gift_velocity * dt, 0, acct_gift_scroll_max());
-        acct_gift_velocity = acct_gift_velocity * exp(-5.2 * dt);
-        if (acct_gift_scroll <= 0 || acct_gift_scroll >= acct_gift_scroll_max()) acct_gift_velocity = 0;
-    }
-    if (acct_gift_busy == 1) {
-        double gift_status = net_gift_action_status();
-        if (gift_status >= 2) {
-            acct_gift_busy = 0;
-            if (gift_status == 2) {
-                if (acct_gift_busy_mode == 2) {
-                    acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
-                    cups = cups - acct_gift_price(acct_gift_choice);
-                    if (cups < 0) cups = 0;
-                    acct_gift_is_owned = 1;
-                    acct_gift_scroll = clamp(5 + acct_gift_choice - floor(acct_gift_visible() / 2), 0, 9 - acct_gift_visible());
-                    save_progress();
-                } else {
-                    acct_msg = language == 1 ? "Стикер отправлен!" : "Sticker sent!";
-                    memset(acct_buf[0], 0, sizeof(acct_buf[0]));
-                    acct_field = 0;
-                }
-                net_gift_refresh();
-            } else if (gift_status == 4) {
-                acct_msg = language == 1 ? "Сервер подарков не установлен: разверните giftAction" : "Gift server is not deployed: deploy giftAction";
-            } else if (gift_status == 5) {
-                acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups";
-            } else if (gift_status == 6) {
-                acct_msg = language == 1 ? "Такого стикера нет в инвентаре" : "Sticker is not in your inventory";
-            } else if (gift_status == 7) {
-                acct_msg = language == 1 ? "Версия сервера подарков устарела" : "Gift server is out of date";
-            } else {
-                acct_msg = language == 1 ? "Не удалось отправить. Проверьте ник и подключение." : "Gift failed. Check nickname and connection.";
-            }
-        }
-    }
+    acct_gift_scroll_tick();
+    acct_poll_gifts();
     if (acct_busy == 1) {
         acct_poll_delete();
     } else if (acct_busy == 2) {
@@ -447,3 +406,4 @@ static void draw_account(void) {
 }
 
 #include "account_gifts.inc"
+#include "account_gifts_actions.inc"
