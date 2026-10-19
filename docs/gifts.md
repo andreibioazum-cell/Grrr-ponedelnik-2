@@ -24,6 +24,7 @@ shows nor spends them.
 ```
 users/<nick>/cups          cup balance
 users/<nick>/gifts/poop    0..999 owned stickers (cake, bear, rocket likewise)
+users/<nick>/gifts/emerald_hue   0..7, the hue of the emerald's shimmer
 ```
 
 * **Buy** — one authenticated PATCH to `users/<nick>.json` that writes the new
@@ -38,7 +39,11 @@ users/<nick>/gifts/poop    0..999 owned stickers (cake, bear, rocket likewise)
   the cups (12 / 50 / 125 / 200 / 250). The shop stays the cheaper way to get a
   sticker, while a duplicate from an event is still worth something.
 * **Admin grant** — the CCP panel's Gifts tab performs the same `+1` write; it
-  does not debit cups.
+  does not debit cups. It only needs the recipient's nickname: nicknames are
+  unique, so the nickname already points at exactly one account. When the
+  granted sticker is the emerald, the panel also writes the chosen hue
+  (0..7) to `gifts/emerald_hue` of the same player — one path, so the other
+  counters stay untouched.
 
 The sticker counter in the buy/sell PATCH is written as a **path**, not as a
 nested object:
@@ -112,6 +117,16 @@ which writes them itself).
   192x192 with transparency) and drawn by `gift_icon()` in
   `src/game/ui/gift_icons.inc`; the pixel font is never asked for a symbol.
   A card shows its picture once - there is no second sprite or badge.
+* The emerald shimmers. On top of its picture the engine draws a second,
+  translucent copy of the sprite in the current hue, so a coloured veil flows
+  over the gem; the hue drifts slowly (`ds_frame_seconds() * 0.08`), and the
+  rainbow name of the sticker walks the same wheel from the same base. The hue
+  is per player: 0 is the plain rainbow, 1..7 are the shades the admin picked
+  for that account.
+* The CCP panel's Gifts tab shows a row of eight colour tiles under the
+  sticker list (they appear when the emerald is selected; the chosen one is
+  outlined). Tapping a tile sets the hue that the next grant of an emerald
+  writes to the recipient.
 * Each card also names the sticker and its rarity in the rarity colour:
   **common** white, **rare** light blue (`#5CC8FF`), **epic** violet
   (`#C08CFF`) and **exclusive** drawn as a rainbow - the engine's
