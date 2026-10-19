@@ -2890,6 +2890,42 @@ int main(void) {
         set_class_progress(CLASS_ORDINARY, ordinary_lv, ordinary_un);
         set_class_progress(CLASS_CODECRACKER, 0, 0);
     }
+    /* Every CodeCracker level gives a bonus of his own: level 1 - a harder
+     * bite, level 2 - the overclock comes back sooner (4 s -> 3 s), level 3 -
+     * thicker overclock armour (half of the damage -> 60%). */
+    {
+        assert(fabs(codecracker_bite_damage(0) - codecracker_touch_damage) < 1e-9);
+        assert(fabs(codecracker_bite_damage(1) - codecracker_touch_damage * 1.10) < 1e-9);
+        assert(fabs(codecracker_bite_damage(3) - codecracker_bite_damage(1)) < 1e-9);
+        assert(codecracker_super_cd_for(0) == codecracker_super_cd);
+        assert(codecracker_super_cd_for(1) == codecracker_super_cd);
+        assert(codecracker_super_cd_for(2) == 3 && codecracker_super_cd_for(3) == 3);
+        assert(codecracker_absorb_for(0) == codecracker_super_absorb);
+        assert(codecracker_absorb_for(2) == codecracker_super_absorb);
+        assert(codecracker_absorb_for(3) == 0.6);
+        /* The levels screen tells the CodeCracker his own bonuses, not the
+         * ordinary cube's ones. */
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 1),
+                      tr_class_level_effect(CLASS_ORDINARY, 1)) != 0);
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 2),
+                      tr_class_level_effect(CLASS_ORDINARY, 2)) != 0);
+        assert(strcmp(tr_class_level_effect(CLASS_CODECRACKER, 3),
+                      tr_class_level_effect(CLASS_ORDINARY, 3)) != 0);
+        /* A level 3 CodeCracker really takes 60% of the damage instead of
+         * half of it while the overclock runs. */
+        player_class = CLASS_CODECRACKER;
+        player_level = 3;
+        codecracker_super_t = codecracker_super_time;
+        player->max_hp = codecracker_hp;
+        player->hp = codecracker_hp;
+        take_damage(2);
+        assert(fabs(player->hp - (codecracker_hp - 0.8)) < 1e-9);
+        player_level = 0;
+        player->hp = codecracker_hp;
+        take_damage(2);
+        assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
+        codecracker_super_t = 0;
+    }
     player_class = CLASS_ORDINARY;
     assert(class_owned_of(CLASS_CODECRACKER) == 1 && class_visible(CLASS_CODECRACKER) == 1);
     assert(visible_class_at(5) == CLASS_CODECRACKER);

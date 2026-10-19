@@ -138,6 +138,40 @@ static double player_max_hp_for(double cls) {
     return 20;
 }
 
+/* Level bonuses of CodeCracker: a track of his own, not the ordinary cube's.
+ * 1 - the bite hits harder, 2 - the overclock comes back sooner,
+ * 3 - the overclock armour is thicker. */
+static const double codecracker_lv1_damage_bonus = 0.10;
+static const double codecracker_lv2_cd_bonus = 0.25;
+static const double codecracker_lv3_absorb_bonus = 0.10;
+
+/* Damage of one bite at the given CodeCracker level. */
+static double codecracker_bite_damage(double lv) {
+    double d = codecracker_touch_damage;
+    if (lv >= 1) {
+        d = d * (1 + codecracker_lv1_damage_bonus);
+    }
+    return d;
+}
+
+/* Overclock cooldown: 4 seconds, 3 seconds from the second level. */
+static double codecracker_super_cd_for(double lv) {
+    double cd = codecracker_super_cd;
+    if (lv >= 2) {
+        cd = cd * (1 - codecracker_lv2_cd_bonus);
+    }
+    return cd;
+}
+
+/* Damage absorbed while the overclock runs: half, 60% from the third level. */
+static double codecracker_absorb_for(double lv) {
+    double a = codecracker_super_absorb;
+    if (lv >= 3) {
+        a = a + codecracker_lv3_absorb_bonus;
+    }
+    return a;
+}
+
 static double ebuc_station_hp_for(double lv) {
     double h = ebuc_station_hp;
     if (lv >= 1) {

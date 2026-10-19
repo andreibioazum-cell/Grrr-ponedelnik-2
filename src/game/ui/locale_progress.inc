@@ -87,10 +87,18 @@ static const char *tr_level_unlock_cost(double cost) {
 
 static const char *tr_class_level_effect(double cls, double n) {
     if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
-    }
-    if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
+        /* His levels are his own, not the ordinary cube's: a bite that hits
+         * harder, an overclock that comes back sooner and thicker overclock
+         * armour. */
+        if (n == 1) {
+            return language == 1 ? "Укус: урон +10%" : "Bite: damage +10%";
+        }
+        if (n == 2) {
+            return language == 1 ? "Ульта: перезарядка 3 с" : "Ult: cooldown 3 s";
+        }
+        if (n == 3) {
+            return language == 1 ? "Ульта: поглощение урона 60%" : "Ult: damage absorb 60%";
+        }
     }
     if (cls == 1 && n == 1) {
         if (language == 1) {

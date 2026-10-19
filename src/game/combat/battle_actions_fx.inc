@@ -150,7 +150,7 @@ static void fire_super(void) {
         }
         queued_super = 0;
         codecracker_super_t = codecracker_super_time;
-        super_cd = codecracker_super_cd;
+        super_cd = codecracker_super_cd_for(player_level);
         return;
     }
     if (player_class != 2 && player_class != 3) {
