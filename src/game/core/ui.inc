@@ -182,9 +182,15 @@ static void apply_theme(void) {
     if (new_theme == 1) {
         ui_purple = 0xFF5F10A0;
         bg_screen = 0x1A1A2E;
+        card_bg = 0xFF2A2A40;
+        card_ring = 0xFF5A5A78;
     } else {
         ui_purple = 0xFFD4508A;
         bg_screen = 0xFF3A1530;
+        /* The old theme is the rose one: its cards and panels are rose too,
+         * not the blue-gray of the new theme. */
+        card_bg = 0xFF44203A;
+        card_ring = 0xFFE07BAE;
     }
     transition_duration = 0.10;
 }
@@ -203,10 +209,21 @@ static double battle_back_y(void) { return back_y; }
  * нём фиолетовые в обеих темах - в старой теме розовая кнопка делала весь
  * экран победы или поражения розовым. */
 #define RESULT_PURPLE 0xFF5F10A0
+/* В старой теме окно поражения розовое - под её розовые кнопки. */
+#define RESULT_ROSE 0xFFD4508A
+
+/* The face of the result window: purple for a win and in the new theme, rose
+ * for a loss in the old theme. */
+static double result_face_color(void) {
+    if (finished == 2 && new_theme == 0) {
+        return RESULT_ROSE;
+    }
+    return RESULT_PURPLE;
+}
 
 static void draw_battle_back(void) {
     if (finished != 0) {
-        button_fixed(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h, RESULT_PURPLE);
+        button_fixed(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h, result_face_color());
         return;
     }
     button(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h);

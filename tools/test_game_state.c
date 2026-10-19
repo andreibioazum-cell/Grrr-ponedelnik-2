@@ -2926,6 +2926,21 @@ int main(void) {
         assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
         codecracker_super_t = 0;
     }
+    /* The result window: purple for a win and in the new theme, rose for a
+     * loss in the old theme. */
+    {
+        new_theme = 0;
+        apply_theme();
+        finished = 2;
+        assert(result_face_color() == 0xFFD4508A);
+        finished = 1;
+        assert(result_face_color() == 0xFF5F10A0);
+        new_theme = 1;
+        apply_theme();
+        finished = 2;
+        assert(result_face_color() == 0xFF5F10A0);
+        finished = 0;
+    }
     player_class = CLASS_ORDINARY;
     assert(class_owned_of(CLASS_CODECRACKER) == 1 && class_visible(CLASS_CODECRACKER) == 1);
     assert(visible_class_at(5) == CLASS_CODECRACKER);
@@ -3672,14 +3687,18 @@ int main(void) {
         assert(new_theme == 0 && t_dir == 0);
         assert(ui_purple == 0xFFD4508A && bg_screen == 0xFF3A1530);
         assert(menu_x() == screen_margin);
-        /* The lobby labels stand on the left in the old theme, on the edge of
-         * the button column; the battle pass button stays in its corner. */
-        assert(lobby_label_x(100) == screen_margin);
+        /* The lobby labels stand exactly in the middle of the button column:
+         * centred on the buttons, not to the left of them; the battle pass
+         * button stays in its corner. */
+        assert(lobby_label_x(100) == menu_x() + (btn_w - 100) / 2);
         assert(bpass_corner_x() == screen_w - screen_margin - bpass_corner_w());
+        /* The old theme is the rose one, so its cards are rose too. */
+        assert(card_bg == 0xFF44203A);
         press_new = 0;
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(4) + settings_btn_h() / 2, 0, 21);
         assert(new_theme == 1 && ui_purple == 0xFF5F10A0);
         assert(lobby_label_x(100) == center_x(100));
+        assert(card_bg == 0xFF2A2A40);
         press_new = 0;
         /* Row 5 opens the legal documents window over the settings. */
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(5) + settings_btn_h() / 2, 0, 22);

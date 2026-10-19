@@ -336,14 +336,17 @@ static void draw_controls(void) {
  * кнопка «Назад» и чёрная заливка превращали экран победы или поражения в
  * розовый. Заливка - тёмно-фиолетовая, панель и кнопка - фиолетовые. */
 #define RESULT_CURTAIN 0xCC1A1A2E
+/* Тёмно-розовая заливка старой темы под её розовым окном поражения. */
+#define RESULT_ROSE_CURTAIN 0xCC3A1530
 
 static void draw_result(const char *title) {
-    rect(0, 0, screen_w, screen_h, RESULT_CURTAIN);
+    double face = result_face_color();
+    rect(0, 0, screen_w, screen_h, face == RESULT_PURPLE ? RESULT_CURTAIN : RESULT_ROSE_CURTAIN);
     double w = 430;
     double h = 250;
     double x = (screen_w - w) / 2;
     double y = screen_h / 2 - h / 2;
-    roundrect(x, y, w, h, 30, RESULT_PURPLE);
+    roundrect(x, y, w, h, 30, face);
     double reward = 0;
     if (finished == 1) {
         reward = cup_win;
