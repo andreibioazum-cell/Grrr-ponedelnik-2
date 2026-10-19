@@ -4,7 +4,7 @@
  *   1:  10 XP,  12 candies -> +10 cups
  *   2:  30 XP,  20 candies -> +20 cups
  *   3:  60 XP,  35 candies -> +30 cups
- *   4: 100 XP,  50 candies -> Elf Ebuc skin
+ *   4: 100 XP,  50 candies -> Elf буК skin
  *   5: 150 XP,  70 candies -> +60 cups
  *   6: 220 XP,  95 candies -> +120 candies
  *   7: 300 XP, 120 candies -> Santa (Дед Мороз) class
@@ -56,7 +56,7 @@ static const char *bp_reward_text(double t) {
     if (t == 1) return ds_concat("+10 ", tr_cups_unit());
     if (t == 2) return ds_concat("+20 ", tr_cups_unit());
     if (t == 3) return ds_concat("+30 ", tr_cups_unit());
-    if (t == 4) return language == 1 ? "Скин: Эльф-Эбук" : "Skin: Elf Ebuc";
+    if (t == 4) return language == 1 ? "Скин: Эльф-буК" : "Skin: Elf буК";
     if (t == 5) return ds_concat("+60 ", tr_cups_unit());
     if (t == 6) return ds_concat("+120 ", tr_candies_unit());
     return language == 1 ? "Класс: Дед Мороз" : "Class: Santa";
@@ -76,7 +76,7 @@ static void bp_grant(double t) {
     } else if (t == 7) {
         set_class_owned(CLASS_SANTA, 1);
     }
-    /* tier 4 is the Elf Ebuc skin itself: skin_unlocked_for() opens it
+    /* tier 4 is the Elf буК skin itself: skin_unlocked_for() opens it
      * once bp_claimed reaches 4, nothing else to grant. */
 }
 

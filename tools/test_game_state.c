@@ -2663,7 +2663,7 @@ int main(void) {
         assert(player->hp == player->max_hp);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        /* Ebuc's turret shield leaves player HP untouched, but the blocked
+        /* буК's turret shield leaves player HP untouched, but the blocked
          * hit still disqualifies the achievement. */
         finished = 0;
         cups_awarded = 0;
@@ -3760,7 +3760,7 @@ int main(void) {
     test_admin_keyboard();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
-     * candies; tier 4 unlocks the Elf Ebuc skin, tier 7 grants Santa. */
+     * candies; tier 4 unlocks the Elf буК skin, tier 7 grants Santa. */
     {
         bp_xp = 0;
         bp_claimed = 0;

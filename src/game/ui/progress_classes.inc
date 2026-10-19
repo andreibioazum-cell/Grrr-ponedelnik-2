@@ -167,7 +167,7 @@ static double skin_unlocked_for(double cls, double skin) {
         return 1;
     }
     if (cls == CLASS_EBUC) {
-        /* Elf Ebuc: battle-pass tier 4 reward. */
+        /* Elf буК: battle-pass tier 4 reward. */
         return bp_claimed >= 4 ? 1 : 0;
     }
     if (cls == CLASS_AZUM && has_achievement(ACH_LEGENDS) == 1) {

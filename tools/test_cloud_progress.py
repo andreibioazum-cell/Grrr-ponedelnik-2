@@ -81,7 +81,7 @@ static int run_offline_buy(const char *dir) {
     assert(net_load_class() == 3);
     assert(net_load_candies() == 50);
     assert(net_load_cups() == 100);
-    puts("offline buy: the ebuC, its selection and the spent candies come back from the device");
+    puts("offline buy: буК, its selection and the spent candies come back from the device");
     return 0;
 }
 
