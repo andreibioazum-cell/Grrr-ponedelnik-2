@@ -31,6 +31,10 @@ static const char *CLOUD_FRESH =
     "{\"nick\":\"tester\",\"cups\":120,\"candies\":50,\"cls\":1,\"azum\":1,\"santa\":0,"
     "\"ebuc\":1,\"level\":0,\"levels\":0}";
 
+static const char *CLOUD_RICH =
+    "{\"nick\":\"tester\",\"cups\":5000,\"candies\":300,\"cls\":0,\"azum\":0,\"santa\":0,"
+    "\"ebuc\":0,\"level\":0,\"levels\":0}";
+
 static const char *CLOUD_NO_ASTRA =
     "{\"nick\":\"tester\",\"cups\":100,\"candies\":20,\"cls\":0,\"azum\":0,\"santa\":0,"
     "\"ebuc\":0,\"level\":0,\"levels\":0}";
@@ -55,7 +59,8 @@ static int run_offline_buy(const char *dir) {
     net_set_data_path(dir);
     assert(net_load_ebuc() == 0);
     net_save_progress_all(100, 50, 3, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    assert(cloud_dirty_get() == 1);
+    /* A save made while logged in could not reach the cloud. */
+    cloud_dirty_set(1);
     int push = apply_user_json_keep_local(CLOUD_NO_EBUC);
     assert(push == 1);
     assert(net_load_ebuc() == 1);
@@ -63,6 +68,50 @@ static int run_offline_buy(const char *dir) {
     assert(net_load_candies() == 50);
     assert(net_load_cups() == 100);
     puts("offline buy: the ebuC, its selection and the spent candies come back from the device");
+    return 0;
+}
+
+/* Выход из аккаунта обнуляет профиль на устройстве и сохраняет его без
+ * сессии. Раньше такая запись помечала профиль "неотправленным", и
+ * следующий вход вливала нули в облако: кубки исчезали. */
+static int run_signout(const char *dir) {
+    net_set_data_path(dir);
+    net_save_progress_all(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    assert(cloud_dirty_get() == 0);
+    int push = apply_user_json_keep_local(CLOUD_RICH);
+    assert(push == 0);
+    assert(net_load_cups() == 5000);
+    assert(net_load_candies() == 300);
+    puts("sign-out: a zeroed device never pushes zeros over the account");
+    return 0;
+}
+
+/* Даже если на диске остался старый маркер "не отправлено", пустой профиль
+ * не имеет права перебить облако. */
+static int run_stale_dirty(const char *dir) {
+    net_set_data_path(dir);
+    net_save_progress_all(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    cloud_dirty_set(1);
+    int push = apply_user_json_keep_local(CLOUD_RICH);
+    assert(push == 0);
+    assert(net_load_cups() == 5000);
+    assert(net_load_candies() == 300);
+    assert(cloud_dirty_get() == 0);
+    puts("stale dirty marker: an empty device still adopts the cloud balance");
+    return 0;
+}
+
+/* Настоящий офлайн-прогресс сливается, но устаревшие кубки не тянут счёт
+ * вниз: тратятся они только через магазин, который пишет баланс сам. */
+static int run_lower_cups(const char *dir) {
+    net_set_data_path(dir);
+    net_save_progress_all(100, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    cloud_dirty_set(1);
+    int push = apply_user_json_keep_local(CLOUD_RICH);
+    assert(push == 1);
+    assert(net_load_cups() == 5000);
+    assert(net_load_candies() == 20);
+    puts("stale balance: a local cup count can only raise the account, never lower it");
     return 0;
 }
 
@@ -199,6 +248,9 @@ int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: test <mode> <dir>\n"); return 2; }
     if (strcmp(argv[1], "first-save") == 0) return run_first_save(argv[2]);
     if (strcmp(argv[1], "offline-buy") == 0) return run_offline_buy(argv[2]);
+    if (strcmp(argv[1], "signout") == 0) return run_signout(argv[2]);
+    if (strcmp(argv[1], "stale-dirty") == 0) return run_stale_dirty(argv[2]);
+    if (strcmp(argv[1], "lower-cups") == 0) return run_lower_cups(argv[2]);
     if (strcmp(argv[1], "clean") == 0) return run_clean(argv[2]);
     if (strcmp(argv[1], "astra") == 0) return run_astra(argv[2]);
     if (strcmp(argv[1], "legacy-local") == 0) return run_legacy_local(argv[2]);
@@ -210,6 +262,16 @@ int main(int argc, char **argv) {
     return 2;
 }
 '''
+
+def check_balance_rules():
+    rules = json.loads((ROOT / "firebase.rules.json").read_text(encoding="utf-8"))["rules"]
+    for key in ("cups", "candies"):
+        rule = rules["users"]["$nick"][key][".validate"]
+        assert "data.val() + 1000" in rule, f"{key}: no per-write growth cap"
+        assert "dimasi4ek229@cb4.game" in rule and "qwertyuiopaj1234@cb4.game" in rule, \
+            f"{key}: administrators cannot correct a balance"
+        assert rule.count("(") == rule.count(")")
+
 
 def check_class_rules():
     rules = json.loads((ROOT / "firebase.rules.json").read_text(encoding="utf-8"))["rules"]
@@ -228,6 +290,7 @@ def check_class_rules():
 
 def main():
     check_class_rules()
+    check_balance_rules()
     with tempfile.TemporaryDirectory(prefix="cubic-cloud-") as directory:
         temp = Path(directory)
         android = temp / "android"
@@ -265,6 +328,20 @@ def main():
         clean.mkdir()
         subprocess.run([*run, "clean", str(clean)], check=True)
         assert not (clean / "progress.dirty").exists()
+
+        signout = temp / "signout"
+        signout.mkdir()
+        subprocess.run([*run, "signout", str(signout)], check=True)
+        assert not (signout / "progress.dirty").exists()
+
+        stale = temp / "stale"
+        stale.mkdir()
+        subprocess.run([*run, "stale-dirty", str(stale)], check=True)
+        assert not (stale / "progress.dirty").exists()
+
+        lower = temp / "lower"
+        lower.mkdir()
+        subprocess.run([*run, "lower-cups", str(lower)], check=True)
 
         astra = temp / "astra"
         astra.mkdir()

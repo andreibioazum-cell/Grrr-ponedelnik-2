@@ -52,13 +52,18 @@ static void acct_poll_gifts(void) {
                 double sold = acct_gift_sel_id();
                 if (acct_gift_busy_mode == 2) {
                     acct_msg = language == 1 ? "Стикер добавлен в коллекцию!" : "Sticker added to your collection!";
-                    cups = cups - acct_gift_price(acct_gift_choice);
+                    /* The purchase already wrote the new balance; take the
+                     * server's number instead of subtracting from a local
+                     * copy that may have been stale. */
+                    double left = net_gift_cups();
+                    cups = left >= 0 ? left : cups - acct_gift_price(acct_gift_choice);
                     if (cups < 0) cups = 0;
                     save_progress();
                 } else if (acct_gift_busy_mode == 3) {
                     acct_msg = ds_concat(language == 1 ? "Стикер продан: +" : "Sticker sold: +",
                                          acct_gift_cups_line(acct_gift_refund(sold)));
-                    cups = cups + acct_gift_refund(sold);
+                    double left = net_gift_cups();
+                    cups = left >= 0 ? left : cups + acct_gift_refund(sold);
                     save_progress();
                     acct_gift_clear_pick();
                 } else {

@@ -402,6 +402,7 @@ void tex_tint(float x, float y, const char *name, float angle, float scale, uint
         }
     }
 }
+void net_mark_progress_synced(void) {}
 void net_save_progress_all(double a, double b, double c, double d, double e, double f, double g, double h, double i,
                            double j, double k, double l, double m, double n, double o, double p, double q, double r) {
     (void)a;
@@ -749,7 +750,19 @@ void net_gift_refresh(void) {}
 void net_gift_action(double gift, const char *recipient, double grant) {
     (void)gift; (void)recipient; (void)grant;
 }
-double net_gift_action_status(void) { return 0; }
+static double stub_gift_status;
+double net_gift_action_status(void) {
+    double v = stub_gift_status;
+    if (v >= 2) stub_gift_status = 0;
+    return v;
+}
+/* Balance the database holds after a buy/sell; -1 means "not a shop action". */
+static double stub_gift_cups = -1;
+double net_gift_cups(void) {
+    double v = stub_gift_cups;
+    stub_gift_cups = -1;
+    return v;
+}
 double net_gift_price(double gift) {
     int i = (int)gift;
     return i == 0 ? 25 : i == 1 ? 100 : i == 2 ? 250 : i == 3 ? 400 : i == 4 ? 500 : 0;
@@ -1122,6 +1135,29 @@ static void test_gifts_page(void) {
     assert(acct_gift_busy == 1 && acct_gift_busy_mode == 3);
     acct_gift_busy = 0;
     acct_gift_busy_mode = 0;
+    acct_msg = "";
+
+    /* Покупка и продажа берут баланс из базы: даже если локальные кубки
+     * почему-то обнулились, серверное число не затирается нулём. */
+    cups = 0;
+    acct_gift_choice = 4;
+    acct_gift_is_owned = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 2;
+    stub_gift_cups = 900;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(acct_gift_busy == 0 && cups == 900);
+    cups = 0;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 3;
+    stub_gift_cups = 137;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
     acct_msg = "";
 
     /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после

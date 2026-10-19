@@ -71,7 +71,24 @@ firebase functions:delete giftAction
 
 The cup balance is client-written, same trust model as the rest of the
 progress save, so a modified client could still fake its own cups — but not
-another player's profile.
+another player's profile. The rules now also cap how far one write may raise a
+balance (`newData.val() <= data.val() + 1000`), so a hand-made request cannot
+jump straight to millions; administrators are exempt.
+
+The shop never computes the new balance from the local copy: buying and
+selling write the balance together with the sticker and the client adopts the
+number the database returned (`net_gift_cups`). A stale local wallet can no
+longer overwrite the account with a smaller value.
+
+### Why a balance could turn into zero
+
+A sign-out zeroes the device profile and saves it locally. That local-only
+save used to set the "waiting for the cloud" marker, so the next login merged
+the zeroed device over the account and pushed zeros to Firebase. Fixed in two
+places: a save without a session no longer marks the profile dirty, and a login
+merge ignores a device with no progress at all (and never lets a local cup
+count lower the cloud balance, since cups are only spent through the shop,
+which writes them itself).
 
 ## UI
 

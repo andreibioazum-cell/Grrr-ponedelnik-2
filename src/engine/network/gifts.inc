@@ -24,6 +24,7 @@ static volatile int s_gift_status = 0;
 static char s_gift_recipient[24];
 static int s_gift_id = 0, s_gift_grant = 0;
 static int s_gift_counts[GIFT_N] = {0, 0, 0, 0, 0};
+static volatile int s_gift_cups = -1; /* balance the last buy/sell left in the DB */
 static volatile int s_gift_counts_loaded = 0;
 static volatile int s_gift_counts_requested = 0;
 
@@ -133,6 +134,9 @@ static int gift_buy(const char *nick, int id) {
             LOGERR("gift buy for '%s': HTTP %d", nick, code);
         return 3;
     }
+    /* The purchase wrote the balance itself; the shop takes this exact number
+     * instead of subtracting from a local copy that may be stale. */
+    s_gift_cups = cups - price;
     return 2;
 }
 
@@ -158,6 +162,7 @@ static int gift_sell(const char *nick, int id) {
             LOGERR("gift sell for '%s': HTTP %d", nick, code);
         return 3;
     }
+    s_gift_cups = cups + gift_refund_for(id);
     return 2;
 }
 
@@ -261,6 +266,14 @@ double net_gift_action_status(void) {
     if (s >= 2)
         s_gift_status = 0;
     return (double)s;
+}
+
+/* Balance the database holds after the last successful buy/sell, or -1 when
+ * the current save is not one. The shop never guesses this number locally. */
+double net_gift_cups(void) {
+    double v = (double)s_gift_cups;
+    s_gift_cups = -1;
+    return v;
 }
 
 /* How many sticker kinds the catalogue has (poop, cake, bear, rocket,

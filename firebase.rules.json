@@ -47,7 +47,7 @@
         "nick": { ".validate": "newData.isString() && newData.val().length <= 16" },
         "pass": { ".validate": false },
         "w": { ".validate": "newData.isString() && newData.val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc'" },
-        "cups": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
+        "cups": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000 && (auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game') || !data.exists() || newData.val() <= data.val() + 1000)" },
         "gifts": {
           "poop": {
             ".write": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password' && newData.exists()",
@@ -72,7 +72,7 @@
           "rose": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
           "$other": { ".validate": false }
         },
-        "candies": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
+        "candies": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000 && (auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game') || !data.exists() || newData.val() <= data.val() + 1000)" },
         "cls": { ".validate": "newData.isNumber() && newData.val() >= 0 && (newData.val() <= 4 || (newData.val() == 6 && auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')))" },
         "azum": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
         "santa": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },

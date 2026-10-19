@@ -206,6 +206,7 @@ static void progress_reset_on_signout(void) {
     azum_revive_count = 0;
     sync_selected_class();
     save_progress();
+    net_mark_progress_synced();
 }
 
 static void settings_from_storage(void) {

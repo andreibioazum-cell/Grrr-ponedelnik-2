@@ -169,6 +169,8 @@ double net_load_astra(void);
 double net_load_astra_level(void);
 double net_load_astra_levels_unlocked(void);
 void net_save_astra(double owned, double level, double levels_unlocked);
+/* Forget a pending cloud save: the device holds nothing worth pushing. */
+void net_mark_progress_synced(void);
 void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
                            double level, double levels_unlocked, double ordinary_level, double ordinary_levels_unlocked,
                            double azum_level, double azum_levels_unlocked, double santa_level,
@@ -257,6 +259,9 @@ double net_gift_action_status(void);
 double net_gift_types(void);
 double net_gift_price(double gift);
 double net_gift_refund(double gift);
+/* Cup balance the database holds after the last successful buy/sell, or -1
+ * when the finished action was not one. */
+double net_gift_cups(void);
 void net_admin_reset_password(const char *nick, const char *new_pass);
 double net_admin_reset_status(void);
 double net_chat_is_passwd(const char *msg);
