@@ -11,10 +11,11 @@ static void text_in_box(const char *label, double x, double y, double w, double 
 static void text_in_field(const char *label, double x, double y, double h, uint32_t c, double scale);
 static double fit_text_scale(const char *s, double w, double max_scale);
 static void centered_text(const char *label, double x, double w, double y, uint32_t c, double scale);
-static void money_pair(const char *left, const char *right, double y, double scale, double gap);
+static void money_pair(const char *left, const char *right, double x, double y, double scale, double gap);
 static void draw_nick_msg(const char *nick, const char *rest, double x, double y, uint32_t base, double scale);
 static void button_face(double x, double y, double w, double h, double col);
 static void button(const char *label, double x, double y, double w, double h);
+static void button_fixed(const char *label, double x, double y, double w, double h, double face);
 static void button_scaled(const char *label, double x, double y, double w, double h, double scale);
 static void button_scaled_color(const char *label, double x, double y, double w, double h, double scale, uint32_t color);
 static void button_disabled_scaled(const char *label, double x, double y, double w, double h, double scale);

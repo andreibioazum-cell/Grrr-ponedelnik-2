@@ -315,12 +315,13 @@ astra_hp = 18;
 codecracker_hp = 12;
 codecracker_speed_mult = 3;
 codecracker_super_time = 7;
-codecracker_super_cd = 12;
+codecracker_super_cd = 4;
 codecracker_super_absorb = 0.5;
 codecracker_super_t = 0;
-/* Ult bite: 1.6 - 3% = 1.55 damage; self-heal 0.75 : 1.2 = 0.63 (rounded). */
+/* Ult bite: 1.6 - 3% = 1.55 damage; self-heal 0.75 : 1.2 = 0.63, nerfed by 16%
+ * to 0.529 so the overclock no longer out-heals the damage it takes. */
 codecracker_touch_damage = 1.55;
-codecracker_touch_heal = 0.63;
+codecracker_touch_heal = 0.529;
 codecracker_touch_cd = 0.35;
 codecracker_touch_cd_left = 0;
 codecracker_ok = 0;

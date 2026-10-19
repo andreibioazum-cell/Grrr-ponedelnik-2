@@ -32,7 +32,21 @@ def main() -> int:
     if gifts["$other"][".validate"] is not False:
         print("unknown gift keys must be rejected", file=sys.stderr)
         return 1
-    print("db rules: event 0..4, gift keys poop/cake/bear/rocket/emerald OK")
+    profile = rules["users"]["$nick"]
+    # The CodeCracker keeps a level branch of its own, so the profile has to
+    # accept its two fields - and it has to accept the packed skin flags
+    # (azum_skin carries two bits, 0..3), or a save with a skin is rejected.
+    for key in ("codecracker_level", "codecracker_levels"):
+        rule = profile.get(key, {}).get(".validate")
+        if not rule or "<= 3" not in rule:
+            print(f"profile rule for {key} is missing or too narrow: {rule}", file=sys.stderr)
+            return 1
+    skin_rule = profile.get("azum_skin", {}).get(".validate", "")
+    if "<= 3" not in skin_rule:
+        print(f"azum_skin rule rejects the packed skin flags: {skin_rule}", file=sys.stderr)
+        return 1
+    print("db rules: event 0..4, gift keys poop/cake/bear/rocket/emerald, "
+          "codecracker levels and packed skins OK")
     return 0
 
 

@@ -309,6 +309,15 @@ static const char *tr_cups_cheated(void) {
     return "Cheats used: no Cups";
 }
 
+/* The admin keeps the cups after a loss, so the result screen says so
+ * instead of promising a deduction that never happens. */
+static const char *tr_cups_admin(void) {
+    if (language == 1) {
+        return "Админ: кубки не снимаются";
+    }
+    return "Admin: no Cups lost";
+}
+
 static const char *tr_cups_lose(double amount) {
     const char *out = "";
     if (language == 1) {

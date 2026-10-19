@@ -70,6 +70,7 @@ static void check_meet_eax229(void) {
 static void save_progress(void) {
     net_set_bp_xp(bp_xp);
     double bp_lv = bp_claimed;
+    net_save_codecracker(class_level_of(CLASS_CODECRACKER), class_unlocked_of(CLASS_CODECRACKER));
     net_save_progress_all(cups, candies, player_class, class_owned_of(CLASS_AZUM), class_owned_of(CLASS_SANTA),
                           class_owned_of(CLASS_EBUC), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
                           class_unlocked_of(CLASS_ORDINARY), class_level_of(CLASS_AZUM), class_unlocked_of(CLASS_AZUM),
@@ -159,6 +160,7 @@ static void progress_from_storage(void) {
     set_class_progress(CLASS_SANTA, net_load_santa_level(), net_load_santa_levels_unlocked());
     set_class_progress(CLASS_EBUC, net_load_ebuc_level(), net_load_ebuc_levels_unlocked());
     set_class_progress(CLASS_ASTRA, net_load_astra_level(), net_load_astra_levels_unlocked());
+    set_class_progress(CLASS_CODECRACKER, net_load_codecracker_level(), net_load_codecracker_levels_unlocked());
     astra_ability_refresh();
     codecracker_refresh();
     double skins = net_load_azum_skin();

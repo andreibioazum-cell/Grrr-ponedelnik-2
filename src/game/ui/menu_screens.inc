@@ -19,7 +19,7 @@ static void draw_lobby_nick(void) {
     double pw = text_ink_width(pre) * scale;
     double nw = text_ink_width(nick) * scale;
     double qw = text_ink_width(post) * scale;
-    double x = (screen_w - pw - nw - qw) / 2;
+    double x = lobby_label_x(pw + nw + qw);
     double y = lobby_hello_y();
     text_scaled(pre, x, y, text_color, scale);
     text_scaled(nick, x + pw, y, admin_color_of(nick, text_color), scale);
@@ -29,19 +29,24 @@ static void draw_lobby_nick(void) {
 static void draw_lobby_money(void) {
     const char *cup_s = ds_concat(ds_concat(tr_cups(), ": "), ds_num_to_string((double)(cups)));
     if (candies_on() == 0) {
-        ctext_scaled(cup_s, lobby_money_y(), text_color, money_scale);
+        text_scaled(cup_s, lobby_label_x(text_ink_width(cup_s) * money_scale), lobby_money_y(), text_color,
+                    money_scale);
         return;
     }
     const char *cd_s = ds_concat(ds_concat(tr_candies(), ": "), ds_num_to_string((double)(candies)));
-    money_pair(cup_s, cd_s, lobby_money_y(), money_scale, money_gap);
+    double lw = text_ink_width(cup_s) * money_scale;
+    double rw = text_ink_width(cd_s) * money_scale;
+    money_pair(cup_s, cd_s, lobby_label_x(lw + rw + money_gap), lobby_money_y(), money_scale, money_gap);
 }
 
 static void draw_lobby(void) {
     check_achievements();
     screen_fill();
-    ctext("Cubic Battle 4", lobby_title_y(), text_color);
+    text("Cubic Battle 4", lobby_label_x(text_ink_width("Cubic Battle 4")), lobby_title_y(), text_color);
     if (newyear_active() == 1) {
-        ctext_scaled(tr_newyear_banner(), lobby_title_y() + 34, newyear_gold + 0xFF000000, 0.6);
+        const char *banner = tr_newyear_banner();
+        text_scaled(banner, lobby_label_x(text_ink_width(banner) * 0.6), lobby_title_y() + 34,
+                    newyear_gold + 0xFF000000, 0.6);
     }
     draw_menu_button(0, tr_play());
     draw_menu_button(1, tr_shop());

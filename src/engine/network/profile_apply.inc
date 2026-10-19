@@ -21,6 +21,8 @@ static void apply_user_json(const char *resp) {
     int astra = num_int(resp, "astra", 0);
     int astra_level = num_int(resp, "astra_level", -1);
     int astra_levels_unlocked = num_int(resp, "astra_levels", -1);
+    int codecracker_level = num_int(resp, "codecracker_level", -1);
+    int codecracker_levels_unlocked = num_int(resp, "codecracker_levels", -1);
     int bp_level = num_int(resp, "bp", 0);
     int bp_xp_v = num_int(resp, "bpx", -1);
     int azum_skin = num_int(resp, "azum_skin", 0);
@@ -52,6 +54,10 @@ static void apply_user_json(const char *resp) {
         astra_level = 0;
     if (astra_levels_unlocked < 0)
         astra_levels_unlocked = astra_level;
+    if (codecracker_level < 0)
+        codecracker_level = 0;
+    if (codecracker_levels_unlocked < 0)
+        codecracker_levels_unlocked = codecracker_level;
     if (ordinary_level < 0 && ordinary_levels_unlocked < 0 && azum_level < 0 && azum_levels_unlocked < 0 &&
         santa_level < 0 && santa_levels_unlocked < 0 && ebuc_level < 0 && ebuc_levels_unlocked < 0) {
         ordinary_level = ordinary_levels_unlocked = 0;
@@ -101,9 +107,13 @@ static void apply_user_json(const char *resp) {
     normalize_level_pair(&santa_level, &santa_levels_unlocked);
     normalize_level_pair(&ebuc_level, &ebuc_levels_unlocked);
     normalize_level_pair(&astra_level, &astra_levels_unlocked);
-    if (cls == 0 || cls == 6) {
+    normalize_level_pair(&codecracker_level, &codecracker_levels_unlocked);
+    if (cls == 0) {
         level = ordinary_level;
         levels_unlocked = ordinary_levels_unlocked;
+    } else if (cls == 6) {
+        level = codecracker_level;
+        levels_unlocked = codecracker_levels_unlocked;
     } else if (cls == 1) {
         level = azum_level;
         levels_unlocked = azum_levels_unlocked;
@@ -149,6 +159,8 @@ static void apply_user_json(const char *resp) {
     pg.astra = astra;
     pg.astra_level = astra_level;
     pg.astra_levels_unlocked = astra_levels_unlocked;
+    pg.codecracker_level = codecracker_level;
+    pg.codecracker_levels_unlocked = codecracker_levels_unlocked;
     pg.loaded = 1;
     pg_unlock();
     pending_cls = cls;
@@ -163,7 +175,7 @@ static void apply_user_json(const char *resp) {
         progress_write(cups, candies, cls, azum, santa, ebuc, level, levels_unlocked, ordinary_level,
                        ordinary_levels_unlocked, azum_level, azum_levels_unlocked, santa_level, santa_levels_unlocked,
                        ebuc_level, ebuc_levels_unlocked, bp_level, azum_skin, astra, astra_level,
-                       astra_levels_unlocked, bpx_keep);
+                       astra_levels_unlocked, bpx_keep, codecracker_level, codecracker_levels_unlocked);
     }
 
     int cloud_ach_flags = num_int(resp, "ach_flags", -1);
@@ -226,6 +238,7 @@ static int apply_user_json_keep_local(const char *resp) {
     int local_azum = 0, local_santa = 0, local_ebuc = 0, local_astra = 0, local_cls = 0;
     int local_al = 0, local_au = 0, local_sl = 0, local_su = 0, local_el = 0, local_eu = 0;
     int local_atl = 0, local_atu = 0;
+    int local_ccl = 0, local_ccu = 0;
     int local_cups = 0, local_candies = 0, local_ol = 0, local_ou = 0, local_sk = 0;
     int local_lv = 0, local_lu = 0, local_bp = 0;
     progress_read();
@@ -238,6 +251,8 @@ static int apply_user_json_keep_local(const char *resp) {
         local_astra = pg.astra;
         local_atl = pg.astra_level;
         local_atu = pg.astra_levels_unlocked;
+        local_ccl = pg.codecracker_level;
+        local_ccu = pg.codecracker_levels_unlocked;
         local_cls = pg.cls;
         local_al = pg.azum_level;
         local_au = pg.azum_levels_unlocked;
@@ -265,7 +280,7 @@ static int apply_user_json_keep_local(const char *resp) {
                              local_astra || local_cls != 0 || local_bp > 0 || local_lv > 0 || local_lu > 0 ||
                              local_ol > 0 || local_ou > 0 || local_al > 0 || local_au > 0 || local_sl > 0 ||
                              local_su > 0 || local_el > 0 || local_eu > 0 || local_atl > 0 || local_atu > 0 ||
-                             local_sk != 0;
+                             local_ccl > 0 || local_ccu > 0 || local_sk != 0;
     if (!local_has_progress) {
         cloud_dirty_set(0);
         return 0;
@@ -350,6 +365,9 @@ static int apply_user_json_keep_local(const char *resp) {
         pg.astra_levels_unlocked = local_atu;
         restored = 1;
     }
+    if (codecracker_merge_local(local_ccl, local_ccu) == 1) {
+        restored = 1;
+    }
 
     if (local_cls > 0 && local_cls <= 4) {
         int local_owned = 0, was_in_cloud = 0;
@@ -383,9 +401,12 @@ static int apply_user_json_keep_local(const char *resp) {
         restored = 1;
     }
 
-    if (pg.cls == 0 || pg.cls == 6) {
+    if (pg.cls == 0) {
         pg.level = pg.ordinary_level;
         pg.levels_unlocked = pg.ordinary_levels_unlocked;
+    } else if (pg.cls == 6) {
+        pg.level = pg.codecracker_level;
+        pg.levels_unlocked = pg.codecracker_levels_unlocked;
     } else if (pg.cls == 1) {
         pg.level = pg.azum_level;
         pg.levels_unlocked = pg.azum_levels_unlocked;
@@ -402,6 +423,7 @@ static int apply_user_json_keep_local(const char *resp) {
     int cups = pg.cups, candies = pg.candies, cls = pg.cls;
     int azum = pg.azum, santa = pg.santa, ebuc = pg.ebuc, lv = pg.level, lu = pg.levels_unlocked;
     int at = pg.astra, atl = pg.astra_level, atu = pg.astra_levels_unlocked;
+    int ccl = pg.codecracker_level, ccu = pg.codecracker_levels_unlocked;
     int ol = pg.ordinary_level, ou = pg.ordinary_levels_unlocked;
     int al = pg.azum_level, au = pg.azum_levels_unlocked;
     int sl = pg.santa_level, su = pg.santa_levels_unlocked;
@@ -413,7 +435,7 @@ static int apply_user_json_keep_local(const char *resp) {
         pending_level = lv;
         pending_skin = SKIN_OF_CLASS(sk, cls);
         progress_write(cups, candies, cls, azum, santa, ebuc, lv, lu, ol, ou, al, au, sl, su, el, eul, bp, sk, at, atl,
-                       atu, (int)net_load_bp_xp());
+                       atu, (int)net_load_bp_xp(), ccl, ccu);
         LOG("restored locally bought progress over cloud (azum=%d santa=%d ebuc=%d astra=%d cls=%d)", azum, santa, ebuc,
             at, cls);
         return 1;

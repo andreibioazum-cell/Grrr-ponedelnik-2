@@ -169,6 +169,11 @@ double net_load_astra(void);
 double net_load_astra_level(void);
 double net_load_astra_levels_unlocked(void);
 void net_save_astra(double owned, double level, double levels_unlocked);
+
+/* Ветка уровней CodeCracker: своя, не общая с обычным кубом. */
+double net_load_codecracker_level(void);
+double net_load_codecracker_levels_unlocked(void);
+void net_save_codecracker(double level, double levels_unlocked);
 /* Forget a pending cloud save: the device holds nothing worth pushing. */
 void net_mark_progress_synced(void);
 void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,

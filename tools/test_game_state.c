@@ -660,6 +660,12 @@ double net_load_azum_skin(void) { return 0; }
 double net_load_astra(void) { return 0; }
 double net_load_astra_level(void) { return 0; }
 double net_load_astra_levels_unlocked(void) { return 0; }
+double net_load_codecracker_level(void) { return 0; }
+double net_load_codecracker_levels_unlocked(void) { return 0; }
+void net_save_codecracker(double level, double levels_unlocked) {
+    (void)level;
+    (void)levels_unlocked;
+}
 double net_load_achievement_flags(void) { return 0; }
 double net_load_azum_revives(void) { return 0; }
 void net_connect(const char *url, const char *room) { (void)url; (void)room; }
@@ -2845,8 +2851,10 @@ int main(void) {
     codecracker_refresh();
     assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
     assert(player_max_hp_for(CLASS_CODECRACKER) == 12 && codecracker_hp == 12);
-    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.63);
+    assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.529);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
+    /* The overclock recharges in 4 seconds. */
+    assert(codecracker_super_cd == 4);
     assert(class_has_super(CLASS_CODECRACKER) == 1 && codecracker_super_active() == 0);
     /* The overclock ultimate: 7 seconds of triple speed and half damage,
      * then it is just an ordinary cube with a small HP pool again. */
@@ -2864,6 +2872,24 @@ int main(void) {
     }
     codecracker_super_t = 0;
     assert(fabs(player_walk_speed() - joy_speed * admin_cheat_speed_mult()) < 1e-6);
+    /* The CodeCracker has a level branch of its own: the ordinary cube keeps
+     * its own levels, and the two never move together. */
+    {
+        double ordinary_lv = class_level_of(CLASS_ORDINARY);
+        double ordinary_un = class_unlocked_of(CLASS_ORDINARY);
+        set_class_progress(CLASS_ORDINARY, 1, 2);
+        set_class_progress(CLASS_CODECRACKER, 3, 3);
+        assert(class_level_of(CLASS_ORDINARY) == 1 && class_unlocked_of(CLASS_ORDINARY) == 2);
+        assert(class_level_of(CLASS_CODECRACKER) == 3 && class_unlocked_of(CLASS_CODECRACKER) == 3);
+        player_class = CLASS_CODECRACKER;
+        sync_selected_class();
+        assert(player_level == 3 && levels_unlocked == 3);
+        player_class = CLASS_ORDINARY;
+        sync_selected_class();
+        assert(player_level == 1 && levels_unlocked == 2);
+        set_class_progress(CLASS_ORDINARY, ordinary_lv, ordinary_un);
+        set_class_progress(CLASS_CODECRACKER, 0, 0);
+    }
     player_class = CLASS_ORDINARY;
     assert(class_owned_of(CLASS_CODECRACKER) == 1 && class_visible(CLASS_CODECRACKER) == 1);
     assert(visible_class_at(5) == CLASS_CODECRACKER);
@@ -3315,6 +3341,12 @@ int main(void) {
     cups = 0;
     award_battle_result(1);
     assert(cups == 50);
+    /* In admin mode a loss does not take the cups away. */
+    if (dev_access() == 1) {
+        cups = 30;
+        award_battle_result(2);
+        assert(cups == 30);
+    }
     /* Entering a battle with a cheat already on stains it as well. */
     cheat_stain = 0;
     cheat_speed = 1;
@@ -3604,9 +3636,14 @@ int main(void) {
         assert(new_theme == 0 && t_dir == 0);
         assert(ui_purple == 0xFFD4508A && bg_screen == 0xFF3A1530);
         assert(menu_x() == screen_margin);
+        /* The lobby labels stand on the left in the old theme, on the edge of
+         * the button column; the battle pass button stays in its corner. */
+        assert(lobby_label_x(100) == screen_margin);
+        assert(bpass_corner_x() == screen_w - screen_margin - bpass_corner_w());
         press_new = 0;
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(4) + settings_btn_h() / 2, 0, 21);
         assert(new_theme == 1 && ui_purple == 0xFF5F10A0);
+        assert(lobby_label_x(100) == center_x(100));
         press_new = 0;
         /* Row 5 opens the legal documents window over the settings. */
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(5) + settings_btn_h() / 2, 0, 22);

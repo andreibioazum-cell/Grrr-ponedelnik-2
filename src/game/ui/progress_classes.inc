@@ -1,17 +1,8 @@
-static double class_level_of(double cls) {
-    if (cls == CLASS_CODECRACKER) {
-        /* CodeCracker shares the ordinary cube's progression. */
-        cls = CLASS_ORDINARY;
-    }
-    return arr_get(class_level_tbl, cls);
-}
+/* У каждого класса своя ветка уровней, у CodeCracker в том числе: это
+ * отдельный класс, а не обычный куб под другим именем. */
+static double class_level_of(double cls) { return arr_get(class_level_tbl, cls); }
 
-static double class_unlocked_of(double cls) {
-    if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
-    }
-    return arr_get(class_unlocked_tbl, cls);
-}
+static double class_unlocked_of(double cls) { return arr_get(class_unlocked_tbl, cls); }
 
 static double class_id_valid(double cls) {
     return cls == CLASS_ORDINARY || cls == CLASS_AZUM || cls == CLASS_SANTA || cls == CLASS_EBUC ||
@@ -35,9 +26,6 @@ static void set_class_owned(double cls, double owned) {
 }
 
 static void set_class_progress(double cls, double lv, double un) {
-    if (cls == CLASS_CODECRACKER) {
-        cls = CLASS_ORDINARY;
-    }
     arr_set(class_level_tbl, cls, lv);
     arr_set(class_unlocked_tbl, cls, un);
 }

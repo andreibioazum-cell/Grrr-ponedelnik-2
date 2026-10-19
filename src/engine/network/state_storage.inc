@@ -181,6 +181,10 @@ typedef struct {
     int bp_xp;
 
     int astra, astra_level, astra_levels_unlocked;
+
+    /* CodeCracker has a level track of its own: it is a separate class, not
+     * the ordinary cube under another name. */
+    int codecracker_level, codecracker_levels_unlocked;
 } Progress;
 static Progress pg = {.lock = DS_MUTEX_INIT};
 #define LEVEL_MAX 3
@@ -249,8 +253,10 @@ static void progress_write(int cups, int candies, int cls, int azum, int santa, 
                            int levels_unlocked, int ordinary_level, int ordinary_levels_unlocked, int azum_level,
                            int azum_levels_unlocked, int santa_level, int santa_levels_unlocked, int ebuc_level,
                            int ebuc_levels_unlocked, int bp_level, int azum_skin, int astra, int astra_level,
-                           int astra_levels_unlocked, int bp_xp);
+                           int astra_levels_unlocked, int bp_xp, int codecracker_level,
+                           int codecracker_levels_unlocked);
 static void progress_read(void);
+int codecracker_merge_local(int local_level, int local_unlocked);
 
 typedef struct {
     char plain[URL];

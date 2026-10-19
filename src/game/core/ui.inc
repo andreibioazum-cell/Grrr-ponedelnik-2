@@ -81,10 +81,10 @@ static void centered_text(const char *label, double x, double w, double y, uint3
     text_scaled(label, x + (w - tw) / 2, y, c, scale);
 }
 
-static void money_pair(const char *left, const char *right, double y, double scale, double gap) {
+/* Пара чисел в одной строке (кубки и леденцы): x - левый край строки, так
+ * строка встаёт под нужную надпись лобби. */
+static void money_pair(const char *left, const char *right, double x, double y, double scale, double gap) {
     double lw = text_ink_width(left) * scale;
-    double rw = text_ink_width(right) * scale;
-    double x = (screen_w - lw - rw - gap) / 2;
     text_scaled(left, x, y, text_color, scale);
     text_scaled(right, x + lw + gap, y, text_color, scale);
 }
@@ -106,13 +106,19 @@ static void button_face(double x, double y, double w, double h, double col) {
 }
 
 static void button(const char *label, double x, double y, double w, double h) {
+    button_fixed(label, x, y, w, h, ui_purple);
+}
+
+/* A button with a face colour of its own: the result screen keeps the purple
+ * face in both themes, so the old theme's win/lose screen is not rose. */
+static void button_fixed(const char *label, double x, double y, double w, double h, double face) {
     double p = button_press_k(x, y, w, h);
     double s = 1 - PRESS_SQUEEZE * p;
     double bx = x + w * (1 - s) / 2;
     double by = y + h * (1 - s) / 2;
     double bw = w * s;
     double bh = h * s;
-    double col = shade(ui_purple, 1 - PRESS_SHADE * p);
+    double col = shade(face, 1 - PRESS_SHADE * p);
     button_face(bx, by, bw, bh, col);
     text_in_box(label, bx, by, bw, bh, shade(text_color, 1 - PRESS_SHADE * p), s);
 }
@@ -193,7 +199,18 @@ static double battle_back_x(void) { return (screen_w - btn_w) / 2; }
 
 static double battle_back_y(void) { return back_y; }
 
-static void draw_battle_back(void) { button(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h); }
+/* Фиолетовый экрана итога боя: панель победы/поражения и кнопка «Назад» на
+ * нём фиолетовые в обеих темах - в старой теме розовая кнопка делала весь
+ * экран победы или поражения розовым. */
+#define RESULT_PURPLE 0xFF5F10A0
+
+static void draw_battle_back(void) {
+    if (finished != 0) {
+        button_fixed(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h, RESULT_PURPLE);
+        return;
+    }
+    button(tr_back(), battle_back_x(), battle_back_y(), btn_w, btn_h);
+}
 
 static double battle_back_hit(double x, double y) { return hit_button(x, y, battle_back_x(), battle_back_y(), btn_w, btn_h); }
 

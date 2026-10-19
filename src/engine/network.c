@@ -3,6 +3,7 @@
 #include "engine/network/write_secret.inc"
 #include "engine/network/cloud_patch.inc"
 #include "engine/network/progress_file.inc"
+#include "engine/network/progress_levels.inc"
 #include "engine/network/auth_json.inc"
 #include "platform/android/network_http.inc"
 #include "engine/network/http_json.inc"
