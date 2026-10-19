@@ -23,6 +23,7 @@ static uint64_t restart_after_ns = 0;
 static unsigned int restart_failures = 0;
 static uint64_t prev_frame_ns = 0;
 static uint64_t prev_loop_ns = 0;
+static double frame_seconds = 0.0;
 static struct android_app *g_app = NULL;
 static uint64_t monotonic_ns(void) {
     struct timespec now;
@@ -30,6 +31,9 @@ static uint64_t monotonic_ns(void) {
         return 0;
     return (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
 }
+
+/* Настоящая длина кадра: dt обрезан до 0.1 с и для счётчика FPS не годится. */
+double ds_frame_seconds(void) { return frame_seconds; }
 
 static int phys_w = 0, phys_h = 0;
 
@@ -181,6 +185,8 @@ static void start_window(struct android_app *app) {
 
     prev_frame_ns = 0;
     prev_loop_ns = 0;
+    /* Кадр до сворачивания ничего не говорит о новом окне. */
+    frame_seconds = 0.0;
     if (game_active) {
 
         ds_log("window is back (%dx%d): the game continues", phys_w, phys_h);
@@ -389,8 +395,10 @@ void android_main(struct android_app *app) {
          * сеанс он не разрастался до нехватки памяти посреди боя. */
         ds_string_pool_tick();
 
-        if (prev_loop_ns)
-            ds_graphics_report_frame_interval((double)(frame_start - prev_loop_ns) / 1e9);
+        if (prev_loop_ns && frame_start >= prev_loop_ns) {
+            frame_seconds = (double)(frame_start - prev_loop_ns) / 1e9;
+            ds_graphics_report_frame_interval(frame_seconds);
+        }
         prev_loop_ns = frame_start;
         apply_screen_size();
         if (game_active) {

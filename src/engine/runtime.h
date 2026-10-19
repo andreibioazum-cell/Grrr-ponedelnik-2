@@ -126,6 +126,11 @@ int text_ink_height(const char *string);
 int text_ink_top(const char *string);
 
 void ds_graphics_report_frame_interval(double seconds);
+/* Сколько длился последний настоящий кадр, в секундах: от начала прошлой
+ * итерации цикла до начала этой, вместе с ожиданием презентации. Ничего не
+ * обрезает, в отличие от игрового dt (тот ограничен 0.1 с). 0 - кадр ещё не
+ * измерен, окно только что восстановлено или часы не ответили. */
+double ds_frame_seconds(void);
 int ds_graphics_pixel_scale(void);
 
 int ds_graphics_init(AAssetManager *assets, ANativeWindow *window);

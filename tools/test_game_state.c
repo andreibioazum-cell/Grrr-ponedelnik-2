@@ -141,6 +141,11 @@ static double snowflake_centres[64];
 static int snowflake_centre_n;
 static int star_line_count;
 static double star_max_y;
+/* Обводка, у которой оба конца лежат на одной окружности вокруг центра FX, -
+ * это кусок кольца. У ульты CodeCracker таких быть не должно. */
+static int fx_orbit_lines;
+static double fx_center_x = 200;
+static double fx_center_y = 200;
 
 struct DSArray {
     double *data;
@@ -218,6 +223,9 @@ double dist(double x, double y, double a, double b) {
 double ds_mod(double value, double divisor) {
     return (double)((int)value % (int)divisor);
 }
+/* Длина настоящего кадра, которую счётчик FPS берёт у движка. */
+static double stub_frame_seconds;
+double ds_frame_seconds(void) { return stub_frame_seconds; }
 int str_eq(const char *a, const char *b) {
     return a && b && strcmp(a, b) == 0 ? 1 : 0;
 }
@@ -489,10 +497,13 @@ void roundrect(float x, float y, float w, float h, float rad, uint32_t color) {
     adm_rr_n++;
 }
 
+static float stub_text_x;
+static float stub_text_y;
+static float stub_text_scale;
 void text_scaled(const char *s, float x, float y, uint32_t c, float scale) {
-    (void)x;
-    (void)y;
-    (void)scale;
+    stub_text_x = x;
+    stub_text_y = y;
+    stub_text_scale = scale;
     adm_record_text(s);
     adm_record_color(c);
 }
@@ -525,14 +536,13 @@ int text_ink_top(const char *s) {
 }
 
 void line(float x1, float y1, float x2, float y2, float thickness, uint32_t color) {
-    (void)x1;
-    (void)y1;
-    (void)x2;
-    (void)y2;
+    double d1 = hypot(x1 - fx_center_x, y1 - fx_center_y);
+    double d2 = hypot(x2 - fx_center_x, y2 - fx_center_y);
     (void)thickness;
     star_line_count++;
     if (y1 > star_max_y) star_max_y = y1;
     if (y2 > star_max_y) star_max_y = y2;
+    if (d1 > 30 && d1 < 50 && fabs(d1 - d2) < 0.75) fx_orbit_lines++;
     adm_record_color(color);
 }
 
@@ -1547,13 +1557,20 @@ static void test_azum_buff(void) {
     puts("flash sale: -10% on all prices and purchase OK");
 }
 
-/* Ульта CodeCracker: без кружка вокруг куба; звёздочки - гладкие. */
+/* Ульта CodeCracker: без кружка вокруг куба - ни диска, ни кольца, ни дуг,
+ * ни обода из точек; звёздочки - гладкие. */
 static void test_codecracker_fx(void) {
     fx_ring_count = 0;
     fx_big_circle_count = 0;
+    fx_orbit_lines = 0;
+    fx_center_x = 200;
+    fx_center_y = 200;
     draw_codecracker_fx_at(200, 200, 0.3, 0.7);
     assert(fx_ring_count == 0);
     assert(fx_big_circle_count == 0);
+    /* Ни один штрих не идёт по окружности вокруг куба: кольцо из дуг
+     * начинается именно так. Искры летят назад и такой обводки не дают. */
+    assert(fx_orbit_lines == 0);
 
     /* A smooth star needs many more strokes than its diameter in pixels:
      * the old pixel step produced at most ~2*r strokes. */
@@ -1562,6 +1579,62 @@ static void test_codecracker_fx(void) {
     draw_star(0, 0, r, 0xFFF7C948);
     assert(star_line_count > (int)(3 * r));
     puts("codecracker fx: no halo circle in the ult; stars drawn smooth, not pixelated");
+}
+
+/* FPS в бою: считается по настоящей длине кадра, а не по обрезанному dt. */
+static void test_fps_meter(void) {
+    int i;
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 30.0;
+    i = 0;
+    while (i < 16) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 30);
+
+    /* Справа снизу, тем же мелким шрифтом: подпись упирается в угол. */
+    int saved_w = screen_w;
+    int saved_h = screen_h;
+    screen_w = 1280;
+    screen_h = 720;
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 60.0;
+    i = 0;
+    while (i < 31) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 60);
+    assert(stub_text_x > screen_w * 0.9f && stub_text_y > screen_h * 0.9f);
+    assert(stub_text_scale == (float)FPS_SCALE);
+    screen_w = saved_w;
+    screen_h = saved_h;
+
+    /* 8 кадров в секунду: dt обрезан до 0.1 с и по нему выходило бы 10. */
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 1.0 / 8.0;
+    i = 0;
+    while (i < 5) {
+        draw_fps_meter();
+        i = i + 1;
+    }
+    assert(fps_shown == 8);
+    /* Свернутое приложение - не «0 FPS»: окно просто начинается заново. */
+    fps_acc = 0;
+    fps_frames = 0;
+    fps_shown = 0;
+    stub_frame_seconds = 30.0;
+    draw_fps_meter();
+    assert(fps_shown == 0);
+    stub_frame_seconds = 0;
+    puts("fps meter: real frame times, 8 fps stays 8, a pause is not a slow frame");
 }
 
 static int stub_roomlist_status;
@@ -3531,6 +3604,7 @@ int main(void) {
     test_azum_buff();
     test_class_stars();
     test_codecracker_fx();
+    test_fps_meter();
     test_eax229_and_rooms();
     test_dice_alone_and_bubbles();
     test_battle_events();
