@@ -41,7 +41,7 @@ static void progress_read(void) {
     data_file_path(path, sizeof(path), PROGRESS_FILE);
     f = fopen(path, "r");
     if (f) {
-        int n = fscanf(f, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &cups, &cls, &azum,
+        int n = fscanf(f, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &cups, &cls, &azum,
                        &santa, &candies, &level, &levels_unlocked, &ordinary_level, &ordinary_levels_unlocked,
                        &azum_level, &azum_levels_unlocked, &santa_level, &santa_levels_unlocked, &ebuc_level,
                        &ebuc_levels_unlocked, &ebuc, &bp_level, &azum_skin, &astra, &astra_level,

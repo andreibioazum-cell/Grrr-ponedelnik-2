@@ -29,7 +29,7 @@ static void acct_gift_buy(void) {
     if (cups < acct_gift_price(acct_gift_choice)) { acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups"; return; }
     acct_gift_busy = 1; acct_gift_busy_mode = 2;
     acct_msg = language == 1 ? "Покупаем стикер..." : "Buying sticker...";
-    if (net_gift_action(acct_gift_choice, "", 2) == 0) acct_gift_refused();
+    if (net_gift_action(acct_gift_choice, "", 2, 0) == 0) acct_gift_refused();
 }
 static void acct_gift_send(void) {
     acct_sync(); keyboard_hide();
@@ -39,7 +39,7 @@ static void acct_gift_send(void) {
     if (!acct_buf[0][0]) { acct_msg = language == 1 ? "Введите ник получателя" : "Enter recipient nickname"; return; }
     acct_gift_busy = 1; acct_gift_busy_mode = 0;
     acct_msg = language == 1 ? "Отправляем стикер..." : "Sending sticker...";
-    if (net_gift_action(acct_gift_sel_id(), acct_buf[0], 0) == 0) acct_gift_refused();
+    if (net_gift_action(acct_gift_sel_id(), acct_buf[0], 0, 0) == 0) acct_gift_refused();
 }
 static void acct_gift_sell(void) {
     keyboard_hide();
@@ -48,7 +48,7 @@ static void acct_gift_sell(void) {
     }
     acct_gift_busy = 1; acct_gift_busy_mode = 3;
     acct_msg = language == 1 ? "Продаём стикер..." : "Selling sticker...";
-    if (net_gift_action(acct_gift_sel_id(), "", 3) == 0) acct_gift_refused();
+    if (net_gift_action(acct_gift_sel_id(), "", 3, 0) == 0) acct_gift_refused();
 }
 
 static void acct_poll_gifts(void) {

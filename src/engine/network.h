@@ -259,8 +259,9 @@ double net_gift_count(double gift);
  * changes right away. Only that one counter moves; the rest stay as they are. */
 void net_gift_count_add(double gift, double delta);
 void net_gift_refresh(void);
-double net_gift_action(double gift, const char *recipient, double grant);
+double net_gift_action(double gift, const char *recipient, double grant, double hue);
 double net_gift_action_status(void);
+double net_gift_hue(void);
 /* Catalogue of five stickers: 0 poop, 1 cake, 2 bear, 3 rocket, 4 emerald
  * (the most expensive one). net_gift_types() is the list length; the price
  * is what the shop charges, the refund is half of it. */

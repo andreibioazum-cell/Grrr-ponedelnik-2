@@ -20,9 +20,44 @@ static const char *gift_tex(double id) {
     return "gift_poop.png";
 }
 
+/* Оттенок изумруда: 0 - обычная радуга, 1..7 - тот, что выбрал админ. */
+static double gift_emerald_base_hue(void) {
+    double h = net_gift_hue();
+    if (h < 0) h = 0;
+    if (h > 7) h = 7;
+    return h / 8.0;
+}
+
+/* Оттенок медленно плывёт: изумруд переливается. */
+static double gift_emerald_phase(void) {
+    return gift_emerald_base_hue() + ds_frame_seconds() * 0.08;
+}
+
+/* Цвет оттенка - то же колесо, что и у радужных букв. */
+static uint32_t gift_hue_color(double hue) {
+    double h = hue - floor(hue);
+    double r = fabs(h * 6 - 3) - 1, g = 2 - fabs(h * 6 - 2), b = 2 - fabs(h * 6 - 4);
+    if (r < 0) r = 0;
+    if (r > 1) r = 1;
+    if (g < 0) g = 0;
+    if (g > 1) g = 1;
+    if (b < 0) b = 0;
+    if (b > 1) b = 1;
+    return 0xFF000000u | ((uint32_t)(r * 255) << 16) | ((uint32_t)(g * 255) << 8) | (uint32_t)(b * 255);
+}
+
 static void gift_icon(double id, double x, double y, double s) {
     if (s <= 0) return;
     tex(x, y, gift_tex(id), 0, s / GIFT_TEX_PX);
+    if (id >= 4) {
+        /* The emerald: the picture plus a shimmering layer of the hue, so the
+         * colour flows over it instead of sitting still. */
+        double a = 70 + 55 * sin(ds_frame_seconds() * 2.4);
+        if (a < 20) a = 20;
+        if (a > 140) a = 140;
+        uint32_t c = gift_hue_color(gift_emerald_phase());
+        tex_tint(x, y, gift_tex(id), 0, s / GIFT_TEX_PX, (uint32_t)(((unsigned)(int)a) << 24) | (c & 0x00FFFFFFu));
+    }
 }
 
 static double gift_rarity(double id) {
@@ -62,7 +97,7 @@ static void gift_text_rarity(const char *s, double x, double y, double w, double
     double th = text_ink_height(s) * sc;
     double tt = text_ink_top(s) * sc;
     double tx = x + (w - tw) / 2, ty = y + (h - th) / 2 - tt + 1.5;
-    if (gift_rarity(id) == 3) text_rainbow(s, tx, ty, sc, 0.0);
+    if (gift_rarity(id) == 3) text_rainbow(s, tx, ty, sc, gift_emerald_phase());
     else text_scaled(s, tx, ty, gift_rarity_color(id), sc);
 }
 
@@ -71,6 +106,6 @@ static void gift_text_rarity_left(const char *s, double x, double y, double h, d
     double th = text_ink_height(s) * sc;
     double tt = text_ink_top(s) * sc;
     double ty = y + (h - th) / 2 - tt + 1.5;
-    if (gift_rarity(id) == 3) text_rainbow(s, x, ty, sc, 0.0);
+    if (gift_rarity(id) == 3) text_rainbow(s, x, ty, sc, gift_emerald_phase());
     else text_scaled(s, x, ty, gift_rarity_color(id), sc);
 }

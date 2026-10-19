@@ -32,6 +32,15 @@ def main() -> int:
     if gifts["$other"][".validate"] is not False:
         print("unknown gift keys must be rejected", file=sys.stderr)
         return 1
+    # The emerald's hue is chosen by an admin and stored next to the counters:
+    # the rule has to allow 0..7 and to let only the admin write it.
+    hue = gifts.get("emerald_hue", {})
+    if "<= 7" not in hue.get(".validate", ""):
+        print(f"emerald_hue rule is missing or too narrow: {hue}", file=sys.stderr)
+        return 1
+    if "dimasi4ek229@cb4.game" not in hue.get(".write", ""):
+        print(f"emerald_hue must be written by an admin only: {hue}", file=sys.stderr)
+        return 1
     profile = rules["users"]["$nick"]
     # The CodeCracker keeps a level branch of its own, so the profile has to
     # accept its two fields - and it has to accept the packed skin flags
@@ -46,7 +55,7 @@ def main() -> int:
         print(f"azum_skin rule rejects the packed skin flags: {skin_rule}", file=sys.stderr)
         return 1
     print("db rules: event 0..4, gift keys poop/cake/bear/rocket/emerald, "
-          "codecracker levels and packed skins OK")
+          "emerald hue 0..7 for admins, codecracker levels and packed skins OK")
     return 0
 
 

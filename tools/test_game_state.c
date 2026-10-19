@@ -786,10 +786,13 @@ double net_gift_types(void) { return 5; }
 void net_gift_refresh(void) {}
 /* The action can be refused (another gift operation is already running). */
 static double stub_gift_action_ok = 1;
-double net_gift_action(double gift, const char *recipient, double grant) {
-    (void)gift; (void)recipient; (void)grant;
+double net_gift_action(double gift, const char *recipient, double grant, double hue) {
+    (void)gift; (void)recipient; (void)grant; (void)hue;
     return stub_gift_action_ok;
 }
+/* The emerald's hue: 0 - the usual rainbow, 1..7 - the one the admin picked. */
+static double stub_gift_hue = 0;
+double net_gift_hue(void) { return stub_gift_hue; }
 static double stub_gift_status;
 double net_gift_action_status(void) {
     double v = stub_gift_status;
@@ -2940,6 +2943,45 @@ int main(void) {
         finished = 2;
         assert(result_face_color() == 0xFF5F10A0);
         finished = 0;
+    }
+    /* The emerald: its colour is the one the admin picked, and the picture
+     * shimmers with it. */
+    {
+        stub_gift_hue = 0;
+        assert(gift_rarity(4) == 3 && strcmp(gift_tex(4), "gift_emerald.png") == 0);
+        assert(gift_emerald_base_hue() == 0);
+        assert(gift_hue_color(0.0) == 0xFFFF0000u);
+        assert(gift_hue_color(1.0 / 3.0) == 0xFF00FF00u);
+        stub_gift_hue = 4;
+        assert(fabs(gift_emerald_base_hue() - 0.5) < 1e-9);
+        assert(gift_hue_color(0.5) == 0xFF00FFFFu);
+        stub_gift_hue = 0;
+    }
+    /* The admin picks the emerald's hue: the swatches sit in their own row
+     * and the chosen one is remembered. */
+    {
+        int saved_w = screen_w, saved_h = screen_h;
+        screen_w = 1280;
+        screen_h = 720;
+        admin_tab = 1;
+        admin_gift_choice = 4;
+        admin_gift_hue = 0;
+        double sw = admin_hue_swatch_w();
+        double hy = admin_hue_row_y() + admin_row_h() / 2;
+        double hx = admin_panel_x() + admin_pad() + sw / 2;
+        assert(admin_hue_at(hx, hy) == 0);
+        assert(admin_hue_at(hx + 3 * (sw + ADMIN_HUE_GAP), hy) == 3);
+        assert(admin_hue_at(admin_panel_x() + admin_pad() - 5, hy) == -1);
+        admin_panel_press(hx + 3 * (sw + ADMIN_HUE_GAP), hy);
+        assert(admin_gift_hue == 3);
+        /* The hue row belongs to the emerald only. */
+        admin_gift_choice = 1;
+        assert(admin_hue_at(hx, hy) == -1);
+        admin_gift_choice = 4;
+        admin_gift_hue = 0;
+        admin_tab = 0;
+        screen_w = saved_w;
+        screen_h = saved_h;
     }
     player_class = CLASS_ORDINARY;
     assert(class_owned_of(CLASS_CODECRACKER) == 1 && class_visible(CLASS_CODECRACKER) == 1);

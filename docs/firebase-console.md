@@ -61,6 +61,14 @@ CodeCracker, и Firebase отклоняет **весь** запрос: не по
 
 и поправь диапазон скина на `"azum_skin": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" }`.
 
+Оттенок изумруда, который выбирает админ, лежит рядом со счётчиками стикеров -
+`gifts/emerald_hue` (0..7, 0 - обычная радуга). Его тоже нужно разрешить в
+правилах, иначе админ не сможет выдать изумруд с оттенком:
+
+```
+"emerald_hue": { ".write": "auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')", ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7" },
+```
+
 ## 2. Вернуть кубки (визуальный редактор данных)
 
 Консоль пишет в базу **в обход правил**, поэтому руками можно поставить любое
