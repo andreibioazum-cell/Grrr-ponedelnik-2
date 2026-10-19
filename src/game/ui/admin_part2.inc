@@ -156,8 +156,7 @@ static void admin_panel_press(double x, double y) {
         if (row_index == 7) {
             keyboard_hide();
             if (admin_gift_target[0] && admin_gift_busy != 1) {
-                net_gift_action(admin_gift_choice, admin_gift_target, 1);
-                admin_gift_busy = 1;
+                admin_gift_busy = net_gift_action(admin_gift_choice, admin_gift_target, 1) == 0 ? 3 : 1;
             }
             return;
         }

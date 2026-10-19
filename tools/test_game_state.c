@@ -500,10 +500,24 @@ void roundrect(float x, float y, float w, float h, float rad, uint32_t color) {
 static float stub_text_x;
 static float stub_text_y;
 static float stub_text_scale;
+/* Position of the last drawn line that contains a watched word. */
+static char stub_watch_name[32];
+static float stub_watch_x;
+static float stub_watch_y;
+static int stub_watch_hit;
+static void text_watch(const char *name) {
+    snprintf(stub_watch_name, sizeof(stub_watch_name), "%s", name ? name : "");
+    stub_watch_hit = 0;
+}
 void text_scaled(const char *s, float x, float y, uint32_t c, float scale) {
     stub_text_x = x;
     stub_text_y = y;
     stub_text_scale = scale;
+    if (stub_watch_name[0] && s && strstr(s, stub_watch_name)) {
+        stub_watch_x = x;
+        stub_watch_y = y;
+        stub_watch_hit = 1;
+    }
     adm_record_text(s);
     adm_record_color(c);
 }
@@ -755,10 +769,20 @@ double net_gift_count(double gift) {
     int i = (int)gift;
     return i >= 0 && i < 8 ? stub_gift_counts[i] : 0;
 }
+/* A local change of one counter: the rest of the collection stays as it is. */
+void net_gift_count_add(double gift, double delta) {
+    int i = (int)gift;
+    if (i < 0 || i >= 8) return;
+    stub_gift_counts[i] = stub_gift_counts[i] + delta;
+    if (stub_gift_counts[i] < 0) stub_gift_counts[i] = 0;
+}
 double net_gift_types(void) { return 5; }
 void net_gift_refresh(void) {}
-void net_gift_action(double gift, const char *recipient, double grant) {
+/* The action can be refused (another gift operation is already running). */
+static double stub_gift_action_ok = 1;
+double net_gift_action(double gift, const char *recipient, double grant) {
     (void)gift; (void)recipient; (void)grant;
+    return stub_gift_action_ok;
 }
 static double stub_gift_status;
 double net_gift_action_status(void) {
@@ -1103,6 +1127,15 @@ static void test_gifts_page(void) {
     /* Пять карточек магазина - пять картинок, без повторов. */
     assert(gift_tex_draws == 5);
     assert(str_eq(last_gift_tex, "gift_emerald.png") == 1);
+    /* Пустая коллекция пишет «Пока нет подарков» под заголовком
+     * «МОИ ПОДАРКИ», в правой колонке, а не посередине экрана. */
+    text_watch("Пока нет подарков");
+    draw_acct_gifts();
+    assert(stub_watch_hit == 1);
+    assert(stub_watch_x >= acct_gift_x(1) - 1);
+    assert(stub_watch_x <= acct_gift_x(1) + acct_gift_col_w());
+    assert(stub_watch_y < acct_gift_view_top() + 30);
+    text_watch("");
 
     /* Две какашки - две отдельные карточки, изумруд - третья. */
     stub_gift_counts[0] = 2;
@@ -1168,6 +1201,47 @@ static void test_gifts_page(void) {
     stub_gift_status = 2;
     acct_poll_gifts();
     assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
+    acct_msg = "";
+
+    /* Продажа убирает из коллекции только проданный стикер: вторая какашка
+     * и изумруд остаются на месте. Раньше список обнулялся целиком, и
+     * казалось, что вместе с какашкой продали ещё и изумруд. */
+    stub_gift_counts[0] = 2;
+    stub_gift_counts[4] = 1;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 3;
+    stub_gift_cups = 137;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[0] == 1 && stub_gift_counts[4] == 1);
+    assert(acct_gift_own_total() == 2);
+    assert(acct_gift_own_id(0) == 0 && acct_gift_own_id(1) == 4);
+    acct_msg = "";
+
+    /* Отказ в действии (уже идёт другая операция) не оставляет страницу
+     * занятой надписью «Продаём...». */
+    stub_gift_action_ok = 0;
+    stub_gift_counts[0] = 1;
+    acct_gift_choice = 0;
+    acct_gift_is_owned = 1;
+    acct_gift_own_row = 0;
+    acct_gift_sell();
+    assert(acct_gift_busy == 0 && acct_gift_busy_mode == 3);
+    stub_gift_action_ok = 1;
+    acct_msg = "";
+
+    /* Покупка добавляет ровно один стикер и не трогает остальные. */
+    acct_gift_choice = 4;
+    acct_gift_is_owned = 0;
+    acct_gift_busy = 1;
+    acct_gift_busy_mode = 2;
+    stub_gift_cups = 900;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[4] == 2 && stub_gift_counts[0] == 1);
     acct_msg = "";
 
     /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после

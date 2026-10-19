@@ -9,24 +9,40 @@
  * покупка не рассыпается на две.
  * Подарить — сначала -1 у себя, затем +1 получателю; если вторая запись не
  * прошла, свой счётчик возвращается. Продать — одна запись: -1 стикер и
- * +половина цены в кубки. firebase.rules.json разрешает чужому игроку
- * только +1 в gifts (и не даёт трогать остальной профиль или удалять чужие
- * стикеры); владелец может писать свои счётчики свободно, поэтому продажа
- * проходит теми же правилами, что и покупка.
+ * +половина цены в кубки.
+ * firebase.rules.json разрешает чужому игроку только +1 в gifts (и не даёт
+ * трогать остальной профиль или удалять чужие стикеры); владелец может писать
+ * свои счётчики свободно, поэтому продажа проходит теми же правилами, что и
+ * покупка.
+ * Счётчик стикера в этой записи пишется путём ("gifts/poop"), а не вложенным
+ * объектом: REST PATCH заменяет названное поддерево целиком, и обычное
+ * "gifts":{"poop":0} стирало остальные счётчики — вместе с изумрудом.
  * Статусы: 0 — ничего, 1 — идёт, 2 — готово, 3 — сеть или сервер,
  * 4 — получатель не найден, 5 — не хватает кубков, 6 — нет стикера
  * в инвентаре, 7 — плохой ник или подарок самому себе,
- * 8 — коллекция переполнена (999). */
+ * 8 — коллекция переполнена (999).
+ *
+ * Счётчики на экране не обнуляются при обновлении: коллекция остаётся
+ * видимой, пока едут свежие числа, а купленный/проданный/отправленный
+ * стикер меняет свой счётчик сразу (net_gift_count_add). */
 
 #define GIFT_N 5
 
 static volatile int s_gift_status = 0;
 static char s_gift_recipient[24];
 static int s_gift_id = 0, s_gift_grant = 0;
-static int s_gift_counts[GIFT_N] = {0, 0, 0, 0, 0};
+/* Счётчики коллекции: последние известные числа. Обновление их больше не
+ * обнуляет - коллекция остаётся на экране, пока едут свежие данные. Раньше
+ * refresh стирал все счётчики, и после продажи одного стикера коллекция на миг
+ * выглядела пустой: казалось, что вместе с какашкой продали и изумруд. */
+static volatile int s_gift_counts[GIFT_N] = {0, 0, 0, 0, 0};
+/* Ник, чьи счётчики сейчас на экране: у другого аккаунта коллекция своя. */
+static char s_gift_nick[24];
+/* Поколение данных: ответ загрузки, пришедший после обновления, не подходит
+ * и не должен затирать более новые числа. */
+static volatile int s_gift_gen = 0;
+static volatile int s_gift_load_gen = -1; /* поколение последней загрузки, -1 - её не было */
 static volatile int s_gift_cups = -1; /* balance the last buy/sell left in the DB */
-static volatile int s_gift_counts_loaded = 0;
-static volatile int s_gift_counts_requested = 0;
 
 static const char *gift_id(double gift) {
     static const char *ids[GIFT_N] = {"poop", "cake", "bear", "rocket", "emerald"};
@@ -111,6 +127,16 @@ static int gift_recipient_exists(const char *nick) {
     return resp[0] == '{';
 }
 
+/* Тело записи купки/продажи: баланс и счётчик одного стикера меняются одной
+ * записью. Ключ счётчика - путь (через косую черту): REST PATCH заменяет
+ * названное поддерево целиком, поэтому обычное "gifts":{"poop":0} стирало
+ * остальные счётчики вместе с изумрудом. С путём "gifts/poop" пишется только
+ * этот счётчик, а кубки и стикер меняются всё равно одной записью. */
+static void gift_body(char *body, size_t cap, int cups, int id, int count) {
+    snprintf(body, cap, "{\"cups\":%d,\"gifts/%s\":%d}", cups, gift_id(id), count);
+    net_seal_body(body, cap);
+}
+
 static int gift_buy(const char *nick, int id) {
     char url[URL], body[BODY], resp[1024];
     int counts[GIFT_N], cups, code, price = gift_price(id);
@@ -126,8 +152,7 @@ static int gift_buy(const char *nick, int id) {
         return 8;
     counts[id]++;
     snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
-    snprintf(body, sizeof(body), "{\"cups\":%d,\"gifts\":{\"%s\":%d}}", cups - price, gift_id(id), counts[id]);
-    net_seal_body(body, sizeof(body));
+    gift_body(body, sizeof(body), cups - price, id, counts[id]);
     code = fb_http("PATCH", url, body, NULL, 0);
     if (code != 200) {
         if (net_log_ok())
@@ -153,9 +178,7 @@ static int gift_sell(const char *nick, int id) {
         return 6;
     counts[id]--;
     snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
-    snprintf(body, sizeof(body), "{\"cups\":%d,\"gifts\":{\"%s\":%d}}", cups + gift_refund_for(id), gift_id(id),
-             counts[id]);
-    net_seal_body(body, sizeof(body));
+    gift_body(body, sizeof(body), cups + gift_refund_for(id), id, counts[id]);
     code = fb_http("PATCH", url, body, NULL, 0);
     if (code != 200) {
         if (net_log_ok())
@@ -243,12 +266,15 @@ gift_done:
     return NULL;
 }
 
-void net_gift_action(double gift, const char *recipient, double grant) {
+/* Запустить действие с подарком: 1 - пошло, 0 - отказали (уже идёт другое
+ * действие или запрос не проходит проверки). Отказ нужен вызывающему: иначе
+ * кнопка «Продать» навсегда осталась бы в состоянии «Продаём...». */
+double net_gift_action(double gift, const char *recipient, double grant) {
     DSThread t;
     int mode = (int)grant;
     if (s_gift_status == 1 || gift < 0 || gift > GIFT_N - 1 || (mode != 1 && mode != 2 && mode != 3 && mode != 0) || !recipient ||
         strlen(recipient) >= sizeof(s_gift_recipient) || (mode == 0 && !*recipient))
-        return;
+        return 0;
     snprintf(s_gift_recipient, sizeof(s_gift_recipient), "%s", recipient);
     s_gift_id = (int)gift;
     s_gift_grant = mode;
@@ -256,9 +282,10 @@ void net_gift_action(double gift, const char *recipient, double grant) {
     t = ds_thread_start(gift_action_job, NULL);
     if (t) {
         ds_thread_detach(t);
-        return;
+        return 1;
     }
-    s_gift_status = 3;
+    s_gift_status = 3; /* the thread did not start: the caller sees the error */
+    return 1;
 }
 
 double net_gift_action_status(void) {
@@ -290,7 +317,7 @@ double net_gift_refund(double gift) {
 
 static void *gift_counts_job(void *arg) {
     char nick[24], plain[URL], url[FB_URL_MAX], resp[8192];
-    (void)arg;
+    int gen = (int)(uintptr_t)arg, ok = 0, n[GIFT_N] = {0, 0, 0, 0, 0}, i;
     lg_lock();
     snprintf(nick, sizeof(nick), "%s", lg.session_nick);
     lg_unlock();
@@ -298,32 +325,70 @@ static void *gift_counts_job(void *arg) {
         snprintf(plain, sizeof(plain), "%s/users/%s/gifts.json", net.base, nick);
         fb_url(url, sizeof(url), plain);
         if (http("GET", url, NULL, resp, sizeof(resp)) == 200) {
-            s_gift_counts[0] = num_int(resp, "poop", 0);
-            s_gift_counts[1] = num_int(resp, "cake", 0);
-            s_gift_counts[2] = num_int(resp, "bear", 0);
-            s_gift_counts[3] = num_int(resp, "rocket", 0);
-            s_gift_counts[4] = num_int(resp, "emerald", 0);
+            n[0] = num_int(resp, "poop", 0);
+            n[1] = num_int(resp, "cake", 0);
+            n[2] = num_int(resp, "bear", 0);
+            n[3] = num_int(resp, "rocket", 0);
+            n[4] = num_int(resp, "emerald", 0);
+            ok = 1;
         }
     }
-    s_gift_counts_loaded = 1;
+    if (gen != s_gift_gen) {
+        /* Пока ехали числа, коллекцию поменяли (продали или купили стикер):
+         * этот ответ уже не подходит, придёт следующий, свежий. */
+        return NULL;
+    }
+    if (ok) {
+        for (i = 0; i < GIFT_N; i++) {
+            if (n[i] < 0)
+                n[i] = 0;
+            if (n[i] > 999)
+                n[i] = 999;
+            s_gift_counts[i] = n[i];
+        }
+    }
     return NULL;
 }
 
+/* Обновить счётчики из базы. Старые числа остаются на экране, пока не
+ * придут новые: коллекция не должна исчезать на миг (иначе после продажи
+ * какашки пустой список выглядит так, будто продали ещё и изумруд). */
 void net_gift_refresh(void) {
-    s_gift_counts_loaded = 0;
-    s_gift_counts_requested = 0;
-    memset(s_gift_counts, 0, sizeof(s_gift_counts));
+    char nick[24];
+    lg_lock();
+    snprintf(nick, sizeof(nick), "%s", lg.session_nick);
+    lg_unlock();
+    if (strcmp(nick, s_gift_nick) != 0) {
+        /* Другой аккаунт: коллекция прежнего игрока не его. */
+        memset((void *)s_gift_counts, 0, sizeof(s_gift_counts));
+        snprintf(s_gift_nick, sizeof(s_gift_nick), "%s", nick);
+    }
+    s_gift_gen = s_gift_gen + 1; /* ответ прежней загрузки больше не подходит */
+}
+
+/* Локальная правка счётчика: купили, продали или отправили стикер. Числа на
+ * экране меняются сразу, остальные счётчики не трогаем. */
+void net_gift_count_add(double gift, double delta) {
+    int i = (int)gift;
+    if (i < 0 || i >= GIFT_N)
+        return;
+    s_gift_counts[i] = s_gift_counts[i] + (int)delta;
+    if (s_gift_counts[i] < 0)
+        s_gift_counts[i] = 0;
+    if (s_gift_counts[i] > 999)
+        s_gift_counts[i] = 999;
+    /* Числа на экране изменились: ответ прежней загрузки их уже не описывает,
+     * а следующая загрузка принесёт их из базы. */
+    s_gift_gen = s_gift_gen + 1;
 }
 
 double net_gift_count(double gift) {
-    if (!s_gift_counts_loaded && !s_gift_counts_requested) {
+    if (s_gift_load_gen != s_gift_gen) {
         DSThread t;
-        s_gift_counts_requested = 1;
-        t = ds_thread_start(gift_counts_job, NULL);
+        s_gift_load_gen = s_gift_gen;
+        t = ds_thread_start(gift_counts_job, (void *)(uintptr_t)s_gift_gen);
         if (t)
             ds_thread_detach(t);
-        else
-            s_gift_counts_loaded = 1;
     }
     int i = (int)gift;
     return i >= 0 && i < GIFT_N ? s_gift_counts[i] : 0;

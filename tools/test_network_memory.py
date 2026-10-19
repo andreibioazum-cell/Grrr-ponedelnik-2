@@ -101,6 +101,35 @@ static void check_gifts(void) {
     assert(net_gift_price(0) == 25 && net_gift_price(3) == 400);
     assert(net_gift_price(4) == 500 && net_gift_price(5) == 0 && net_gift_price(-2) == 0);
     assert(net_gift_types() == 5);
+    /* A local change moves only its own counter: selling a poop must not
+     * touch the emerald. */
+    s_gift_counts[0] = 2;
+    s_gift_counts[4] = 1;
+    net_gift_count_add(0, -1);
+    assert(net_gift_count(0) == 1 && net_gift_count(4) == 1);
+    net_gift_count_add(4, 1);
+    assert(net_gift_count(0) == 1 && net_gift_count(4) == 2);
+    /* A refresh must not blank the collection: the numbers stay on screen
+     * until the fresh ones arrive, so no sticker looks sold by accident. */
+    net_gift_refresh();
+    assert(net_gift_count(0) == 1 && net_gift_count(4) == 2);
+    net_gift_count_add(0, -5);
+    assert(net_gift_count(0) == 0 && net_gift_count(4) == 2);
+    net_gift_count_add(9, 1);
+    net_gift_count_add(-1, 1);
+    assert(net_gift_count(0) == 0 && net_gift_count(4) == 2);
+    /* The sticker counter is written as a path ("gifts/poop"), not as a nested
+     * object: a REST PATCH replaces the named subtree, so the nested form
+     * wiped the other counters (the emerald with them). */
+    char body[128];
+    gift_body(body, sizeof(body), 137, 0, 0);
+    assert(strstr(body, "\"cups\":137") != NULL);
+    assert(strstr(body, "\"gifts/poop\":0") != NULL);
+    assert(strstr(body, "\"gifts\":") == NULL);
+    gift_body(body, sizeof(body), 387, 4, 3);
+    assert(strstr(body, "\"cups\":387") != NULL);
+    assert(strstr(body, "\"gifts/emerald\":3") != NULL);
+    assert(strstr(body, "\"gifts/poop\"") == NULL);
 }
 static void check_bpx(void) {
     net_set_data_path(".");

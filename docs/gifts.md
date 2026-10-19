@@ -40,6 +40,20 @@ users/<nick>/gifts/poop    0..999 owned stickers (cake, bear, rocket likewise)
 * **Admin grant** — the CCP panel's Gifts tab performs the same `+1` write; it
   does not debit cups.
 
+The sticker counter in the buy/sell PATCH is written as a **path**, not as a
+nested object:
+
+```
+{"cups":137,"gifts/poop":0,"w":"<secret>"}
+```
+
+A REST PATCH replaces the named subtree as a whole, so the nested form
+(`{"cups":137,"gifts":{"poop":0}}`) wiped every other counter of the
+collection — selling one poop also "sold" the emerald. The path form writes
+only `gifts/poop` and leaves `gifts/cake`, `gifts/emerald` and the rest
+untouched, while the balance and the sticker still change in one atomic
+request.
+
 All requests are normal Firebase REST calls with the signed-in player's ID
 token (`fb_http`), exactly like progress saves. No callable function is needed.
 
@@ -115,6 +129,14 @@ which writes them itself).
   **Send** + **Sell** for an owned one, with the half-price refund on the
   Sell label. The recipient nickname field sits there too and is only needed
   for Send.
+* An empty collection says so **under the "MY GIFTS" heading**, in its own
+  column - in the middle of the screen the line looked like a message about
+  the whole page and landed on top of the shop.
+* The collection on screen is never wiped by a refresh: the last known
+  counters stay visible until the fresh ones arrive, and a bought, sold or
+  sent sticker changes its own counter at once (`net_gift_count_add`). Only
+  that one sticker leaves the list - the rest of the collection (the emerald,
+  for one) stays where it was.
 
 The signed-in Account screen contains that two-column page; the in-game CCP
 panel has a Gifts tab for admin grants.

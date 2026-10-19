@@ -250,8 +250,11 @@ double net_change_password_status(void);
  * 4 recipient not found, 5 not enough cups, 6 no sticker in inventory,
  * 7 bad recipient (or gifting yourself), 8 collection full (999). */
 double net_gift_count(double gift);
+/* Local count change: a sticker was bought, sold or sent, so the collection
+ * changes right away. Only that one counter moves; the rest stay as they are. */
+void net_gift_count_add(double gift, double delta);
 void net_gift_refresh(void);
-void net_gift_action(double gift, const char *recipient, double grant);
+double net_gift_action(double gift, const char *recipient, double grant);
 double net_gift_action_status(void);
 /* Catalogue of five stickers: 0 poop, 1 cake, 2 bear, 3 rocket, 4 emerald
  * (the most expensive one). net_gift_types() is the list length; the price
