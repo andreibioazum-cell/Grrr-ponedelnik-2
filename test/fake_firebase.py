@@ -472,8 +472,12 @@ class Handler(BaseHTTPRequestHandler):
             if not email or not password:
                 self._fb_error("MISSING_EMAIL_OR_PASSWORD")
                 return
-            if len(password) < 6:
-                self._fb_error("WEAK_PASSWORD : Password should be at least 6 characters")
+            # Правила Firebase требуют 6+ символов, но игра и панель шлют
+            # «пароль + хвост» длиной 32, а тестовые аккаунты - короткие
+            # пароли из зерна. Минимум не проверяем: фейк не про политику
+            # паролей, а про то, что вход и запись проходят.
+            if not password:
+                self._fb_error("MISSING_EMAIL_OR_PASSWORD")
                 return
             with LOCK:
                 exists = email in AUTH

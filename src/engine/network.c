@@ -5,7 +5,11 @@
 #include "engine/network/progress_file.inc"
 #include "engine/network/progress_levels.inc"
 #include "engine/network/auth_json.inc"
+#ifdef CB_PC
+#include "platform/pc/network_http_pc.inc"
+#else
 #include "platform/android/network_http.inc"
+#endif
 #include "engine/network/http_json.inc"
 #include "engine/network/settings_storage.inc"
 #include "engine/network/promo.inc"

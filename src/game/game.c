@@ -75,3 +75,8 @@
 #include "core/engine.inc"
 #include "ui/chat_bubbles.inc"
 #include "lifecycle.inc"
+
+#ifdef CB_PC
+/* Мост для клавиатуры и мыши: см. platform/pc/pc_main.c. */
+#include "pc_pads.inc"
+#endif

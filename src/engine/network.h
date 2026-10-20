@@ -1,6 +1,6 @@
 #ifndef NET_H
 #define NET_H
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(CB_PC)
 #include <jni.h>
 #endif
 
@@ -17,8 +17,14 @@
 
 /* Firebase endpoint, web key and room. config.inc and the background presence
  * check (presence.inc) both read these, so the job works in a cold process. */
+#ifndef NET_FIREBASE_URL
+/* The PC test harness overrides this at build time to point at
+ * test/fake_firebase.py (plain http on localhost). */
 #define NET_FIREBASE_URL "https://cubicbattleserver-19ae2-default-rtdb.firebaseio.com"
+#endif
+#ifndef NET_FIREBASE_KEY
 #define NET_FIREBASE_KEY "AIzaSyDJEqopxP5EqEoxP_ehO3jFXbNztu3DgVs"
+#endif
 #define NET_DEFAULT_ROOM "main"
 
 /* Два секрета. Оба — 32 случайных символа [A-Za-z0-9]; в открытом виде их в

@@ -6,6 +6,21 @@
 - Цель: Android 15
 - Требуется: Vulkan 1.0
 
+## ПК-версия (Windows .exe)
+
+Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
+
+* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions —
+  `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
+* **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
+  (Zig собирает exe и на Linux, MSVC не нужен).
+* **Управление:** `WASD`/стрелки — движение, `Пробел` — удар, `Shift` — блок,
+  `Q` — суперудар, мышь — меню, `Esc` — назад, `F12` — скриншот.
+
+Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой — окно,
+программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
+клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
+
 ## Веб-панель админа
 
 Кроме APK в репозитории есть веб-версия — [index.html](index.html): панель
@@ -47,6 +62,21 @@ Full version of Cubic Battle 4 for Android. The game is written in C, with a bit
 - Minimum: Android 8
 - Target: Android 15
 - Requires: Vulkan 1.0
+
+## PC version (Windows .exe)
+
+The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
+
+* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions —
+  `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
+* **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
+  (Zig cross-builds the exe on Linux too; MSVC is not needed).
+* **Controls:** `WASD`/arrows to move, `Space` to punch, `Shift` to block,
+  `Q` for the class super, mouse for menus, `Esc` back, `F12` screenshot.
+
+The game logic is shared with Android (`src/game`, `src/engine`); the PC layer
+is the window, a software rasterizer instead of Vulkan, WinHTTP instead of JNI
+and a keyboard-to-touch bridge. Details: [docs/pc-version.md](docs/pc-version.md).
 
 ## Web admin panel
 

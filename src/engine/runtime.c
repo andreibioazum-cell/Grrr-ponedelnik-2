@@ -1,5 +1,9 @@
 /* Базовые функции игрового рантайма. */
 #include "engine/runtime/core.inc"
 #include "engine/runtime/values.inc"
+#ifdef CB_PC
+#include "platform/pc/keyboard_pc.inc"
+#else
 #include "platform/android/keyboard.inc"
+#endif
 #include "platform/android/bye_notice.inc"
