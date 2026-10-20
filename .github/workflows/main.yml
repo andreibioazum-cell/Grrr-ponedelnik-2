@@ -37,7 +37,7 @@ jobs:
           mkdir -p build/pc/dist
           cp build/pc/CubicBattle4.exe build/pc/dist/
           cp -r build/pc/assets build/pc/dist/assets
-          test -f build/pc/dist/assets/textures/grass.png
+          test -f build/pc/dist/assets/grass.png
           test -f build/pc/dist/assets/fonts/ComicRelief-Regular.ttf
           test -f build/pc/dist/assets/sounds/lobbymusic.wav
 

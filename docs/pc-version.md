@@ -33,7 +33,8 @@ pip install ziglang
 python3 tools/build_pc.py --windows
 ```
 
-Результат — `build/pc/CubicBattle4.exe` и `build/pc/assets/`.
+Результат — `build/pc/CubicBattle4.exe` и `build/pc/assets/` (текстуры лежат
+в корне, рядом папки `fonts/` и `sounds/` — та же раскладка, что внутри APK).
 
 Linux-харнесс без окна (тот же код, фиксированные кадры, BMP-скриншоты):
 
@@ -88,6 +89,7 @@ src/platform/pc/
   net_posix.inc        обычный http для харнесса (fake_firebase)
   keyboard_pc.inc      текст поля ввода, Enter, Backspace
   shim/android/*.h     подмена NDK-заголовков (assets, log, окно)
+  pc_screenshot.inc    BMP для скриншотов харнесса
 ```
 
 Рендерер повторяет конвейеры Vulkan один в один: те же команды

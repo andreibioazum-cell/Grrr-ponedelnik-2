@@ -72,7 +72,7 @@ def stage_assets() -> Path:
     """The APK staging layout (textures/, fonts/, sounds/) is what the game
     reads on both platforms; the harness gets its own copy."""
     assets = SCRATCH / "assets"
-    if not (assets / "textures" / "grass.png").is_file():
+    if not (assets / "grass.png").is_file():
         shutil.rmtree(assets, ignore_errors=True)
         result = run([sys.executable, "stage_assets.py", "assets", str(assets)])
         check("ресурсы подготовлены stage_assets.py", result.returncode == 0, result.stderr[-1500:])
