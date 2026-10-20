@@ -17,3 +17,8 @@ progress.dat
 achievements.dat
 bans.dat
 settings.dat
+
+## Веб-панель: зависимости jsdom-проверок (test/package.json)
+node_modules/
+package-lock.json
+!test/package-lock.json
