@@ -225,6 +225,46 @@ def test_controls(assets: Path) -> None:
         f"с Q {super_run.get(800, {}).get('x')},{super_run.get(800, {}).get('y')}",
     )
 
+def test_walk_feel(assets: Path) -> None:
+    """Кубик разгоняется и встаёт за ~0.09 с, а не рвёт с места.
+
+    Отпущенный стик раньше останавливал кубик в тот же кадр; теперь скорость
+    гаснет примерно за walk_stop_time (0.09 с), а на разгон уходит около
+    0.14 с. Проверяем по покадровым отчётам: первый кадр после нажатия даёт
+    заметно меньше хода, чем установившийся, а после отпускания кубик едет
+    ещё несколько кадров и замирает.
+    """
+    print("\n== 3c. Разгон и торможение кубика ==")
+    start = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:336:0", "--touch", "403:270:336:1",
+        "--touch", "460:270:404:0", "--touch", "463:270:404:1",
+    ]
+    events = ["--frames", "760", *start, "--stick", "600:1:0"]
+    events += [item for frame in range(600, 641) for item in ("--report", str(frame))]
+    events += ["--stick", "640:0:0"]
+    events += [item for frame in range(641, 661) for item in ("--report", str(frame))]
+    reports = parse_reports(harness(assets, SCRATCH / "walk", events).stdout)
+
+    def x(frame: int) -> float:
+        return float(reports.get(frame, {}).get("x", "nan"))
+
+    steady = x(639) - x(638)                  # установившийся ход, px за кадр
+    first = x(601) - x(600)                   # первый кадр после нажатия
+    check("кубик трогается плавно, а не сразу на полный ход",
+          0 < first < steady * 0.5, f"первый кадр {first:.2f} px, установившийся {steady:.2f} px")
+    ramp = next((f for f in range(600, 640) if x(f) - x(f - 1) > steady * 0.9), None)
+    check("на разгон уходит около 0.1-0.2 с",
+          ramp is not None and 5 <= ramp - 600 <= 14,
+          f"полный ход на кадре {ramp} ({(ramp - 600) / 60 if ramp else -1:.3f} с)")
+
+    moved = [f for f in range(641, 661) if x(f) > x(f - 1) + 0.01]
+    stop = max(moved) if moved else 640
+    check("после отпускания кубик встаёт примерно за 0.09 с",
+          3 <= stop - 640 <= 8, f"остановился через {(stop - 640 + 1) / 60:.3f} с")
+    check("после остановки кубик стоит на месте",
+          abs(x(660) - x(stop)) < 0.01, f"{x(stop):.2f} -> {x(660):.2f}")
+
 
 def wait_port(port: int, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
@@ -310,6 +350,7 @@ def main() -> int:
     test_pixels(assets)
     test_menu_and_battle(assets)
     test_controls(assets)
+    test_walk_feel(assets)
     test_login(assets)
 
     print()

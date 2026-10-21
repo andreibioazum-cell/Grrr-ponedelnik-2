@@ -18,7 +18,9 @@
 #ifndef PC_ARGS_H
 #define PC_ARGS_H
 
-#define PC_MAX_EVENTS 96
+/* Room for every event of a long run: a --report per frame in a two-second
+ * stretch already needs dozens, and a dropped event is invisible in the log. */
+#define PC_MAX_EVENTS 192
 #define PC_EVENT_LEN 200
 /* Paths are copied out of the command line: the parser tokenizes into its own
  * stack buffer, so keeping a pointer there would dangle the moment parsing
@@ -57,9 +59,14 @@ static void pc_args_push_event(PcArgs *a, const char *name, const char *value) {
 
 /* Splits on spaces, honours "double quotes"; the first token (the program
  * itself) is skipped. */
+/* The token table has to hold the whole command line: with a 128-slot table a
+ * long harness run (a --report per frame) silently lost every event past the
+ * cutoff, so the log just stopped in the middle. 1024 pointers are cheap. */
+#define PC_MAX_TOKENS 1024
+
 static void pc_args_parse(const char *cmdline, PcArgs *a) {
     char buf[4096];
-    char *p, *tok[128];
+    char *p, *tok[PC_MAX_TOKENS];
     int n = 0, i;
     if (!cmdline)
         return;

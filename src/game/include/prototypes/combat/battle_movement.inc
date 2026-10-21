@@ -1,4 +1,5 @@
 static double player_walk_speed(void);
+static void player_walk_move(double spd);
 static void move_player(void);
 static double enemy_in_punch(void);
 static void update_aim(void);

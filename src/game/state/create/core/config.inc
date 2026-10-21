@@ -404,6 +404,10 @@ banner_seen_ts = 0;
 banner_t = 0;
 block_guard = 0.55;
 block_speed_k = 0.45;
+/* Полный ход набирается за walk_accel_time, а с полного хода кубик встаёт
+ * примерно за walk_stop_time - без мгновенного рывка и без «стопа в стену». */
+walk_accel_time = 0.14;
+walk_stop_time = 0.09;
 block_front_angle = 1.2;
 login_field = 1;
 login_status = 0;

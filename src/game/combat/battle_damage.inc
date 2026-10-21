@@ -132,6 +132,11 @@ static double try_revive(void) {
             k = 50;
             player->x = rx;
             player->y = ry;
+            /* Возрождение переносит кубик: старый разгон не должен утащить
+             * его с новой точки. */
+            player_vx = 0;
+            player_vy = 0;
+            player_stop_from = 0;
         } else {
             k = k + 1;
         }

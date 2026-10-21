@@ -5,6 +5,11 @@ static void reset_battle(void) {
     player->x = screen_w / 2;
     player->y = screen_h / 2;
     player->angle = 0;
+    /* Новый бой начинается со стоящего кубика: накопленная скорость прошлого
+     * боя не должна вынести его из центра на первом кадре. */
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     player->max_hp = astra_ability_max_hp_for(player_class, astra_ability_local());
     player->hp = player->max_hp;
     player->size = 25 * player_scale;
@@ -315,6 +320,9 @@ static void place_online(void) {
     double col = s - row * 2;
     player->x = screen_w * (0.3 + 0.4 * col);
     player->y = screen_h * (0.35 + 0.3 * row);
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     online_ready = 1;
 }
 

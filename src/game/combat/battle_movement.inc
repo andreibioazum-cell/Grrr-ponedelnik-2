@@ -23,15 +23,102 @@ static double player_walk_speed(void) {
     return spd;
 }
 
+/* Кубик не переключает скорость мгновенно: стик (или WASD) задаёт желаемую
+ * скорость, а настоящая подтягивается к ней. Разгон до полного хода занимает
+ * walk_accel_time, а торможение с полного хода до нуля - walk_stop_time
+ * (около 0.09 с), поэтому отпущенный стик даёт короткий выкат, а не стоп. */
+static void player_walk_move(double spd) {
+    double tvx = joy.dx * spd;
+    double tvy = joy.dy * spd;
+    double want = sqrt(tvx * tvx + tvy * tvy);
+    double have = sqrt(player_vx * player_vx + player_vy * player_vy);
+    double dvx, dvy, dl, step, rate;
+    if (want >= have) {
+        /* Разгон (или поворот на полном ходу) идёт от нуля до полного хода
+         * за walk_accel_time. */
+        player_stop_from = 0;
+        rate = (spd > 1 ? spd : 1) / walk_accel_time;
+    } else {
+        /* Торможение: запоминаем скорость, с которой начали, и гасим её
+         * равномерно, чтобы встать ровно за walk_stop_time - и на 30, и на
+         * 144 кадрах в секунду. */
+        if (player_stop_from <= 0) {
+            player_stop_from = have;
+        }
+        rate = player_stop_from / walk_stop_time;
+    }
+    dvx = tvx - player_vx;
+    dvy = tvy - player_vy;
+    dl = sqrt(dvx * dvx + dvy * dvy);
+    step = rate * dt;
+    if (step < 0) {
+        step = 0;
+    }
+    if (dl <= step || dl < 0.0001) {
+        player_vx = tvx;
+        player_vy = tvy;
+        if (want <= 0) {
+            player_stop_from = 0;
+        }
+    } else {
+        player_vx = player_vx + dvx / dl * step;
+        player_vy = player_vy + dvy / dl * step;
+    }
+    if (fabs(player_vx) < 0.01 && want <= 0) {
+        player_vx = 0;
+    }
+    if (fabs(player_vy) < 0.01 && want <= 0) {
+        player_vy = 0;
+    }
+    player->x = player->x + player_vx * dt;
+    player->y = player->y + player_vy * dt;
+    /* Упёрлись в стену - гасим только этот компонент, чтобы кубик скользил
+     * вдоль края, а не «залипал» с накопленной скоростью. */
+    if (player->x < player->size) {
+        player->x = player->size;
+        if (player_vx < 0) player_vx = 0;
+    }
+    if (player->x > screen_w - player->size) {
+        player->x = screen_w - player->size;
+        if (player_vx > 0) player_vx = 0;
+    }
+    if (player->y < player->size) {
+        player->y = player->size;
+        if (player_vy < 0) player_vy = 0;
+    }
+    if (player->y > screen_h - player->size) {
+        player->y = screen_h - player->size;
+        if (player_vy > 0) player_vy = 0;
+    }
+    double jm = sqrt(joy.dx * joy.dx + joy.dy * joy.dy);
+    if (jm > 0.15) {
+        player->angle = atan2(joy.dy, joy.dx);
+    }
+    if (have > 1) {
+        /* Пыль идёт от настоящей скорости: на разгоне её меньше, на торможении
+         * она пропадает вместе с ходом. */
+        tick_dust(player_vx / have, player_vy / have, have / (spd > 1 ? spd : 1));
+    }
+}
+
 static void move_player(void) {
     if (pthrow_t > 0) {
+        player_vx = 0;
+        player_vy = 0;
+        player_stop_from = 0;
         tick_player_throw();
         return;
     }
     if (player_stun > 0 || plates_lock_me == 1) {
+        player_vx = 0;
+        player_vy = 0;
+        player_stop_from = 0;
         return;
     }
     if (pgrab_active == 1 || astra_locked() == 1) {
+        player_vx = 0;
+        player_vy = 0;
+        player_stop_from = 0;
         return;
     }
     if (dash_active > 0) {
@@ -69,26 +156,7 @@ static void move_player(void) {
         tick_dust(dash_dx, dash_dy, 1);
         return;
     }
-    double spd = player_walk_speed();
-    player->x = player->x + joy.dx * spd * dt;
-    player->y = player->y + joy.dy * spd * dt;
-    double jm = sqrt(joy.dx * joy.dx + joy.dy * joy.dy);
-    if (jm > 0.15) {
-        player->angle = atan2(joy.dy, joy.dx);
-    }
-    if (player->x < player->size) {
-        player->x = player->size;
-    }
-    if (player->x > screen_w - player->size) {
-        player->x = screen_w - player->size;
-    }
-    if (player->y < player->size) {
-        player->y = player->size;
-    }
-    if (player->y > screen_h - player->size) {
-        player->y = screen_h - player->size;
-    }
-    tick_dust(joy.dx, joy.dy, jm);
+    player_walk_move(player_walk_speed());
 }
 
 static double enemy_in_punch(void) {

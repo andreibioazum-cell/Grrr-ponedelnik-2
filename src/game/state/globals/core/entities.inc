@@ -75,6 +75,12 @@ double mb_edy;
 double mb_ok;
 double player_was_hit;
 double player_block;
+/* Скорость кубика в px/с: стик задаёт цель, а эта пара догоняет её с
+ * разгоном; player_stop_from - скорость, с которой начали торможение, чтобы
+ * остановка занимала ровно walk_stop_time. */
+double player_vx;
+double player_vy;
+double player_stop_from;
 double dmg_from_x;
 double dmg_from_y;
 double dmg_from_k;

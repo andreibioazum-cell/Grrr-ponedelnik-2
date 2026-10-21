@@ -2346,21 +2346,68 @@ int main(void) {
     player_class = CLASS_ORDINARY;
     player->x = 160;
     player->y = 90;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + 14, joy.y, 0, 7);
     assert(fabs(joy.dx - 1) < 1e-9 && fabs(joy.dy) < 1e-9);
     move_player();
     double near_stick_move = player->x - 160;
+    /* Разгон: первый кадр с места даёт меньше, чем установившийся ход. */
+    double first_step = near_stick_move;
     player->x = 160;
+    move_player();
+    double second_step = player->x - 160;
+    assert(second_step > first_step);
+    player->x = 160;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + joy.r, joy.y, 2, 7);
     assert(fabs(joy.dx - 1) < 1e-9 && fabs(joy.dy) < 1e-9);
     move_player();
     assert(fabs((player->x - 160) - near_stick_move) < 1e-9);
     player->x = 160;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + 5, joy.y, 2, 7);
     assert(joy.dx == 0 && joy.dy == 0);
     move_player();
     assert(fabs(player->x - 160) < 1e-9);
     joy_touch(joy.x + 5, joy.y, 1, 7);
+
+    /* Торможение: отпущенный стик не останавливает кубик в тот же кадр, а
+     * гасит ход примерно за walk_stop_time. */
+    {
+        joy_touch(joy.x + joy.r, joy.y, 0, 9);
+        double frames_to_stop = 0;
+        player->x = 160;
+        player_vx = 0;
+        player_vy = 0;
+        player_stop_from = 0;
+        if (joy_id < 0) joy_touch(joy.x + joy.r, joy.y, 0, 9);
+        while (frames_to_stop < 60) {
+            move_player();
+            frames_to_stop = frames_to_stop + 1;
+            if (frames_to_stop > 30) break;
+            if (player_vx >= joy_speed - 0.01) break;
+        }
+        assert(fabs(player_vx - joy_speed) < 0.5);
+        joy_touch(joy.x + joy.r, joy.y, 1, 9);
+        assert(joy.dx == 0 && joy.dy == 0);
+        player_stop_from = 0;
+        frames_to_stop = 0;
+        player->x = 160;
+        while (frames_to_stop < 60 && fabs(player_vx) > 0.001) {
+            move_player();
+            frames_to_stop = frames_to_stop + 1;
+        }
+        /* при dt = 1/60 это 5-6 кадров, то есть около 0.09 с */
+        assert(frames_to_stop >= 4 && frames_to_stop <= 8);
+        move_player();
+        assert(fabs(player_vx) < 1e-9);
+    }
 
     player->x = 400;
     player->y = 400;
