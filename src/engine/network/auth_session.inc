@@ -183,17 +183,9 @@ static int fb_sign_in(const char *nick, const char *pass, int *registered) {
     if (state == 2)
         return 2;
     if (state == 1 && !no_such_account) {
-        /* Аккаунт мог остаться с предыдущим хвостом: пускаем по нему в
-         * последний раз и тут же переводим на новый. */
-        snprintf(epass, sizeof(epass), "%s%s", pass, fb_legacy_pass_suffix());
-        state = fb_try_sign_in(email, epass, NULL);
-        if (state == 2)
-            return 2;
-        legacy = state == 0;
-    }
-    if (state == 1 && !no_such_account) {
-        /* Ступенька для аккаунтов, не заходивших со времён первого хвоста. */
-        snprintf(epass, sizeof(epass), "%s%s", pass, FB_LEGACY2_PASS_SUFFIX);
+        /* Аккаунт мог остаться со старым хвостом: пускаем по нему в последний
+         * раз и тут же переводим на новый. */
+        snprintf(epass, sizeof(epass), "%s%s", pass, FB_LEGACY_PASS_SUFFIX);
         state = fb_try_sign_in(email, epass, NULL);
         if (state == 2)
             return 2;

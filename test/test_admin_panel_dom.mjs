@@ -122,13 +122,13 @@ try {
   // не пускать на боевую базу (именно так это и выглядело как «всё сломано»).
   click("#prodMode");
   check("боевой режим предупреждает про старый хвост",
-        /SECRETS\.local\.txt/.test($("#suffixWarn").textContent),
+        /rotate_db_secret\.py --show/.test($("#suffixWarn").textContent),
         $("#suffixWarn").textContent.slice(0, 160));
   click("#suffixHelp");
   await sleep(150);
   check("справка про хвост открывается",
-        dialogs.some((d) => d.kind === "alert" && /SECRETS\.local\.txt|CB4_PASS_SECRET/.test(d.text)));
-  setVal("#suffix", "Cb4TestPassSecret0123456789abcde");
+        dialogs.some((d) => d.kind === "alert" && /rotate_db_secret\.py --show/.test(d.text)));
+  setVal("#suffix", "i6Ugz3AlDLdgHJ6iUvkMOwNhKKNOnlwc");
   $("#suffix").dispatchEvent(new window.Event("input", { bubbles: true }));
   check("текущий хвост подсвечен как подходящий",
         /похож на текущий/.test($("#suffixWarn").textContent), $("#suffixWarn").textContent);

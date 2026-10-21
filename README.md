@@ -38,14 +38,6 @@ python3 test/fake_firebase.py 8080
 `Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
 проверки — в [docs/admin-panel.md](docs/admin-panel.md).
 
-## Безопасность
-
-Репозиторий публичный, поэтому паролей и ключей в нём быть не должно: пароль
-проверяет Firebase Auth, а доступ к данным ограничивают правила базы. Что уже
-утекло, что нужно сменить и как совсем убрать общие секреты — в
-[docs/security.md](docs/security.md). Сторож `tools/check_secrets.py` не даёт
-паролям вернуться в код; он же работает в CI.
-
 ## Правовая информация
 
 Возрастная категория 12+. Пользовательское соглашение, политика обработки
@@ -64,13 +56,6 @@ Copyright (C) 2026 Дима Густенёв
 SPDX-License-Identifier: LicenseRef-Proprietary
 
 ## EN
-
-## Security
-
-The repository is public, so no passwords or keys belong in it: Firebase Auth
-checks passwords and the database rules gate access to data. What has leaked,
-what to rotate and how to drop the shared secrets for good is in
-[docs/security.md](docs/security.md).
 
 Full version of Cubic Battle 4 for Android. The game is written in C, with a bit of Java.
 

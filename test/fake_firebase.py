@@ -53,7 +53,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PANEL = os.path.join(ROOT, "index.html")
 
 ADMINS = ("dimasi4ek229@cb4.game", "qwertyuiopaj1234@cb4.game")
-SECRET = "Cb4TestWriteSecret0123456789abcd"  # тестовое значение из tools/gen_secrets.py
+SECRET = "BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc"  # из firebase.rules.json (поле "w")
 PUBLIC_ROOT = ("AzumBuff", "FlashSale")      # ".read": true в правилах
 GAME_ROOT = ("users", "rooms", "bans", "event", "banner")
 KNOWN_ROOT = GAME_ROOT + PUBLIC_ROOT

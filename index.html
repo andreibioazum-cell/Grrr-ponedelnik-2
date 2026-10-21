@@ -119,7 +119,7 @@
       <b>ни разу не входил в игру</b> после ротации.
     </p>
     <p class="muted" style="margin:8px 0 0">
-      Текущий хвост — в <code>SECRETS.local.txt</code> владельца (секрет CB4_PASS_SECRET)
+      Текущий хвост печатает <code>python3 tools/rotate_db_secret.py --show</code>
       (строка «хвост пароля аккаунта») — скопируй его в поле «суффикс» выше.
       В файл панели он не вшивается нарочно: страница лежит в открытом репозитории,
       а хвост — это половина секрета аккаунтов.
@@ -518,7 +518,7 @@ function suffixWarn(){
     return;
   }
   box.innerHTML = "Хвост <code>" + esc(sfx) + "</code> не похож на текущий (32 символа A-Za-z0-9). " +
-                  "Получить текущий: значение CB4_PASS_SECRET из SECRETS.local.txt владельца. " +
+                  "Получить текущий: <code>python3 tools/rotate_db_secret.py --show</code>. " +
                   "Со старым хвостом войдёт только аккаунт, который не заходил в игру после ротации.";
   box.className = "muted warn";
 }
@@ -526,9 +526,10 @@ function suffixWarn(){
 /* ---------- auth ---------- */
 const ADMINS = ["dimasi4ek229@cb4.game", "qwertyuiopaj1234@cb4.game"];
 /* Сюда — исторические ступени хвоста пароля: по ним входили аккаунты,
- * созданные раньше. Текущий хвост — 32 случайных символа из GitHub-секрета
- * CB4_PASS_SECRET, он в панель НЕ вшит: страница лежит в открытом
- * репозитории. Владелец вставляет его в поле «суффикс» из SECRETS.local.txt. */
+ * созданные раньше. Текущий хвост — 32 случайных символа из NET_PASS_SECRET_*
+ * (src/engine/network.h), он в панель НЕ вшит: страница лежит в открытом
+ * репозитории. Текущий хвост вставляется в поле «суффикс» из вывода
+ * `python3 tools/rotate_db_secret.py --show`. */
 const KNOWN_SUFFIXES = ["|cb4v1", "#cb4", ""];
 
 const AUTH_ERR = {
@@ -539,7 +540,7 @@ const AUTH_ERR = {
     "неверный пароль или такого аккаунта нет (Firebase намеренно не говорит, что именно). " +
     "Чаще всего дело в хвосте пароля: он ротирован, и «|cb4v1» теперь работает только для аккаунтов, " +
     "которые не входили в игру после ротации. Текущий хвост печатает " +
-    "`CB4_PASS_SECRET` из SECRETS.local.txt — вставь его в «Настройки проекта» → поле суффикса. " +
+    "`python3 tools/rotate_db_secret.py --show` — вставь его в «Настройки проекта» → поле суффикса. " +
     "Панель перебирает известные варианты, так что если и это не помогло — проверь, что ник и пароль те же, что в игре.",
   USER_DISABLED: "аккаунт отключён — Firebase Console → Authentication → Users",
   TOO_MANY_ATTEMPTS_TRY_LATER: "слишком много попыток входа, подожди пару минут и попробуй снова",
@@ -615,7 +616,7 @@ async function doLogin(){
   saveAll();
   if(!isTest() && $("#passSuffix").checked && !suffixLooksCurrent($("#suffix").value))
     log("хвост в поле не похож на текущий (32 символа A-Za-z0-9): если вход не удастся, " +
-        "возьми текущий: значение CB4_PASS_SECRET из SECRETS.local.txt владельца", "warn");
+        "возьми текущий командой python3 tools/rotate_db_secret.py --show", "warn");
   $("#login").disabled = true;
   $("#login").textContent = "Вхожу…";
   const tried = [];
@@ -661,7 +662,7 @@ async function doLogin(){
         throw new Error(detail + " · панель не создаёт аккаунты на боевой базе: " +
                         "зайди один раз в игру под этим ником (игра создаст аккаунт с " +
                         "правильным хвостом) или вставь текущий хвост из " +
-                        "`CB4_PASS_SECRET` из SECRETS.local.txt в поле суффикса");
+                        "`python3 tools/rotate_db_secret.py --show` в поле суффикса");
       }
     }
 
@@ -1209,7 +1210,7 @@ function boot(){
       "Пароль в Firebase = игровой пароль + «хвост». Хвост ротирован: раньше это был\n" +
       "«|cb4v1», теперь — 32 случайных символа из NET_PASS_SECRET_* (src/engine/network.h).\n\n" +
       "Как получить текущий:\n" +
-      "    (хвост: SECRETS.local.txt, CB4_PASS_SECRET)\n" +
+      "    python3 tools/rotate_db_secret.py --show\n" +
       "строка «хвост пароля аккаунта» — скопируй её в поле «суффикс» выше.\n\n" +
       "Почему хвоста нет в этой странице: index.html лежит в открытом репозитории,\n" +
       "а хвост — половина секрета аккаунтов (вторая половина — знание пароля).\n\n" +

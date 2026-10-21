@@ -101,16 +101,6 @@ def stage_assets(destination: Path) -> Path:
     run([sys.executable, "stage_assets.py", "assets", str(destination)], "stage_assets.py")
 
 
-def ensure_secrets() -> None:
-    """Подставляет секреты базы в заголовок перед компиляцией.
-
-    Боевые значения берутся из окружения (в CI их даёт GitHub Secrets), без
-    окружения tools/gen_secrets.py подставит публичные тестовые — такая
-    сборка боевой базой принята не будет, о чём скрипт честно предупредит.
-    """
-    run([sys.executable, "tools/gen_secrets.py"], "gen_secrets.py")
-
-
 def compile_linux(extra: list[str]) -> Path:
     cc = which("cc", "gcc", "clang")
     cxx = which("c++", "g++", "clang++")
@@ -272,7 +262,6 @@ def main() -> int:
         stage_assets(assets)
 
     if build_windows:
-        ensure_secrets()
         binary, _driver = compile_windows(extra)
         log(f"готово: {binary.relative_to(ROOT)} ({binary.stat().st_size} байт)")
     else:

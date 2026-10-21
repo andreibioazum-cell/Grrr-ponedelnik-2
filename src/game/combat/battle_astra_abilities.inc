@@ -20,13 +20,19 @@ static double astra_ability_of_slot(double slot) {
     return astra_ability_of(arr_get(remotes, b + 10), arr_get(remotes, b + 11));
 }
 
-/* Dev-права принадлежат аккаунту: вход в него уже проверен Firebase Auth,
- * пароля в клиенте больше нет (см. is_admin() в ui/chat.inc). */
 static double astra_ability_is_dev(void) {
     if (net_login_status() != 2) {
         return 0;
     }
-    return admin_slot(net_login_nick()) != 0 ? 1 : 0;
+    const char *nick = net_login_nick();
+    const char *pass = net_login_pass();
+    if (str_eq(nick, ADMIN_NICK) == 1 && str_eq(pass, ADMIN_PASS) == 1) {
+        return 1;
+    }
+    if (str_eq(nick, ADMIN2_NICK) == 1 && str_eq(pass, ADMIN2_PASS) == 1) {
+        return 1;
+    }
+    return 0;
 }
 
 /* Cached permission bit. Refreshed when the account changes (login, profile

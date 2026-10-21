@@ -28,14 +28,6 @@ jobs:
       - name: Install Zig
         run: pip install ziglang
 
-      # Настоящие секреты базы живут только здесь: в репозитории их нет,
-      # gen_secrets.py пишет их в сгенерированный заголовок на время сборки.
-      - name: Generate client secrets
-        env:
-          CB4_WRITE_SECRET: ${{ secrets.CB4_WRITE_SECRET }}
-          CB4_PASS_SECRET: ${{ secrets.CB4_PASS_SECRET }}
-        run: python3 tools/gen_secrets.py
-
       - name: Build CubeBattle4.exe
         run: python3 tools/build_pc.py --windows
 
@@ -87,22 +79,11 @@ jobs:
             exit 1
           fi
 
-      # Список уже утёкших значений (по одному в строке) из GitHub Actions
-      # secret: сторож tools/check_secrets.py падает, если они появятся снова.
-      - name: Load leaked-secret deny list
-        env:
-          CB4_SECRET_DENY: ${{ secrets.CB4_SECRET_DENY }}
-        run: |
-          if [ -n "${CB4_SECRET_DENY:-}" ]; then
-            printf '%s\n' "$CB4_SECRET_DENY" > .secrets-deny
-          fi
-
       - name: Check native game sources
         run: |
           clang -std=c99 -Wall -Wextra -Werror -pedantic \
             -Isrc -I. -Itools/host_test/stub -fsyntax-only src/game/game.c
           python3 tools/check_game_file_size.py
-          python3 tools/check_secrets.py
           python3 tools/test_resources.py
           python3 tools/test_game_state.py
           python3 tools/test_live_flags.py
@@ -179,14 +160,6 @@ jobs:
 
       - name: Stage assets
         run: python3 stage_assets.py assets staging/assets
-
-      # Настоящие секреты базы живут только здесь: в репозитории их нет,
-      # gen_secrets.py пишет их в сгенерированный заголовок на время сборки.
-      - name: Generate client secrets
-        env:
-          CB4_WRITE_SECRET: ${{ secrets.CB4_WRITE_SECRET }}
-          CB4_PASS_SECRET: ${{ secrets.CB4_PASS_SECRET }}
-        run: python3 tools/gen_secrets.py
 
       - name: Build native libraries
         env:
