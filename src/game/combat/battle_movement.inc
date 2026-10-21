@@ -173,8 +173,6 @@ static void enemy_face_motion(void) {
     if (da < 0 - pi) {
         da = da + 2 * pi;
     }
-    double wob = sin(enemy->wobble_t * 2.3) * 0.15;
-    da = da + wob;
     double turn = da * clamp(dt * enemy_face_speed, 0, 1);
     double maxturn = enemy_face_max_speed * dt;
     enemy->angle = enemy->angle + clamp(turn, 0 - maxturn, maxturn);

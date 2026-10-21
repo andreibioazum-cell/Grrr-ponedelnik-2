@@ -27,7 +27,6 @@ static void reset_battle(void) {
     enemy->poison_tick = 0;
     enemy->poison_damage = 0;
     enemy->stun = 0;
-    enemy->wobble_t = 0;
     enemy->react = 0;
     enemy->speed_var = 1;
     enemy->aim_err = 0;
@@ -341,7 +340,6 @@ static void spawn_enemy(void) {
     enemy->mvy = 0;
     enemy->svx = 0;
     enemy->svy = 0;
-    enemy->wobble_t = 0;
     enemy->react = enemy_human_react_min + (rand() % 100) / 100.0 * (enemy_human_react_max - enemy_human_react_min);
     enemy->speed_var = 0.9 + (rand() % 40) / 100.0;
     enemy->aim_err = 0;

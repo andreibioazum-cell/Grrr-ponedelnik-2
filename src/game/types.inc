@@ -49,7 +49,6 @@ struct Enemy {
     double poison_tick;
     double poison_damage;
     double stun;
-    double wobble_t;
     double react;
     double speed_var;
     double aim_err;

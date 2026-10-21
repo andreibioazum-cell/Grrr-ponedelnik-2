@@ -52,7 +52,6 @@ static Enemy *enemy_new(void) {
     self->poison_tick = 0;
     self->poison_damage = 0;
     self->stun = 0;
-    self->wobble_t = 0;
     self->react = 0;
     self->speed_var = 1;
     self->aim_err = 0;

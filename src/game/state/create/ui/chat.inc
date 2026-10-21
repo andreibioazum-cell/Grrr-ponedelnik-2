@@ -1,9 +1,2 @@
 chat_open = 0;
-sticker_menu_open = 0;
 chat_input = "";
-STICKER_BTN = 52;
-STICKER_TILE = 64;
-STICKER_LIKE = "like.png";
-STICKER_DISLIKE = "dislike.png";
-STICKER_75 = "75.png";
-STICKER_CMD = "/sticker ";

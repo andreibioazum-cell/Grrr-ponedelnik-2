@@ -131,7 +131,7 @@ static void chat_bubbles_watch(void) {
 }
 
 static void draw_chat_bubble_at(double x, double y, const char *msg, double t) {
-    if (t <= 0 || str_len(msg) == 0) {
+    if (t <= 0 || str_len(msg) == 0 || chat_is_sticker_msg(msg) == 1) {
         return;
     }
     /* Soft pop-in and a smooth fade-out: the bubble rises a few pixels as it
@@ -152,11 +152,7 @@ static void draw_chat_bubble_at(double x, double y, const char *msg, double t) {
     double bx = 0;
     double by = 0;
     double sc = 0.5;
-    const char *st = chat_sticker_tex(msg);
-    if (str_len(st) > 0) {
-        bw = 56;
-        bh = 56;
-    } else {
+    {
         double tw = text_ink_width(msg) * sc;
         double maxw = screen_w - 24 - 2 * chat_bubble_pad;
         if (tw > maxw) {
@@ -173,10 +169,6 @@ static void draw_chat_bubble_at(double x, double y, const char *msg, double t) {
     }
     by = by + (1 - kin) * 10;
     roundrect(bx, by, bw, bh, 10, box);
-    if (str_len(st) > 0) {
-        tex(bx + 8, by + 8, st, 0, 0.4);
-        return;
-    }
     uint32_t ink = (((unsigned)(int)a) << 24) | ((unsigned)(int)chat_bubble_ink);
     text_in_box(msg, bx, by, bw, bh, ink, sc);
 }

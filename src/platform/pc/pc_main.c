@@ -329,9 +329,26 @@ static void pc_resolve_assets(const char *given, char *out, size_t cap) {
     snprintf(out, cap, "%s/%s", exe_dir, given);
 }
 
+/* Android seeds rand() in android_main(); the desktop entry points have to do
+ * the same, otherwise every launch replays one and the same pseudo-random
+ * stream (same enemy class, same spawn point, same loot). The headless harness
+ * keeps the seed fixed so CI replays exactly the same fight. */
+static void pc_seed_random(int fixed) {
+    if (fixed) {
+        srand(1);
+        return;
+    }
+#ifdef _WIN32
+    srand((unsigned)(time(NULL) * 2654435761u) ^ (unsigned)GetTickCount());
+#else
+    srand((unsigned)(time(NULL) * 2654435761u) ^ ((unsigned)getpid() * 0x9E3779B9u));
+#endif
+}
+
 static void pc_boot(const PcArgs *args) {
     char data_dir[512];
     char assets_dir[1200];
+    pc_seed_random(args->headless);
     pc_resolve_assets(args->assets, assets_dir, sizeof(assets_dir));
     pc_assets_set_root(assets_dir);
     pc_data_dir(args->data, data_dir, sizeof(data_dir));
