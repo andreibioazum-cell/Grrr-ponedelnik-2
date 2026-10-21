@@ -229,8 +229,11 @@ static void pc_apply_event(PcEvent *e, int frame) {
     }
 }
 
+#ifndef _WIN32
 /* Draws a few known primitives without the game: proves the software
- * rasterizer end to end (shapes, texture sampling, text, blending). */
+ * rasterizer end to end (shapes, texture sampling, text, blending). The
+ * Windows entry point only knows window/headless modes, so this helper is
+ * compiled for the Linux test harness. */
 static int pc_gfx_test(const PcArgs *args, const char *bmp) {
     pc_fixed_step_ms = 16;
     pc_boot(args);
@@ -256,6 +259,7 @@ static int pc_gfx_test(const PcArgs *args, const char *bmp) {
     pc_shutdown();
     return 0;
 }
+#endif
 
 static int pc_run_headless(PcArgs *args) {
     int frame;

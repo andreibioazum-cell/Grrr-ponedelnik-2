@@ -12,7 +12,6 @@
  * "bp" profile field (bp_claimed). */
 
 #define BP_TIERS 7
-#define BP_XP_PER_WIN 10
 
 static double bp_msg_t;
 static char bp_msg_buf[160];

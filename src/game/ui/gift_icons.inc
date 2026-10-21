@@ -10,7 +10,6 @@
  *   3 exclusive rainbow (every glyph takes the next hue step) */
 
 #define GIFT_TEX_PX 192.0
-#define GIFT_RARITY_N 4
 
 static const char *gift_tex(double id) {
     if (id == 1) return "gift_cake.png";

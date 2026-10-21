@@ -23,7 +23,6 @@ import struct
 import subprocess
 import sys
 import time
-import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -166,9 +165,14 @@ def test_menu_and_battle(assets: Path) -> None:
     modes = reports.get(430, {})
     check("«Играть» открывает выбор режима", modes.get("state") == "2", str(modes))
     battle = reports.get(650, {})
+    before_punch = reports.get(590, {})
     check("бой начался (ST_SOLO)", battle.get("state") == "1" and battle.get("battle") == "1", str(battle))
     check("игрок жив и двигается стиком", float(battle.get("y", "0") or 0) < 470, str(battle))
-    check("удар дошёл до врага", float(battle.get("foe", "20")) < 20, str(battle))
+    check(
+        "удар дошёл до врага",
+        float(battle.get("foe", "inf")) < float(before_punch.get("foe", "-inf")),
+        f"до удара {before_punch.get('foe')}, после {battle.get('foe')}",
+    )
     check("в бою не было ошибок JS-хуков", battle.get("error") == "0", str(battle))
     end = reports.get(699, {})
     check("враг отвечает (игрок получает урон)", float(end.get("hp", "20")) < 20, str(end))

@@ -48,15 +48,6 @@ async function db(path, token) {
   return r.json();
 }
 
-async function signIn(email, password) {
-  const r = await fetch(`${BASE}/v1/accounts:signInWithPassword?key=K`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, returnSecureToken: true }),
-  });
-  if (!r.ok) throw new Error(`sign in ${email}: ${r.status} ${await r.text()}`);
-  return (await r.json()).idToken;
-}
-
 // ---------------------------------------------------------------------------
 const server = spawn("python3", [join(HERE, "fake_firebase.py"), String(PORT)], {
   env: { ...process.env, FAKE_FB_QUIET: "1" },

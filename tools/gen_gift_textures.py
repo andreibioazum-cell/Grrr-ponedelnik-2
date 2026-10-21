@@ -4,8 +4,8 @@ Run from the repo root: python3 tools/gen_gift_textures.py
 Every sticker is authored on a 256x256 grid, drawn 4x and downsampled to
 192x192, which the gift cards show at about 64 px.
 """
-from PIL import Image, ImageDraw, ImageFilter
-import math, os
+from PIL import Image, ImageDraw
+import os
 
 DESIGN = 256       # every sticker is authored on a 256x256 grid
 S = 4              # supersampling

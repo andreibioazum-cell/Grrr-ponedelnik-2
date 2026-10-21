@@ -16,7 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef DS_FONT_TYPEDEF
+#define DS_FONT_TYPEDEF
 typedef struct DSFont DSFont;
+#endif
 typedef struct Texture Texture;
 typedef struct {
     uint32_t codepoint;

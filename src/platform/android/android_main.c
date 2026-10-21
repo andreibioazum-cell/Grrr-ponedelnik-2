@@ -24,7 +24,6 @@ static unsigned int restart_failures = 0;
 static uint64_t prev_frame_ns = 0;
 static uint64_t prev_loop_ns = 0;
 static double frame_seconds = 0.0;
-static struct android_app *g_app = NULL;
 static uint64_t monotonic_ns(void) {
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
@@ -201,7 +200,6 @@ static void handle_cmd(struct android_app *app, int32_t command) {
         ds_runtime_error("no app");
         return;
     }
-    g_app = app;
     switch (command) {
     case APP_CMD_INIT_WINDOW:
 

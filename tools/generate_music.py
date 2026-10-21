@@ -251,20 +251,6 @@ def winter_track() -> tuple[array, array]:
     return left, right
 
 
-def add_reverb(left: array, right: array) -> None:
-    """Adds a short, wide room without washing out the direct signal."""
-    dry_l = array("f", left)
-    dry_r = array("f", right)
-    # Prime-ish delays avoid a metallic single echo. Cross-feed widens guitars
-    # and synths while the low wet level keeps drums loud and clear.
-    taps = ((0.083, 0.20), (0.137, 0.15), (0.211, 0.10), (0.317, 0.065))
-    for delay, gain in taps:
-        offset = int(delay * RATE)
-        for i in range(offset, len(left)):
-            left[i] += (dry_l[i - offset] * 0.72 + dry_r[i - offset] * 0.28) * gain
-            right[i] += (dry_r[i - offset] * 0.72 + dry_l[i - offset] * 0.28) * gain
-
-
 def main() -> int:
     tracks = (
         ("lobbymusic.wav", lobby_track(), 0.025, 0.025),

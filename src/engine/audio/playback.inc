@@ -131,6 +131,5 @@ static void snd_release_sounds(void) {
         snd_voices[i].snd = NULL;
         snd_voices[i].pos = 0;
     }
-    snd_sounds_loaded = 0;
     snd_lock_drop();
 }

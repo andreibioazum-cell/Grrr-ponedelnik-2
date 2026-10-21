@@ -1,5 +1,6 @@
 #include "engine/graphics/types.inc"
 #include "engine/graphics/geometry.inc"
+#include "engine/graphics/text.inc"
 
 struct DSFont {
     int aw, ah;
@@ -87,10 +88,6 @@ int geo_side_rect_rot(float x, float y, float w, float h, float ang, uint32_t c)
 }
 int geo_side_tex(float x, float y, float a, float sc, float w, float h, uint32_t c) {
     return geo_tex(x, y, a, sc, w, h, c);
-}
-const DSFont *geo_side_font(void) {
-    test_font_ready();
-    return &test_font_storage;
 }
 int geo_side_text(const char *s, float x, float y, uint32_t c, float sc) {
     test_font_ready();

@@ -14,6 +14,8 @@ static int pc_ctl_atk_down = 0;
 static int pc_ctl_blk_down = 0;
 static int pc_ctl_super_down = 0;
 
+#ifdef _WIN32
+/* Called when the window loses focus: the game must not keep a key held. */
 static void pc_ctl_release_all(void) {
     float x = 0, y = 0;
     if (pc_ctl_stick_on) {
@@ -37,6 +39,7 @@ static void pc_ctl_release_all(void) {
         pc_ctl_super_down = 0;
     }
 }
+#endif
 
 /* dx/dy in -1..1, y down. Held as long as the direction is non-zero: the
  * stick keeps its direction even at full speed (the game reads a unit

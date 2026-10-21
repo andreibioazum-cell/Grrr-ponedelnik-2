@@ -351,7 +351,7 @@ const str  = (min, max) => ({t:"str", min, max});
 const secret = ()    => ({t:"str", min:1, max:64, note:"секрет записи «w»"});
 
 /* Корневые узлы игры. AzumBuff и FlashSale читает live_flags.inc, event и
- * banner — room_control.inc/room_stream.inc, bans — ban_list.inc. */
+ * banner — room_control.inc/room_stream.inc, bans — moderation.inc. */
 const ROOT_OK   = ["users","rooms","bans","event","banner","AzumBuff","FlashSale"];
 /* Узлы, которые читаются по отдельности, если корень закрыт правилами. */
 const ROOT_PARTS = ["users","rooms","bans","event","banner","AzumBuff","FlashSale"];

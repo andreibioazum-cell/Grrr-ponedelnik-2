@@ -37,7 +37,6 @@
 #include "include/prototypes/combat/battle_astra_bot.inc"
 #include "include/prototypes/combat/battle_abilities.inc"
 #include "include/prototypes/combat/battle_online.inc"
-#include "include/prototypes/combat/battle_online_smooth.inc"
 #include "include/prototypes/combat/battle_actions_fx.inc"
 #include "include/prototypes/combat/battle_super_render.inc"
 #include "include/prototypes/combat/battle_hitboxes.inc"

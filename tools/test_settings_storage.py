@@ -3,7 +3,6 @@ from pathlib import Path
 import os
 import shlex
 import subprocess
-import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]

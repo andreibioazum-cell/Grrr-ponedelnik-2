@@ -39,7 +39,9 @@ static double frame_seconds = 0.0;
 static int phys_w = 0, phys_h = 0;
 static Buffer g_frame = {0};
 static int pc_fixed_step_ms = 0; /* headless: deterministic 60 Hz */
-static int pc_quit = 0;
+#ifdef _WIN32
+static int pc_quit = 0; /* the window loop owns the exit flag */
+#endif
 
 static uint64_t monotonic_ns(void) {
 #ifdef _WIN32
@@ -304,6 +306,7 @@ static void pc_data_dir(const char *dir, char *out, size_t cap) {
 static void pc_resolve_assets(const char *given, char *out, size_t cap) {
     FILE *probe;
     char exe_dir[1024];
+    char marker[1200];
     if (!given || !*given) {
         snprintf(out, cap, "assets");
         return;
@@ -312,21 +315,18 @@ static void pc_resolve_assets(const char *given, char *out, size_t cap) {
         snprintf(out, cap, "%s", given);
         return;
     }
-    probe = fopen(given, "rb");
+    /* A relative folder is only taken as-is when it really looks like the
+     * asset root; otherwise it is resolved next to the executable, so a
+     * shortcut with a foreign working directory still finds the game data. */
+    snprintf(marker, sizeof(marker), "%s/grass.png", given);
+    probe = fopen(marker, "rb");
     if (probe) {
         fclose(probe);
         snprintf(out, cap, "%s", given);
         return;
     }
-    {
-        char dirprobe[1200];
-        snprintf(dirprobe, sizeof(dirprobe), "%s/%s", given, "textures");
-        pc_exe_dir(exe_dir, sizeof(exe_dir));
-        snprintf(out, cap, "%s/%s", exe_dir, given);
-        probe = fopen(dirprobe, "rb"); /* textures/ as a file never opens: directory check below */
-        if (probe)
-            fclose(probe);
-    }
+    pc_exe_dir(exe_dir, sizeof(exe_dir));
+    snprintf(out, cap, "%s/%s", exe_dir, given);
 }
 
 static void pc_boot(const PcArgs *args) {
