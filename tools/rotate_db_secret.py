@@ -162,6 +162,10 @@ def main() -> int:
     RULES.write_text(rules_text.replace(old_write, new_write), encoding="utf-8")
     json.loads(RULES.read_text(encoding="utf-8"))
 
+    print("\nВНИМАНИЕ: репозиторий публичный. Новые значения записаны в")
+    print("  src/engine/network.h и firebase.rules.json, то есть уйдут в git.")
+    print("  Секретом это не является: см. docs/security.md. Ротация нужна, чтобы")
+    print("  сделать бесполезными УЖЕ утёкшие значения, а не чтобы спрятать новые.")
     print("\nГотово. Что сделать дальше:")
     print("  1. Firebase console → Realtime Database → Rules: заменить правила")
     print("     содержимым firebase.rules.json и нажать Publish.")
@@ -169,6 +173,8 @@ def main() -> int:
     print("  3. Собрать и выпустить новую версию игры.")
     print("  4. Старые аккаунты зайдут по ступеньке FB_LEGACY_PASS_SUFFIX и сами")
     print("     переедут на новый хвост при первом входе.")
+    print("  5. Добавить старые значения в .secrets-deny (в git не попадает),")
+    print("     чтобы сторож tools/check_secrets.py ловил их возврат.")
     return 0
 
 

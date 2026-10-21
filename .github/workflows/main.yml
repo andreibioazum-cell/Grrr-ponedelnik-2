@@ -79,11 +79,22 @@ jobs:
             exit 1
           fi
 
+      # Список уже утёкших значений (по одному в строке) из GitHub Actions
+      # secret: сторож tools/check_secrets.py падает, если они появятся снова.
+      - name: Load leaked-secret deny list
+        env:
+          CB4_SECRET_DENY: ${{ secrets.CB4_SECRET_DENY }}
+        run: |
+          if [ -n "${CB4_SECRET_DENY:-}" ]; then
+            printf '%s\n' "$CB4_SECRET_DENY" > .secrets-deny
+          fi
+
       - name: Check native game sources
         run: |
           clang -std=c99 -Wall -Wextra -Werror -pedantic \
             -Isrc -I. -Itools/host_test/stub -fsyntax-only src/game/game.c
           python3 tools/check_game_file_size.py
+          python3 tools/check_secrets.py
           python3 tools/test_resources.py
           python3 tools/test_game_state.py
           python3 tools/test_live_flags.py

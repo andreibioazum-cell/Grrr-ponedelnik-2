@@ -28,3 +28,17 @@ package-lock.json
 cb4_shot.bmp
 cb4.log
 cb4_data/
+
+## Секреты: локальные значения, которые не должны попасть в репозиторий
+.env
+.env.*
+!.env.example
+.secrets-deny
+*.local.json
+secrets.local.*
+google-services.json
+service-account.json
+*.pem
+*.p12
+*.pfx
+*.jks
