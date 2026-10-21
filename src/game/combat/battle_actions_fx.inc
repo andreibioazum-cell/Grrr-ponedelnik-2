@@ -179,8 +179,8 @@ static void fire_super(void) {
     punch->active = 0;
     punch->hit = 0;
     ability_snd(player_class == CLASS_SANTA ? GIFT_SOUND : STATION_SOUND);
-    if (player_class == CLASS_EBUC) {
-        super_cd = ebuc_station_cd;
+    if (player_class == CLASS_BUK) {
+        super_cd = buk_station_cd;
     } else {
         super_cd = super_cd_time;
     }
@@ -212,7 +212,7 @@ static void tick_super_windup(void) {
         }
         return;
     }
-    if (player_class == CLASS_EBUC) {
+    if (player_class == CLASS_BUK) {
         place_turret();
         ds_log("turret placed, alive %g/%g", turret_count_alive(), turret_max);
     }

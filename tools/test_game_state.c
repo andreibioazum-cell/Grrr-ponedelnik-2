@@ -649,7 +649,7 @@ double net_load_candies(void) { return 0; }
 double net_load_class(void) { return 0; }
 double net_load_azum(void) { return 0; }
 double net_load_santa(void) { return 0; }
-double net_load_ebuc(void) { return 0; }
+double net_load_buk(void) { return 0; }
 double net_load_level(void) { return 0; }
 double net_load_levels_unlocked(void) { return 0; }
 double net_load_ordinary_level(void) { return 0; }
@@ -658,8 +658,8 @@ double net_load_azum_level(void) { return 0; }
 double net_load_azum_levels_unlocked(void) { return 0; }
 double net_load_santa_level(void) { return 0; }
 double net_load_santa_levels_unlocked(void) { return 0; }
-double net_load_ebuc_level(void) { return 0; }
-double net_load_ebuc_levels_unlocked(void) { return 0; }
+double net_load_buk_level(void) { return 0; }
+double net_load_buk_levels_unlocked(void) { return 0; }
 double net_load_azum_skin(void) { return 0; }
 double net_load_astra(void) { return 0; }
 double net_load_astra_level(void) { return 0; }
@@ -1662,7 +1662,7 @@ static void test_azum_buff(void) {
     assert(class_owned_of(CLASS_AZUM) == 1 && cups == 0);
     stub_flash_sale = 0;
     update_flash_sale();
-    assert(flash_sale_active == 0 && class_cost_of(CLASS_EBUC) == ebuc_cost);
+    assert(flash_sale_active == 0 && class_cost_of(CLASS_BUK) == buk_cost);
     assert(level_cost(1) == level_base_cost);
     puts("flash sale: -10% on all prices and purchase OK");
 }
@@ -2123,7 +2123,7 @@ static void test_class_stars(void) {
     assert(class_imbalance_of(CLASS_ORDINARY) == 1);
     assert(class_imbalance_of(CLASS_SANTA) == 2);
     assert(class_imbalance_of(CLASS_AZUM) == 3);
-    assert(class_imbalance_of(CLASS_EBUC) == 3);
+    assert(class_imbalance_of(CLASS_BUK) == 3);
     assert(class_imbalance_of(CLASS_ASTRA) == 4);
     assert(class_imbalance_of(CLASS_CODECRACKER) == 5);
     double r = stat_star_r();
@@ -2273,7 +2273,7 @@ int main(void) {
     assert(fabs(astra_ability_final_time_for(0) - astra_ability_beat_time_for(astra_hit_count, 0) - astra_final_delay) < 1e-9);
     assert(class_cost_of(CLASS_AZUM) == 65);
     assert(class_cost_of(CLASS_SANTA) == 100);
-    assert(class_cost_of(CLASS_EBUC) == 120);
+    assert(class_cost_of(CLASS_BUK) == 120);
     assert(class_cost_of(CLASS_ASTRA) == 135);
     assert(class_has_super(CLASS_ASTRA) == 1);
     assert(astra_cd_for(0) == 8);
@@ -2288,14 +2288,14 @@ int main(void) {
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
     assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp * round_hp_mult());
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
-     * astra 18, ebuc 24) and the ability numbers scaled with them, while the
+     * astra 18, buk 24) and the ability numbers scaled with them, while the
      * basic attacks kept their old damage - that is what makes fights last.
      * Azum then got a 2% nerf: 13 -> 12.74. */
     assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult() &&
            player_max_hp_for(CLASS_SANTA) == 20 * round_hp_mult());
-    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
-    assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
-    assert(ebuc_universe_damage >= ebuc_hp);
+    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && buk_hp == 24 && enemy_base_hp == 20);
+    assert(punch_damage == 1 && santa_damage == 0.25 && buk_damage == 1.0);
+    assert(buk_universe_damage >= buk_hp);
     azum_tex_ok = azum_punch_tex_ok = 1;
     azum_zombie_tex_ok = azum_zombie_punch_tex_ok = 1;
     assert(strcmp(fighter_sprite(CLASS_AZUM, 0, SKIN_NORMAL), AZUM_TEX) == 0);
@@ -2702,8 +2702,8 @@ int main(void) {
         finished = 0;
         cups_awarded = 0;
         achievement_mask = 0;
-        player_class = CLASS_EBUC;
-        player->max_hp = ebuc_hp;
+        player_class = CLASS_BUK;
+        player->max_hp = buk_hp;
         player->hp = player->max_hp;
         player_was_hit = 0;
         arr_clear(turret_x);
@@ -3008,7 +3008,7 @@ int main(void) {
         super_windup = 0;
         fire_super();
         assert(strcmp(stub_last_snd, "gift.wav") == 0);
-        player_class = CLASS_EBUC;
+        player_class = CLASS_BUK;
         punch_left = 0;
         punch_cd = 0;
         super_cd = 0;
@@ -3931,7 +3931,7 @@ int main(void) {
         award_battle_result(1);
         assert(bp_xp == 10 && stub_bpx == 10);
         double cups_after_win = cups;
-        assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        assert(skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
         bp_claim(2); /* out of order: nothing happens */
         assert(bp_claimed == 0 && candies == 1000);
         bp_claim(1);
@@ -3940,9 +3940,9 @@ int main(void) {
         bp_xp = 300;
         bp_claim(2);
         bp_claim(3);
-        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
         bp_claim(4);
-        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
+        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 1);
         assert(class_owned_of(CLASS_SANTA) == 0);
         bp_claim(5);
         bp_claim(6);

@@ -65,7 +65,7 @@ static void check_profile(void) {
                     "\"level\":1e300,\"levels\":1e300,\"ach_flags\":1e300}");
     pg_lock();
     assert(pg.cups == 0 && pg.candies == 0 && pg.cls == 0);
-    assert(pg.azum == 0 && pg.santa == 0 && pg.ebuc == 0);
+    assert(pg.azum == 0 && pg.santa == 0 && pg.buk == 0);
     assert(pg.level == 0 && pg.levels_unlocked == 0 && pg.loaded == 1);
     pg_unlock();
 }

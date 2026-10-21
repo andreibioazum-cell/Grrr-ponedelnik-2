@@ -56,14 +56,14 @@ static double shield_absorb_turrets(DSArray *xs, DSArray *ys, DSArray *hps, doub
 }
 
 static double player_shield_absorb(double dmg) {
-    if (player_class != CLASS_EBUC) {
+    if (player_class != CLASS_BUK) {
         return dmg;
     }
     return shield_absorb_turrets(turret_x, turret_y, turret_hp, player->x, player->y, 1, dmg);
 }
 
 static double enemy_shield_absorb(double dmg) {
-    if (enemy_class != CLASS_EBUC) {
+    if (enemy_class != CLASS_BUK) {
         return dmg;
     }
     return shield_absorb_turrets(enemy_turret_x, enemy_turret_y, enemy_turret_hp, enemy->x, enemy->y, 0, dmg);

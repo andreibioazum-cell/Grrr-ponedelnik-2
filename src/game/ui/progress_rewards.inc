@@ -19,7 +19,7 @@ static double grant_achievement(double bit) {
 }
 
 static void check_achievements(void) {
-    if (class_owned_of(CLASS_AZUM) == 1 && class_owned_of(CLASS_SANTA) == 1 && class_owned_of(CLASS_EBUC) == 1) {
+    if (class_owned_of(CLASS_AZUM) == 1 && class_owned_of(CLASS_SANTA) == 1 && class_owned_of(CLASS_BUK) == 1) {
         grant_achievement(ACH_ALL_CHARACTERS);
     }
     check_meet_eax229();
@@ -72,10 +72,10 @@ static void save_progress(void) {
     double bp_lv = bp_claimed;
     net_save_codecracker(class_level_of(CLASS_CODECRACKER), class_unlocked_of(CLASS_CODECRACKER));
     net_save_progress_all(cups, candies, player_class, class_owned_of(CLASS_AZUM), class_owned_of(CLASS_SANTA),
-                          class_owned_of(CLASS_EBUC), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
+                          class_owned_of(CLASS_BUK), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
                           class_unlocked_of(CLASS_ORDINARY), class_level_of(CLASS_AZUM), class_unlocked_of(CLASS_AZUM),
-                          class_level_of(CLASS_SANTA), class_unlocked_of(CLASS_SANTA), class_level_of(CLASS_EBUC),
-                          class_unlocked_of(CLASS_EBUC), bp_lv, skin_flags());
+                          class_level_of(CLASS_SANTA), class_unlocked_of(CLASS_SANTA), class_level_of(CLASS_BUK),
+                          class_unlocked_of(CLASS_BUK), bp_lv, skin_flags());
     net_save_astra(class_owned_of(CLASS_ASTRA), class_level_of(CLASS_ASTRA), class_unlocked_of(CLASS_ASTRA));
     progress_push_to_net();
 }
@@ -85,7 +85,7 @@ static double skin_flags(void) {
     if (azum_skin == SKIN_SPECIAL) {
         f = f + 1;
     }
-    if (ebuc_skin == SKIN_SPECIAL) {
+    if (buk_skin == SKIN_SPECIAL) {
         f = f + 2;
     }
     return f;
@@ -108,8 +108,8 @@ static void progress_normalize(void) {
     if (azum_skin < SKIN_NORMAL || azum_skin >= SKIN_COUNT) {
         azum_skin = SKIN_NORMAL;
     }
-    if (ebuc_skin < SKIN_NORMAL || ebuc_skin >= SKIN_COUNT) {
-        ebuc_skin = SKIN_NORMAL;
+    if (buk_skin < SKIN_NORMAL || buk_skin >= SKIN_COUNT) {
+        buk_skin = SKIN_NORMAL;
     }
     if (azum_skin == SKIN_ZOMBIE && has_achievement(ACH_LEGENDS) == 0) {
         azum_skin = SKIN_NORMAL;
@@ -151,22 +151,22 @@ static void progress_from_storage(void) {
     player_class = net_load_class();
     set_class_owned(CLASS_AZUM, net_load_azum());
     set_class_owned(CLASS_SANTA, net_load_santa());
-    set_class_owned(CLASS_EBUC, net_load_ebuc());
+    set_class_owned(CLASS_BUK, net_load_buk());
     set_class_owned(CLASS_ASTRA, net_load_astra());
     player_level = net_load_level();
     levels_unlocked = net_load_levels_unlocked();
     set_class_progress(CLASS_ORDINARY, net_load_ordinary_level(), net_load_ordinary_levels_unlocked());
     set_class_progress(CLASS_AZUM, net_load_azum_level(), net_load_azum_levels_unlocked());
     set_class_progress(CLASS_SANTA, net_load_santa_level(), net_load_santa_levels_unlocked());
-    set_class_progress(CLASS_EBUC, net_load_ebuc_level(), net_load_ebuc_levels_unlocked());
+    set_class_progress(CLASS_BUK, net_load_buk_level(), net_load_buk_levels_unlocked());
     set_class_progress(CLASS_ASTRA, net_load_astra_level(), net_load_astra_levels_unlocked());
     set_class_progress(CLASS_CODECRACKER, net_load_codecracker_level(), net_load_codecracker_levels_unlocked());
     astra_ability_refresh();
     codecracker_refresh();
     double skins = net_load_azum_skin();
-    ebuc_skin = SKIN_NORMAL;
+    buk_skin = SKIN_NORMAL;
     if (skins >= 2) {
-        ebuc_skin = SKIN_SPECIAL;
+        buk_skin = SKIN_SPECIAL;
         skins = skins - 2;
     }
     azum_skin = skins;
@@ -192,7 +192,7 @@ static void progress_reset_on_signout(void) {
     candies = 0;
     set_class_owned(CLASS_AZUM, 0);
     set_class_owned(CLASS_SANTA, 0);
-    set_class_owned(CLASS_EBUC, 0);
+    set_class_owned(CLASS_BUK, 0);
     set_class_owned(CLASS_ASTRA, 0);
     double i = 0;
     while (i < class_count) {
@@ -203,7 +203,7 @@ static void progress_reset_on_signout(void) {
     player_level = 0;
     levels_unlocked = 0;
     azum_skin = SKIN_NORMAL;
-    ebuc_skin = SKIN_NORMAL;
+    buk_skin = SKIN_NORMAL;
     achievement_mask = 0;
     azum_revive_count = 0;
     sync_selected_class();

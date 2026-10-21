@@ -49,13 +49,13 @@ static void enemy_reset_class_state(void) {
 static void enemy_pick_random_class(void) {
     double roll = rand() % 100;
     double azum_to = enemy_class_azum_chance;
-    double ebuc_to = azum_to + enemy_class_ebuc_chance;
-    double santa_to = ebuc_to + enemy_class_santa_chance;
+    double buk_to = azum_to + enemy_class_buk_chance;
+    double santa_to = buk_to + enemy_class_santa_chance;
     double astra_to = santa_to + enemy_class_astra_chance;
     if (roll < azum_to) {
         enemy_class = CLASS_AZUM;
-    } else if (roll < ebuc_to) {
-        enemy_class = CLASS_EBUC;
+    } else if (roll < buk_to) {
+        enemy_class = CLASS_BUK;
     } else if (roll < santa_to) {
         /* Santa is developer-only for now, so the bot does not roll him
          * for anyone else either. */
@@ -111,7 +111,7 @@ static double enemy_apply_damage(double dmg) {
         dmg = dmg * block_guard;
     }
     dmg_from_k = 0;
-    if (enemy_class == CLASS_EBUC) {
+    if (enemy_class == CLASS_BUK) {
         dmg = enemy_shield_absorb(dmg);
     }
     if (dmg > 0) {

@@ -68,8 +68,8 @@ SANTA_TEX = "santa.png";
 SANTA_PUNCH_TEX = "santa_punch.png";
 CANDY_TEX = "candy.png";
 SNOWFLAKE_TEX = "snowflake.png";
-EBUC_TEX = "ebuc.png";
-EBUC_PUNCH_TEX = "ebuc_punch.png";
+BUK_TEX = "buk.png";
+BUK_PUNCH_TEX = "buk_punch.png";
 DESPENSER_TEX = "despenser.png";
 SNOW_TEX = "snow.png";
 AZUM_ZOMBIE_TEX = "zombie_azum.png";
@@ -82,8 +82,8 @@ OVERCLOCK_SOUND = "overclock.wav";
 ZOMBIE_PUNCH_SOUND = "zombie_punch.wav";
 ZOMBIE_DASH_SOUND = "zombie_dash.wav";
 AZUM_ZOMBIE_PUNCH_TEX = "zombie_azum_punch.png";
-EBUC_ELF_TEX = "ebuc_elf.png";
-EBUC_ELF_PUNCH_TEX = "ebuc_elf_punch.png";
+BUK_ELF_TEX = "buk_elf.png";
+BUK_ELF_PUNCH_TEX = "buk_elf_punch.png";
 
 /* High-resolution shop/lobby renders. Drawn in the shop (class and skin
  * cards) instead of the tiny in-battle pixel sprites. CARD_RENDER_PX is the
@@ -99,8 +99,8 @@ ORDINARY_CARD_TEX = "ordinary_card.png";
 AZUM_CARD_TEX = "azum_card.png";
 AZUM_ZOMBIE_CARD_TEX = "zombie_azum_card.png";
 SANTA_CARD_TEX = "santa_card.png";
-EBUC_CARD_TEX = "ebuc_card.png";
-EBUC_ELF_CARD_TEX = "ebuc_elf_card.png";
+BUK_CARD_TEX = "buk_card.png";
+BUK_ELF_CARD_TEX = "buk_elf_card.png";
 ASTRA_CARD_TEX = "astra_card.png";
 astra_ability_ok = 0;
 ST_BPASS = 16;
