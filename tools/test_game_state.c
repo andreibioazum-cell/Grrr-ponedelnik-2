@@ -437,8 +437,11 @@ void net_save_progress_all(double a, double b, double c, double d, double e, dou
 int snd_load(const char *name) {
     return name && *name;
 }
+char stub_last_snd[64] = "";
 int snd_play(const char *name) {
-    (void)name;
+    if (name) {
+        snprintf(stub_last_snd, sizeof(stub_last_snd), "%s", name);
+    }
     return 1;
 }
 int snd_loop(const char *name) {
@@ -2947,6 +2950,51 @@ int main(void) {
         take_damage(2);
         assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
         codecracker_super_t = 0;
+    }
+    /* Ability sounds: every ability plays its own effect, and the zombie
+     * Azum skin swaps both of its sounds for the custom zombie ones. */
+    {
+        player_class = CLASS_AZUM;
+        azum_skin = SKIN_NORMAL;
+        start_punch_now();
+        assert(strcmp(stub_last_snd, "punch.wav") == 0);
+        azum_skin = SKIN_ZOMBIE;
+        start_punch_now();
+        assert(strcmp(stub_last_snd, "zombie_punch.wav") == 0);
+        start_dash_now();
+        assert(strcmp(stub_last_snd, "zombie_dash.wav") == 0);
+        azum_skin = SKIN_NORMAL;
+        start_dash_now();
+        assert(strcmp(stub_last_snd, "dash.wav") == 0);
+        player_class = CLASS_CODECRACKER;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        codecracker_super_t = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "overclock.wav") == 0);
+        codecracker_super_t = 0;
+        player_class = CLASS_SANTA;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        super_windup = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "gift.wav") == 0);
+        player_class = CLASS_EBUC;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        super_windup = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "station.wav") == 0);
+        player_class = CLASS_ASTRA;
+        start_grab_now();
+        assert(strcmp(stub_last_snd, "grab.wav") == 0);
+        astra_state = 0;
+        player_class = CLASS_ORDINARY;
+        super_windup = 0;
+        super_cd = 0;
     }
     /* The result window: in the old theme both victory and defeat are
      * rose (its button colour), in the new theme both stay purple. */
