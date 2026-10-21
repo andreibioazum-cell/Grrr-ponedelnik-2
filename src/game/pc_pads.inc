@@ -7,6 +7,14 @@ double game_pc_state(void) { return game_state; }
 
 int game_pc_in_battle(void) { return game_state == ST_SOLO || game_state == ST_ONLINE; }
 
+int game_pc_battle_mouse_ui(float x, float y) {
+    if (game_state != ST_ONLINE)
+        return 0;
+    if (chat_open == 1)
+        return 1; /* the open chat covers the fight: every click is chat's */
+    return hit_button((double)x, (double)y, chat_btn_x(), chat_btn_y(), chat_btn_w(), chat_btn_h()) == 1;
+}
+
 void game_pc_goto(double target) { start_transition(target); }
 
 void game_pc_joy(float *x, float *y, float *r) {
