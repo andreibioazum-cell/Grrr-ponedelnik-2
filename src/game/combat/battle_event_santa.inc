@@ -93,14 +93,18 @@ static void draw_event_santa(void) {
         double p = plates_santa_t / 0.4;
         pop = 1 - (1 - p) * (1 - p);
     }
-    double sc = plates_santa_size / 50 * pop;
+    /* Дед Мороз рисуется как обычный боец: тот же размер куба
+     * (25 * cube_scale * player_scale) и та же настоящая размытая тень
+     * (draw_shadow_blur_tex), а не резкая серая копия со сдвигом. */
+    double half_px = 25 * cube_scale * player_scale * pop;
+    double sc = cube_scale * player_scale * pop;
     if (sc <= 0.01) {
         return;
     }
     double wob = 6 * pop * sin(plates_santa_t * 3) * (1 - plates_santa_up);
-    double hw = 25 * sc;
-    tex_tint(cx - hw + 10, cy - hw + wob + 12, SANTA_TEX, plates_santa_angle, sc, 0x55000000);
-    tex(cx - hw, cy - hw + wob, SANTA_TEX, plates_santa_angle, sc);
+    draw_shadow_blur_tex(cx - shadow_off, cy + shadow_off, half_px, sc, SANTA_TEX, plates_santa_angle,
+                         shadow_alpha * 2.5, half_px * 0.07);
+    tex(cx - half_px, cy - half_px + wob, SANTA_TEX, plates_santa_angle, sc);
 }
 
 static void draw_plates_hud(void) {

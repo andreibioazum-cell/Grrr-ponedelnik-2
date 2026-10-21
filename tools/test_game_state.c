@@ -411,8 +411,10 @@ void tex_tint(float x, float y, const char *name, float angle, float scale, uint
     }
 }
 void net_mark_progress_synced(void) {}
+double stub_last_bp = -1;
 void net_save_progress_all(double a, double b, double c, double d, double e, double f, double g, double h, double i,
                            double j, double k, double l, double m, double n, double o, double p, double q, double r) {
+    stub_last_bp = q; /* bp_level: claimed tiers of the battle pass */
     (void)a;
     (void)b;
     (void)c;
@@ -429,7 +431,6 @@ void net_save_progress_all(double a, double b, double c, double d, double e, dou
     (void)n;
     (void)o;
     (void)p;
-    (void)q;
     (void)r;
 }
 
@@ -2864,6 +2865,24 @@ int main(void) {
     player_class = CLASS_CODECRACKER;
     codecracker_super_t = codecracker_super_time;
     assert(codecracker_super_active() == 1);
+    /* The dash (overclock) cooldown starts when the dash ends, not when
+     * it starts: mid-dash there is no cooldown ticking yet, the frame the
+     * timer runs out the full cooldown lands on super_cd. */
+    {
+        double keep_dt = dt;
+        double keep_cd = super_cd;
+        dt = 0.05;
+        super_cd = 0;
+        codecracker_super_t = 1;
+        codecracker_tick_super_timer();
+        assert(codecracker_super_t > 0 && super_cd == 0);
+        codecracker_super_t = 0.03;
+        codecracker_tick_super_timer();
+        assert(codecracker_super_t == 0 && super_cd == codecracker_super_cd_for(player_level));
+        super_cd = keep_cd;
+        codecracker_super_t = codecracker_super_time;
+        dt = keep_dt;
+    }
     assert(fabs(player_walk_speed() - joy_speed * codecracker_speed_mult * admin_cheat_speed_mult()) < 1e-6);
     {
         double hp_before = player->hp;
@@ -2929,18 +2948,20 @@ int main(void) {
         assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
         codecracker_super_t = 0;
     }
-    /* The result window: purple for a win and in the new theme, rose for a
-     * loss in the old theme. */
+    /* The result window: in the old theme both victory and defeat are
+     * rose (its button colour), in the new theme both stay purple. */
     {
         new_theme = 0;
         apply_theme();
         finished = 2;
         assert(result_face_color() == 0xFFD4508A);
         finished = 1;
-        assert(result_face_color() == 0xFF5F10A0);
+        assert(result_face_color() == 0xFFD4508A);
         new_theme = 1;
         apply_theme();
         finished = 2;
+        assert(result_face_color() == 0xFF5F10A0);
+        finished = 1;
         assert(result_face_color() == 0xFF5F10A0);
         finished = 0;
     }
@@ -3836,6 +3857,7 @@ int main(void) {
         assert(bp_claimed == 0 && candies == 1000);
         bp_claim(1);
         assert(bp_claimed == 1 && cups == cups_after_win + 10 && candies == 1000 - 12);
+        assert(stub_last_bp == 1); /* claimed tier rides the cloud save (field "bp") */
         bp_xp = 300;
         bp_claim(2);
         bp_claim(3);
@@ -3847,6 +3869,7 @@ int main(void) {
         bp_claim(6);
         bp_claim(7);
         assert(bp_claimed == 7 && class_owned_of(CLASS_SANTA) == 1);
+        assert(stub_last_bp == 7);
         assert(class_visible(CLASS_SANTA) == 1);
         bp_xp = 0;
         bp_claimed = 0;

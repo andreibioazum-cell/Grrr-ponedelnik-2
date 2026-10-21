@@ -105,8 +105,11 @@ static void bp_claim(double t) {
 }
 
 /* Rows are ordinary game buttons now: same purple face, same press squeeze,
- * same disabled grey. They shrink so all seven tiers fit above the status
- * line on short screens instead of running off the bottom. */
+ * same disabled grey. A claimed tier is green instead of grey, so what is
+ * already yours reads at a glance. They shrink so all seven tiers fit above
+ * the status line on short screens instead of running off the bottom.
+ * The whole pass is admin-only: the lobby does not draw its button for
+ * anyone else, and this screen turns non-admins away (see touch_bpass). */
 static double bp_rows_top(void) { return content_top() + 88; }
 static double bp_row_h(void) {
     double stride = (screen_h - bp_rows_top() - 70) / BP_TIERS;
@@ -138,7 +141,9 @@ static void bp_draw_row(double t) {
     const char *label = ds_concat(title, ds_concat(" · ", bp_status_text(t)));
     double sc = fit_text_scale(label, w - 24, 0.58);
     double ready = t == bp_claimed + 1 && bp_xp >= bp_xp_req(t);
-    if (ready == 1) {
+    if (t <= bp_claimed) {
+        button_scaled_face(label, x, y, w, h, sc, 0xFF2F9E44);
+    } else if (ready == 1) {
         button_scaled(label, x, y, w, h, sc);
     } else {
         button_disabled_scaled(label, x, y, w, h, sc);
@@ -146,6 +151,11 @@ static void bp_draw_row(double t) {
 }
 
 static void draw_bpass(void) {
+    if (is_admin() != 1) {
+        screen_fill();
+        draw_back();
+        return;
+    }
     screen_fill();
     ctext_scaled(language == 1 ? "Новогодний баттл-пасс" : "New Year Battle Pass", content_top() + 6, newyear_gold + 0xFF000000,
                  fit_text_scale(language == 1 ? "Новогодний баттл-пасс" : "New Year Battle Pass", screen_w - 32, 0.85));
@@ -171,6 +181,10 @@ static void draw_bpass(void) {
 }
 
 static void touch_bpass(double x, double y, double action) {
+    if (is_admin() != 1) {
+        start_transition(ST_LOBBY);
+        return;
+    }
     if (action != 0) {
         return;
     }

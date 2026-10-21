@@ -109,8 +109,8 @@ static void button(const char *label, double x, double y, double w, double h) {
     button_fixed(label, x, y, w, h, ui_purple);
 }
 
-/* A button with a face colour of its own: the result screen keeps the purple
- * face in both themes, so the old theme's win/lose screen is not rose. */
+/* A button with a face colour of its own: the result screen paints its
+ * button with the result window's face colour. */
 static void button_fixed(const char *label, double x, double y, double w, double h, double face) {
     double p = button_press_k(x, y, w, h);
     double s = 1 - PRESS_SQUEEZE * p;
@@ -144,6 +144,20 @@ static void button_scaled_color(const char *label, double x, double y, double w,
     double col = shade(ui_purple, 1 - PRESS_SHADE * p);
     button_face(bx, by, bw, bh, col);
     text_in_box(label, bx, by, bw, bh, shade(color, 1 - PRESS_SHADE * p), scale * s);
+}
+
+/* Та же масштабируемая кнопка, но с лицом своего цвета (зелёная полученная
+ * ячейка батл-пасса и т.п.): нажатие и затемнение — как у обычной. */
+static void button_scaled_face(const char *label, double x, double y, double w, double h, double scale, uint32_t face) {
+    double p = button_press_k(x, y, w, h);
+    double s = 1 - PRESS_SQUEEZE * p;
+    double bx = x + w * (1 - s) / 2;
+    double by = y + h * (1 - s) / 2;
+    double bw = w * s;
+    double bh = h * s;
+    double col = shade(face, 1 - PRESS_SHADE * p);
+    button_face(bx, by, bw, bh, col);
+    text_in_box(label, bx, by, bw, bh, shade(text_color, 1 - PRESS_SHADE * p), scale * s);
 }
 
 /* Cards and list rows answer a touch the same way a button does, so a shop
@@ -205,17 +219,16 @@ static double battle_back_x(void) { return (screen_w - btn_w) / 2; }
 
 static double battle_back_y(void) { return back_y; }
 
-/* Фиолетовый экрана итога боя: панель победы/поражения и кнопка «Назад» на
- * нём фиолетовые в обеих темах - в старой теме розовая кнопка делала весь
- * экран победы или поражения розовым. */
+/* Фиолетовый экрана итога боя для новой темы. */
 #define RESULT_PURPLE 0xFF5F10A0
-/* В старой теме окно поражения розовое - под её розовые кнопки. */
+/* Розовый старой темы: в ней окна и победы, и поражения розовые, под её
+ * розовые кнопки. */
 #define RESULT_ROSE 0xFFD4508A
 
-/* The face of the result window: purple for a win and in the new theme, rose
- * for a loss in the old theme. */
+/* The face of the result window: in the old theme both the victory and the
+ * defeat window are rose; in the new theme both stay purple. */
 static double result_face_color(void) {
-    if (finished == 2 && new_theme == 0) {
+    if (new_theme == 0) {
         return RESULT_ROSE;
     }
     return RESULT_PURPLE;

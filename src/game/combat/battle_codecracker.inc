@@ -50,13 +50,24 @@ static void codecracker_heal(void) {
     player->hp = clamp(player->hp + codecracker_touch_heal, 0, player->max_hp);
 }
 
+/* Тикает таймер рывка (оверклока). Кулдаун супера начинается не в момент
+ * включения, а ровно когда рывок заканчивается: пока оверклок работает,
+ * super_cd стоит на нуле, в кадр его окончания ставится полный кулдаун. */
+static void codecracker_tick_super_timer(void) {
+    double was = codecracker_super_t;
+    codecracker_super_t = tick_down(codecracker_super_t);
+    if (was > 0 && codecracker_super_t <= 0) {
+        super_cd = codecracker_super_cd_for(player_level);
+    }
+}
+
 /* Solo: the bot is the only enemy, so one shared timer is enough. */
 static double codecracker_super_active(void) {
     return codecracker_on() == 1 && codecracker_super_t > 0;
 }
 
 static void codecracker_tick_solo(void) {
-    codecracker_super_t = tick_down(codecracker_super_t);
+    codecracker_tick_super_timer();
     codecracker_touch_cd_left = tick_down(codecracker_touch_cd_left);
     if (codecracker_super_active() == 0 || finished != 0 || enemy->hp <= 0) {
         return;
@@ -74,7 +85,7 @@ static void codecracker_tick_solo(void) {
  * Both clients see the same synced positions, so the heal and the damage
  * land on the same touch without any extra network field. */
 static void codecracker_tick_online(void) {
-    codecracker_super_t = tick_down(codecracker_super_t);
+    codecracker_tick_super_timer();
     double s = 0;
     while (s < max_players) {
         double out_i = s;
