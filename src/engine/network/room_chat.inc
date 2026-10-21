@@ -30,8 +30,13 @@ static int parse_chat_list(const char *json, ChatMsg *tmp, int cap) {
         strv(obj, "uid", tmp[tmp_cnt].uid, sizeof(tmp[tmp_cnt].uid));
         strv(obj, "nick", tmp[tmp_cnt].nick, sizeof(tmp[tmp_cnt].nick));
         strv(obj, "text", tmp[tmp_cnt].text, sizeof(tmp[tmp_cnt].text));
-        tmp[tmp_cnt].valid = 1;
-        tmp_cnt++;
+        /* Сообщение без текста (битая запись в базе, старая команда без
+         * тела) не показываем вовсе: раньше в ленте оставался голый ник
+         * строкой «Broken» без сообщения. */
+        if (tmp[tmp_cnt].text[0]) {
+            tmp[tmp_cnt].valid = 1;
+            tmp_cnt++;
+        }
         p = skip_ws(p);
         if (p && *p == ',')
             p = skip_ws(p + 1);

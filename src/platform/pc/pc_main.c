@@ -415,11 +415,22 @@ int main(int argc, char **argv) {
     PcArgs args;
     int i;
     char joined[4096];
+    size_t used;
     pc_args_default(&args);
     snprintf(joined, sizeof(joined), "cb4_headless ");
+    used = strlen(joined);
     for (i = 1; i < argc; i++) {
-        strncat(joined, argv[i], sizeof(joined) - strlen(joined) - 2);
-        strncat(joined, " ", 2);
+        /* strncat counts the terminator out of its limit, so the old "- 2" left
+         * no room for the separating space and a long command line (many
+         * --touch events) ran off the end of this buffer. Arguments are only
+         * added while the whole "<arg> " pair fits. */
+        size_t need = strlen(argv[i]) + 1;
+        if (need + 1 > sizeof(joined) - used)
+            break;
+        memcpy(joined + used, argv[i], need - 1);
+        used += need - 1;
+        joined[used++] = ' ';
+        joined[used] = '\0';
     }
     pc_args_parse(joined, &args);
     if (strstr(joined, "--gfx-test")) {

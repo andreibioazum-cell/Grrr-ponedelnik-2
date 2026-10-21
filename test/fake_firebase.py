@@ -65,7 +65,7 @@ REFRESH = {}    # refresh_token -> email
 TOKENS = {}     # id_token -> email
 COUNTER = [0]
 
-STATS = {"sign_up": 0, "sign_in": 0, "token_refresh": 0,
+STATS = {"sign_up": 0, "sign_in": 0, "token_refresh": 0, "password_update": 0,
          "rtdb_auth": 0, "rtdb_no_auth": 0, "rtdb_denied": 0, "static": 0}
 
 
@@ -503,6 +503,30 @@ class Handler(BaseHTTPRequestHandler):
                 idt, rt = _issue_tokens(email)
             self._send(200, json.dumps({
                 "idToken": idt, "refreshToken": rt, "expiresIn": "3600",
+                "localId": email.split("@")[0], "email": email,
+            }).encode())
+            return
+
+        if endpoint == "v1/accounts:update":
+            # Игра после входа по «старому хвосту» переводит аккаунт на новый
+            # пароль. Настоящий Firebase это умеет; фейк раньше отвечал 400 и
+            # каждый вход писал в лог ошибку, хотя вход уже прошёл.
+            idt = str(data.get("idToken", ""))
+            password = data.get("password", "")
+            with LOCK:
+                email = TOKENS.get(idt)
+            if not email:
+                self._fb_error("INVALID_ID_TOKEN")
+                return
+            if not password:
+                self._fb_error("MISSING_PASSWORD")
+                return
+            with LOCK:
+                AUTH[email] = password
+                STATS["password_update"] += 1
+            idt, nrt = _issue_tokens(email)
+            self._send(200, json.dumps({
+                "idToken": idt, "refreshToken": nrt, "expiresIn": "3600",
                 "localId": email.split("@")[0], "email": email,
             }).encode())
             return

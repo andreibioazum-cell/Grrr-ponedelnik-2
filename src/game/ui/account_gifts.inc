@@ -203,7 +203,10 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
     if (action == 1 || action == 3) {
         if (acct_gift_drag < 0 || id != acct_gift_drag) return 0;
         if (action == 1 && acct_gift_drag_move < 14) {
-            double row = acct_gift_hit_row(y);
+            /* The card chosen is the one under the finger when it landed, not
+             * the one under the lifted finger: a couple of pixels of drift
+             * used to pick the neighbour after a "tap". */
+            double row = acct_gift_drag_row >= 0 ? acct_gift_drag_row : acct_gift_hit_row(y);
             double picked = acct_gift_own_id(row);
             if (picked >= 0) {
                 acct_gift_choice = picked;
@@ -213,6 +216,7 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
             }
         }
         acct_gift_drag = -1;
+        acct_gift_drag_row = -1;
         return 1;
     }
     if (action != 0) return 0;
@@ -220,6 +224,7 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
         acct_gift_drag = id;
         acct_gift_drag_y = y;
         acct_gift_drag_move = 0;
+        acct_gift_drag_row = acct_gift_hit_row(y);
         acct_gift_vel = 0;
         return 1;
     }

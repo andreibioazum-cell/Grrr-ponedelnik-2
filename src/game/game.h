@@ -26,6 +26,10 @@ void game_pc_pads(float *ax, float *ay, float *a2x, float *a2y, float *bx, float
  * closed chat's small button opens it. The in-battle back button is not on
  * this list - Esc leaves the fight, so a swing over that corner never quits. */
 int game_pc_battle_mouse_ui(float x, float y);
+/* Whether the current class draws the super pad at all. The ordinary cube has
+ * no super, so a PC "super" press would land on empty screen - where the game
+ * reads it as the joystick and the player suddenly walks. */
+int game_pc_has_super(void);
 double game_pc_player_hp(void);
 void game_pc_player_xy(double *x, double *y);
 void game_pc_login_fields(float *nick_x, float *nick_y, float *pass_x, float *pass_y, float *btn_x, float *btn_y,

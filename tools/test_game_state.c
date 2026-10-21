@@ -1266,6 +1266,9 @@ static void test_gifts_page(void) {
     acct_gift_own_row = 0;
     acct_gift_sell();
     assert(acct_gift_busy == 0 && acct_gift_busy_mode == 3);
+    /* Стикер отказанного запроса не должен переехать в следующее действие:
+     * иначе продажа «не того» стикера (или покупка не того) прошла бы тихо. */
+    assert(acct_gift_acted == -1);
     stub_gift_action_ok = 1;
     acct_msg = "";
 
@@ -1278,6 +1281,20 @@ static void test_gifts_page(void) {
     stub_gift_status = 2;
     acct_poll_gifts();
     assert(stub_gift_counts[4] == 2 && stub_gift_counts[0] == 1);
+    acct_msg = "";
+
+    /* Пока запрос в пути, выбор можно переставить: применяется тот стикер,
+     * на который нажимали. Раньше брался текущий выбор. */
+    acct_gift_choice = 3;
+    acct_gift_is_owned = 0;
+    acct_gift_buy();
+    acct_gift_choice = 0; /* игрок успел ткнуть другую карточку */
+    stub_gift_cups = 640;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[3] == 1);
+    assert(acct_gift_acted == -1);
+    net_gift_count_add(3, -1);
     acct_msg = "";
 
     /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после

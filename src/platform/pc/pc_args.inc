@@ -20,14 +20,19 @@
 
 #define PC_MAX_EVENTS 96
 #define PC_EVENT_LEN 200
+/* Paths are copied out of the command line: the parser tokenizes into its own
+ * stack buffer, so keeping a pointer there would dangle the moment parsing
+ * returns (the assets folder then read as garbage and the game failed to
+ * start - on Windows only when the stack happened to be reused). */
+#define PC_PATH_LEN 1024
 
 typedef struct {
     int frames;
     int warmup;
     int width, height;
     int headless;
-    const char *assets;
-    const char *data;
+    char assets[PC_PATH_LEN];
+    char data[PC_PATH_LEN];
     int eventc;
     char events[PC_MAX_EVENTS][PC_EVENT_LEN];
 } PcArgs;
@@ -39,8 +44,8 @@ static void pc_args_default(PcArgs *a) {
     a->width = 540;
     a->height = 960;
     a->headless = 0;
-    a->assets = "assets";
-    a->data = "cb4_data";
+    snprintf(a->assets, sizeof(a->assets), "assets");
+    snprintf(a->data, sizeof(a->data), "cb4_data");
 }
 
 static void pc_args_push_event(PcArgs *a, const char *name, const char *value) {
@@ -107,10 +112,10 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
             }
             i++;
         } else if (strcmp(k, "--assets") == 0) {
-            a->assets = v;
+            snprintf(a->assets, sizeof(a->assets), "%s", v);
             i++;
         } else if (strcmp(k, "--data") == 0) {
-            a->data = v;
+            snprintf(a->data, sizeof(a->data), "%s", v);
             i++;
         } else if (strcmp(k, "--touch") == 0 || strcmp(k, "--goto") == 0 || strcmp(k, "--type") == 0 ||
                    strcmp(k, "--enter") == 0 || strcmp(k, "--back") == 0 || strcmp(k, "--dump") == 0 ||

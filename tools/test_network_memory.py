@@ -147,6 +147,39 @@ static void check_progress(void) {
     assert(member("{\"a\":,}", "missing") == NULL);
     assert(member("{\"a\":1 \"b\":2}", "b") == NULL);
 }
+static void check_unescape(void) {
+    char out[64];
+    /* Firebase отдаёт кириллицу как \uXXXX: раньше такие строки попадали на
+     * экран буквально ("u043f"), и чат/ники/баннер были мусором. */
+    strv("{\"nick\":\"\\u0414\\u0438\\u043c\\u0430\"}", "nick", out, sizeof(out));
+    assert(strcmp(out, "Дима") == 0);
+    strv("{\"text\":\"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442\"}", "text", out, sizeof(out));
+    assert(strcmp(out, "привет") == 0);
+    /* Обычные escape-последовательности. */
+    strv("{\"s\":\"a\\\"b\\\\c\\/d\\ne\\tf\"}", "s", out, sizeof(out));
+    assert(strcmp(out, "a\"b\\c/d\ne\tf") == 0);
+    /* Суррогатная пара - один символ UTF-8 (эмодзи). */
+    strv("{\"s\":\"\\ud83d\\ude00\"}", "s", out, sizeof(out));
+    assert(strcmp(out, "\xf0\x9f\x98\x80") == 0);
+    /* Одиночный суррогат и битый escape не ломают разбор. */
+    strv("{\"s\":\"\\ud83d!\"}", "s", out, sizeof(out));
+    assert(strcmp(out, "\xef\xbf\xbd!") == 0);
+    strv("{\"s\":\"\\uZZZZ\"}", "s", out, sizeof(out));
+    assert(strcmp(out, "uZZZZ") == 0);
+    /* Усечение по размеру буфера не выходит за границу. */
+    memset(out, 'x', sizeof(out));
+    strv("{\"s\":\"\\u0414\\u0414\\u0414\\u0414\"}", "s", out, sizeof(out));
+    assert(strlen(out) + 1 <= sizeof(out));
+}
+static void check_broken_chat(void) {
+    /* Сообщение без текста (битая запись) в ленту не попадает: раньше на
+     * экране оставался голый ник строкой «Broken». */
+    ChatMsg chats[4];
+    const char *json = "{\"-1\":{\"nick\":\"Broken\"},"
+                       "\"-2\":{\"uid\":\"u\",\"nick\":\"Bob\",\"text\":\"hi\"}}";
+    assert(parse_chat_list(json, chats, 4) == 1);
+    assert(strcmp(chats[0].nick, "Bob") == 0 && strcmp(chats[0].text, "hi") == 0);
+}
 static unsigned fuzz_state = 0x4c617270u;
 static unsigned fuzz_next(void) {
     fuzz_state ^= fuzz_state << 13;
@@ -273,6 +306,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[1], "passwd")) check_passwd();
     else if (!strcmp(argv[1], "bpx")) check_bpx();
     else if (!strcmp(argv[1], "gifts")) check_gifts();
+    else if (!strcmp(argv[1], "unescape")) check_unescape();
+    else if (!strcmp(argv[1], "brokenchat")) check_broken_chat();
     else return 2;
     printf("network memory: %s OK\n", argv[1]);
     return 0;
@@ -300,7 +335,8 @@ def main():
             str(temp / "test.c"), "-lm", "-lpthread", "-o", str(binary),
         ], check=True)
         failed = False
-        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation", "fuzz", "merge", "stream", "passwd", "bpx", "gifts"):
+        for name in ("strings", "leaderboard", "numbers", "profile", "expiry", "progress", "truncation",
+                     "fuzz", "merge", "stream", "passwd", "bpx", "gifts", "unescape", "brokenchat"):
             try:
                 result = subprocess.run([str(binary), name], cwd=temp, capture_output=True, text=True, timeout=5)
                 print(result.stdout, end="")

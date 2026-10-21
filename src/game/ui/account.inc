@@ -11,8 +11,10 @@ static double acct_gift_vel = 0;
 static double acct_gift_drag = -1;
 static double acct_gift_drag_y = 0;
 static double acct_gift_drag_move = 0;
+static double acct_gift_drag_row = -1; /* as which card the drag started */
 static double acct_gift_busy = 0;
 static double acct_gift_busy_mode = 0;
+static double acct_gift_acted = -1; /* стикер, о котором идёт запрос */
 static double acct_gift_view_open = 0; /* 1 - осмотр стикера в полное разрешение */
 static double acct_gift_footer_top(void);
 static double hit_acct_gift_any(double x, double y);
@@ -35,7 +37,25 @@ static char acct_buf[3][ACCT_BUF];
 static char acct_mask_buf[3][ACCT_BUF + 4];
 static double acct_busy; /* 1 - идёт удаление, 2 - идёт смена пароля */
 static double acct_done; /* 1 - аккаунт удалён */
+/* Текст сообщения живёт на экране много кадров, а строки пула (ds_concat,
+ * ds_num_to_string) освобождаются через два кадра: продажа стикера писала
+ * такой указатель в acct_msg, и уже через пару кадров draw_acct_msg читал
+ * освобождённую память - на телефоне это вылет. Поэтому всё, что приходит
+ * снаружи, копируется в собственный буфер. */
+static char acct_msg_buf[160];
 static const char *acct_msg = "";
+static void acct_msg_set(const char *text) {
+    double i = 0;
+    if (!text) {
+        text = "";
+    }
+    while (text[(int)i] != 0 && i < (double)(sizeof(acct_msg_buf) - 1)) {
+        acct_msg_buf[(int)i] = text[(int)i];
+        i = i + 1;
+    }
+    acct_msg_buf[(int)i] = 0;
+    acct_msg = acct_msg_buf;
+}
 static double acct_knob;     /* положение ползунка удаления, 0..1 */
 static double acct_drag = -1; /* палец, который тащит ползунок */
 static double acct_pending;  /* 1 - открыть аккаунт в конце перехода */
@@ -76,7 +96,7 @@ static void acct_clear_fields(void) {
 }
 static void acct_go(double mode) {
     acct_open = mode;
-    acct_msg = "";
+    acct_msg_set("");
     acct_knob = 0;
     acct_drag = -1;
     acct_gift_view_open = 0;
@@ -188,18 +208,18 @@ static double acct_is_admin_nick(void) {
 static void acct_pass_try(void) {
     acct_sync();
     if (!acct_buf[0][0]) {
-        acct_msg = tr_acct_need_pass();
+        acct_msg_set(tr_acct_need_pass());
     } else if (!acct_buf[1][0]) {
-        acct_msg = tr_acct_need_new();
+        acct_msg_set(tr_acct_need_new());
     } else if (strcmp(acct_buf[1], acct_buf[2]) != 0) {
-        acct_msg = tr_acct_mismatch();
+        acct_msg_set(tr_acct_mismatch());
     } else if (strcmp(acct_buf[0], acct_buf[1]) == 0) {
-        acct_msg = tr_acct_same();
+        acct_msg_set(tr_acct_same());
     } else if (acct_is_admin_nick() == 1) {
-        acct_msg = tr_acct_admin();
+        acct_msg_set(tr_acct_admin());
     } else {
         acct_busy = 2;
-        acct_msg = tr_acct_changing();
+        acct_msg_set(tr_acct_changing());
         net_change_password(acct_buf[0], acct_buf[1]);
         acct_clear_fields();
         return;
@@ -210,11 +230,11 @@ static void acct_delete_try(void) {
     acct_sync();
     keyboard_hide();
     if (!acct_buf[0][0]) {
-        acct_msg = tr_acct_need_pass();
+        acct_msg_set(tr_acct_need_pass());
         return;
     }
     acct_busy = 1;
-    acct_msg = tr_delete_busy();
+    acct_msg_set(tr_delete_busy());
     acct_knob = 1;
     net_delete_account(acct_buf[0]);
     acct_clear_fields();
@@ -312,11 +332,11 @@ static void acct_poll_delete(void) {
     if (st == 2) {
         acct_busy = 0;
         acct_done = 1;
-        acct_msg = tr_delete_done();
+        acct_msg_set(tr_delete_done());
         progress_from_storage(); /* забыть стёртый прогресс, чтобы он не вернулся */
     } else if (st >= 3) {
         acct_busy = 0;
-        acct_msg = st == 4 ? tr_acct_wrong() : tr_acct_failed();
+        acct_msg_set(st == 4 ? tr_acct_wrong() : tr_acct_failed());
     }
 }
 static void acct_poll_password(void) {
@@ -326,15 +346,15 @@ static void acct_poll_password(void) {
     }
     acct_busy = 0;
     if (st == 2) {
-        acct_msg = tr_acct_changed();
+        acct_msg_set(tr_acct_changed());
     } else if (st == 4) {
-        acct_msg = tr_acct_wrong();
+        acct_msg_set(tr_acct_wrong());
     } else if (st == 5) {
-        acct_msg = tr_bad_pass();
+        acct_msg_set(tr_bad_pass());
     } else if (st == 6) {
-        acct_msg = tr_acct_signed_out();
+        acct_msg_set(tr_acct_signed_out());
     } else {
-        acct_msg = tr_acct_failed();
+        acct_msg_set(tr_acct_failed());
     }
 }
 static void acct_tick(void) {

@@ -187,6 +187,45 @@ def test_menu_and_battle(assets: Path) -> None:
         check("кадр боя не пустой (много цветов)", len(colors) > 50, f"{len(colors)} цветов")
 
 
+def test_controls(assets: Path) -> None:
+    """Клавиши ПК: E держит блок, Q не трогает экран у класса без супера.
+
+    Лесенка тапов ведёт в соло-бой с обычным кубом (у него супера нет). Раньше
+    Q нажимал пустое место на экране, игра читала это как стик и телепортировала
+    игрока в угол арены.
+    """
+    print("\n== 3b. Управление ПК (ЛКМ/блок/супер) ==")
+    start = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",   # согласие
+        "--touch", "400:270:336:0", "--touch", "403:270:336:1",   # «Играть»
+        "--touch", "460:270:404:0", "--touch", "463:270:404:1",   # «Соло»
+    ]
+
+    def run(name: str, extra: list[str]) -> dict[int, dict[str, str]]:
+        result = harness(
+            assets,
+            SCRATCH / name,
+            ["--frames", "1300", *start, "--report", "600", "--report", "800", "--report", "1000", *extra],
+        )
+        return parse_reports(result.stdout)
+
+    plain = run("ctl_plain", [])
+    held = run("ctl_block", ["--blk", "600:1"])
+    check(
+        "E (блок) уменьшает урон",
+        float(held.get(1000, {}).get("hp", "0")) > float(plain.get(1000, {}).get("hp", "0")),
+        f"без блока {plain.get(1000, {}).get('hp')}, с блоком {held.get(1000, {}).get('hp')}",
+    )
+    super_run = run("ctl_super", ["--super", "700:1", "--super", "720:0"])
+    check(
+        "Q у класса без супера не сдвигает игрока",
+        super_run.get(800, {}).get("x") == plain.get(800, {}).get("x")
+        and super_run.get(800, {}).get("y") == plain.get(800, {}).get("y"),
+        f"без Q {plain.get(800, {}).get('x')},{plain.get(800, {}).get('y')}; "
+        f"с Q {super_run.get(800, {}).get('x')},{super_run.get(800, {}).get('y')}",
+    )
+
+
 def wait_port(port: int, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -270,6 +309,7 @@ def main() -> int:
     assets = stage_assets()
     test_pixels(assets)
     test_menu_and_battle(assets)
+    test_controls(assets)
     test_login(assets)
 
     print()
