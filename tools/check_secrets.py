@@ -60,6 +60,9 @@ def main() -> int:
     deny = deny_list()
     for path in tracked_files():
         name = path.name
+        if name == "secrets_generated.h" or name.lower().startswith("secrets.local"):
+            problems.append(f"{path.relative_to(ROOT)}: файл с секретами не должен быть в репозитории")
+            continue
         if name in FORBIDDEN_NAMES or path.suffix.lower() in FORBIDDEN_SUFFIXES:
             problems.append(f"{path.relative_to(ROOT)}: файл с секретами не должен быть в репозитории")
             continue

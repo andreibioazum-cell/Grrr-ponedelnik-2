@@ -12,9 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def header_secret(prefix: str) -> str:
-    """Собирает секрет из зашитых в engine/network.h кусков (каждый байт xor)."""
-    text = (ROOT / "src" / "engine" / "network.h").read_text(encoding="utf-8")
-    mask = int(re.search(r"#define\s+NET_SECRET_XOR\s+0x([0-9a-fA-F]+)", text).group(1), 16)
+    """Собирает секрет из кусков заголовка (каждый байт xor).
+
+    Сначала сгенерированный network/secrets_generated.h (боевые значения из
+    GitHub Secrets), если его нет — тестовый fallback из network.h."""
+    generated = ROOT / "src" / "engine" / "network" / "secrets_generated.h"
+    text = (generated if generated.is_file() else ROOT / "src" / "engine" / "network.h").read_text(encoding="utf-8")
+    header_text = (ROOT / "src" / "engine" / "network.h").read_text(encoding="utf-8")
+    mask = int(re.search(r"#define\s+NET_SECRET_XOR\s+0x([0-9a-fA-F]+)", header_text).group(1), 16)
     parts = []
     index = 0
     while True:
@@ -82,19 +87,22 @@ def check_write_secret() -> None:
 
     rules_text = (ROOT / "firebase.rules.json").read_text(encoding="utf-8")
     assert pass_secret not in rules_text, "Хвост пароля попадает в правила базы"
+    assert write_secret not in rules_text, "Секрет записи записан в шаблон правил вместо плейсхолдера"
     assert "|cb4v1" not in rules_text, "Старый угадываемый хвост пароля попал в правила базы"
+    # В репозитории лежит шаблон: боевое значение подставляет render_rules.py.
+    assert rules_text.count("__CB4_WRITE_SECRET__") >= 6, "В шаблоне правил мало плейсхолдеров секрета записи"
     rules = json.loads(rules_text)["rules"]
     nick = rules["users"]["$nick"]
     slot = rules["rooms"]["$room"]["players"]["$slot"]
     message = rules["rooms"]["$room"]["chat"]["$msg"]
-    wants = "newData.child('w').val() == '%s'" % write_secret
+    wants = "newData.child('w').val() == '__CB4_WRITE_SECRET__'"
     for node, rule in ((nick, nick[".write"]), (nick, nick[".validate"]),
                        (slot, slot[".write"]), (slot, slot[".validate"]),
                        (message, message[".write"]), (message, message[".validate"])):
         assert wants in rule, f"Правило без проверки секрета записи: {rule[:60]}..."
         assert "w" in node, "В правилах нет поля w"
     for node in (nick, slot, message):
-        assert "newData.val() == '%s'" % write_secret in node["w"][".validate"]
+        assert "newData.val() == '__CB4_WRITE_SECRET__'" in node["w"][".validate"]
 
     net = ROOT / "src" / "engine" / "network"
     assert "write_secret.inc" in (ROOT / "src" / "engine" / "network.c").read_text(encoding="utf-8")

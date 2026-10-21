@@ -28,6 +28,14 @@ jobs:
       - name: Install Zig
         run: pip install ziglang
 
+      # Настоящие секреты базы живут только здесь: в репозитории их нет,
+      # gen_secrets.py пишет их в сгенерированный заголовок на время сборки.
+      - name: Generate client secrets
+        env:
+          CB4_WRITE_SECRET: ${{ secrets.CB4_WRITE_SECRET }}
+          CB4_PASS_SECRET: ${{ secrets.CB4_PASS_SECRET }}
+        run: python3 tools/gen_secrets.py
+
       - name: Build CubeBattle4.exe
         run: python3 tools/build_pc.py --windows
 
@@ -171,6 +179,14 @@ jobs:
 
       - name: Stage assets
         run: python3 stage_assets.py assets staging/assets
+
+      # Настоящие секреты базы живут только здесь: в репозитории их нет,
+      # gen_secrets.py пишет их в сгенерированный заголовок на время сборки.
+      - name: Generate client secrets
+        env:
+          CB4_WRITE_SECRET: ${{ secrets.CB4_WRITE_SECRET }}
+          CB4_PASS_SECRET: ${{ secrets.CB4_PASS_SECRET }}
+        run: python3 tools/gen_secrets.py
 
       - name: Build native libraries
         env:

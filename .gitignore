@@ -42,3 +42,8 @@ service-account.json
 *.p12
 *.pfx
 *.jks
+
+## Секреты сборки: настоящие значения живут в GitHub Secrets, сюда — никогда
+src/engine/network/secrets_generated.h
+firebase.rules.rendered.json
+SECRETS.local.txt
