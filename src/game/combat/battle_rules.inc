@@ -9,12 +9,12 @@ static FighterSpritePair look_sprite_pair(double look) {
     } else if (look == LOOK_SANTA) {
         pair.idle = SANTA_TEX;
         pair.punch = SANTA_PUNCH_TEX;
-    } else if (look == LOOK_EBUC) {
-        pair.idle = EBUC_TEX;
-        pair.punch = EBUC_PUNCH_TEX;
+    } else if (look == LOOK_BUK) {
+        pair.idle = BUK_TEX;
+        pair.punch = BUK_PUNCH_TEX;
     } else if (look == LOOK_ELF) {
-        pair.idle = EBUC_ELF_TEX;
-        pair.punch = EBUC_ELF_PUNCH_TEX;
+        pair.idle = BUK_ELF_TEX;
+        pair.punch = BUK_ELF_PUNCH_TEX;
     } else if (look == LOOK_ORDINARY) {
         pair.idle = ORDINARY_TEX;
         pair.punch = PUNCH_TEX;
@@ -47,7 +47,7 @@ static double class_is_astra(double cls) { return cls == CLASS_ASTRA; }
 
 static double class_look(double cls, double skin) {
     if (skin_is_active(cls, skin) == 1) {
-        if (cls == CLASS_EBUC) {
+        if (cls == CLASS_BUK) {
             return LOOK_ELF;
         }
         return LOOK_ZOMBIE;
@@ -58,8 +58,8 @@ static double class_look(double cls, double skin) {
     if (cls == CLASS_SANTA) {
         return LOOK_SANTA;
     }
-    if (cls == CLASS_EBUC) {
-        return LOOK_EBUC;
+    if (cls == CLASS_BUK) {
+        return LOOK_BUK;
     }
     return LOOK_ORDINARY;
 }
@@ -83,11 +83,11 @@ static const char *class_card_tex(double cls, double skin) {
     if (cls == CLASS_SANTA) {
         return SANTA_CARD_TEX;
     }
-    if (cls == CLASS_EBUC) {
+    if (cls == CLASS_BUK) {
         if (skin_is_active(cls, skin) == 1) {
-            return EBUC_ELF_CARD_TEX;
+            return BUK_ELF_CARD_TEX;
         }
-        return EBUC_CARD_TEX;
+        return BUK_CARD_TEX;
     }
     if (cls == CLASS_ASTRA) {
         return ASTRA_CARD_TEX;
@@ -98,7 +98,7 @@ static const char *class_card_tex(double cls, double skin) {
 static double class_card_render_ready(double cls, double skin) { return tex_ready(class_card_tex(cls, skin)); }
 
 static double class_has_super(double cls) {
-    if (cls == CLASS_AZUM || cls == CLASS_SANTA || cls == CLASS_EBUC || cls == CLASS_CODECRACKER ||
+    if (cls == CLASS_AZUM || cls == CLASS_SANTA || cls == CLASS_BUK || cls == CLASS_CODECRACKER ||
         class_is_astra(cls)) {
         return 1;
     }
@@ -112,8 +112,8 @@ static double class_punch_damage_for(double cls, double lv) {
     if (cls == CLASS_SANTA) {
         return santa_damage;
     }
-    if (cls == CLASS_EBUC) {
-        return ebuc_damage;
+    if (cls == CLASS_BUK) {
+        return buk_damage;
     }
     if (cls == CLASS_ORDINARY && lv >= 1) {
         return punch_damage * (1 + ordinary_damage_bonus);
@@ -121,12 +121,17 @@ static double class_punch_damage_for(double cls, double lv) {
     return punch_damage;
 }
 
-static double player_max_hp_for(double cls) {
+/* Один множитель на все пулы здоровья (игрок, бот, сетевые бойцы): удары и
+ * способности остались прежними, а HP выросли, чтобы типичный бой длился
+ * около 45 секунд. Соотношения между классами не меняет. */
+static double round_hp_mult(void) { return 1.5; }
+
+static double class_base_hp_for(double cls) {
     if (cls == CLASS_CODECRACKER) {
         return codecracker_hp;
     }
-    if (cls == CLASS_EBUC) {
-        return ebuc_hp;
+    if (cls == CLASS_BUK) {
+        return buk_hp;
     }
     if (cls == CLASS_AZUM) {
         return azum_hp * (azum_buff_active == 1 ? 1.10 : 1);
@@ -137,6 +142,8 @@ static double player_max_hp_for(double cls) {
     /* Ordinary and Santa share the common pool. */
     return 20;
 }
+
+static double player_max_hp_for(double cls) { return class_base_hp_for(cls) * round_hp_mult(); }
 
 /* Level bonuses of CodeCracker: a track of his own, not the ordinary cube's.
  * 1 - the bite hits harder, 2 - the overclock comes back sooner,
@@ -172,18 +179,18 @@ static double codecracker_absorb_for(double lv) {
     return a;
 }
 
-static double ebuc_station_hp_for(double lv) {
-    double h = ebuc_station_hp;
+static double buk_station_hp_for(double lv) {
+    double h = buk_station_hp;
     if (lv >= 1) {
-        h = h + ebuc_station_hp_bonus * 2;
+        h = h + buk_station_hp_bonus * 2;
     }
     return h;
 }
 
-static double ebuc_universe_damage_for(double lv) {
-    double d = ebuc_universe_damage;
+static double buk_universe_damage_for(double lv) {
+    double d = buk_universe_damage;
     if (lv >= 3) {
-        d = d + ebuc_universe_damage_bonus;
+        d = d + buk_universe_damage_bonus;
     }
     return d;
 }

@@ -71,7 +71,7 @@ static void enemy_place_turret(void) {
     }
     arr_set(enemy_turret_x, slot, enemy->x);
     arr_set(enemy_turret_y, slot, enemy->y);
-    double mh = ebuc_station_hp;
+    double mh = buk_station_hp;
     arr_set(enemy_turret_maxhp, slot, mh);
     arr_set(enemy_turret_hp, slot, mh);
     arr_set(enemy_turret_spawn_t, slot, station_spawn_time);

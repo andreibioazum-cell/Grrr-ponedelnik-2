@@ -14,12 +14,22 @@
 #define PC_TOUCH_MOUSE 500
 
 static HWND pc_hwnd = NULL;
-static int pc_mouse_down = 0;
+static int pc_mouse_down = 0;  /* the left button is physically held */
+static int pc_mouse_punch = 0; /* ...and this press became the punch, not a click */
 static unsigned char pc_keys[256];
 static uint32_t *pc_conv = NULL;
 static int pc_conv_w = 0, pc_conv_h = 0;
 
 static int pc_key_down(int vk) { return pc_keys[vk & 0xff] != 0; }
+
+/* In an active fight the mouse is a weapon, not a pointer: the left button is
+ * the punch anywhere on screen, so the cursor's raw touch is muted - it would
+ * otherwise grab the joystick or quit the fight from the back button corner
+ * mid-swing. Menus, the results tap ("tap to return") and the battle chat
+ * keep clicking. */
+static int pc_mouse_combat(void) {
+    return game_pc_in_battle() && game_pc_finished() == 0.0 && !keyboard_visible();
+}
 
 static void pc_apply_held_input(void) {
     float dx = 0, dy = 0;
@@ -36,9 +46,9 @@ static void pc_apply_held_input(void) {
     if (pc_key_down('S') || pc_key_down(VK_DOWN))
         dy += 1.0f;
     pc_ctl_stick(dx, dy);
-    pc_ctl_attack(pc_key_down(VK_SPACE));
-    pc_ctl_block(pc_key_down(VK_SHIFT) || pc_key_down('K'));
-    pc_ctl_super(pc_key_down('Q') || pc_key_down('L'));
+    pc_ctl_attack(pc_mouse_punch && pc_mouse_combat());
+    pc_ctl_block(pc_key_down('E'));
+    pc_ctl_super(pc_key_down('Q'));
 }
 
 static void pc_blit(void) {
@@ -121,18 +131,25 @@ static LRESULT CALLBACK pc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         return 0;
     case WM_MOUSEMOVE:
-        if (pc_mouse_down)
+        if (pc_mouse_down && !pc_mouse_punch)
             pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 2, PC_TOUCH_MOUSE);
         return 0;
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
         pc_mouse_down = 1;
-        pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 0, PC_TOUCH_MOUSE);
+        /* In a fight the left button IS the punch; the raw cursor touch is
+         * kept only for the chat controls (chat button, open chat panel). */
+        pc_mouse_punch = pc_mouse_combat() &&
+                         game_pc_battle_mouse_ui((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp)) == 0;
+        if (!pc_mouse_punch)
+            pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 0, PC_TOUCH_MOUSE);
         return 0;
     case WM_LBUTTONUP:
         pc_mouse_down = 0;
         ReleaseCapture();
-        pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 1, PC_TOUCH_MOUSE);
+        if (!pc_mouse_punch)
+            pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 1, PC_TOUCH_MOUSE);
+        pc_mouse_punch = 0;
         return 0;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
@@ -170,6 +187,8 @@ static LRESULT CALLBACK pc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_KILLFOCUS:
         memset(pc_keys, 0, sizeof(pc_keys));
+        pc_mouse_down = 0; /* the punch is the mouse now: it must not stick */
+        pc_mouse_punch = 0;
         pc_ctl_release_all();
         return 0;
     default:

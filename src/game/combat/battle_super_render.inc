@@ -199,14 +199,14 @@ static void draw_universe_at(double cx, double cy, double seed, double t, double
     if (t <= 0 || fade <= 0) {
         return;
     }
-    double p = clamp(t / ebuc_universe_collapse_time, 0, 1);
+    double p = clamp(t / buk_universe_collapse_time, 0, 1);
     double collapsed = 0;
     if (p >= 1) {
         collapsed = 1;
     }
     if (collapsed == 0) {
         double i = 0;
-        while (i < ebuc_universe_particles) {
+        while (i < buk_universe_particles) {
             double h1 = hash01(seed * 13 + i * 91 + 7);
             double h2 = hash01(seed * 17 + i * 131 + 19);
             double h3 = hash01(seed * 23 + i * 173 + 31);
@@ -305,7 +305,7 @@ static void draw_remote_station(void) {
                 if (st == 1) {
                     double rl = net_player_level(s);
                     draw_turret_at(arr_get(remote_station, o + 1), arr_get(remote_station, o + 2),
-                                   arr_get(remote_station, o + 3), ebuc_station_hp_for(rl), 0);
+                                   arr_get(remote_station, o + 3), buk_station_hp_for(rl), 0);
                 } else if (st == 2) {
                     draw_turret_boom(arr_get(remote_station, o + 1), arr_get(remote_station, o + 2),
                                      arr_get(remote_station, o + 4));

@@ -21,6 +21,11 @@ int game_pc_in_battle(void);
 void game_pc_goto(double target);
 void game_pc_joy(float *x, float *y, float *r);
 void game_pc_pads(float *ax, float *ay, float *a2x, float *a2y, float *bx, float *by, float *radius);
+/* Where in an active fight a mouse click must stay a click instead of
+ * becoming the punch: the open chat panel covers the whole fight, and the
+ * closed chat's small button opens it. The in-battle back button is not on
+ * this list - Esc leaves the fight, so a swing over that corner never quits. */
+int game_pc_battle_mouse_ui(float x, float y);
 double game_pc_player_hp(void);
 void game_pc_player_xy(double *x, double *y);
 void game_pc_login_fields(float *nick_x, float *nick_y, float *pass_x, float *pass_y, float *btn_x, float *btn_y,

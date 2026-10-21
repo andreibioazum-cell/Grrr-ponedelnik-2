@@ -649,7 +649,7 @@ double net_load_candies(void) { return 0; }
 double net_load_class(void) { return 0; }
 double net_load_azum(void) { return 0; }
 double net_load_santa(void) { return 0; }
-double net_load_ebuc(void) { return 0; }
+double net_load_buk(void) { return 0; }
 double net_load_level(void) { return 0; }
 double net_load_levels_unlocked(void) { return 0; }
 double net_load_ordinary_level(void) { return 0; }
@@ -658,8 +658,8 @@ double net_load_azum_level(void) { return 0; }
 double net_load_azum_levels_unlocked(void) { return 0; }
 double net_load_santa_level(void) { return 0; }
 double net_load_santa_levels_unlocked(void) { return 0; }
-double net_load_ebuc_level(void) { return 0; }
-double net_load_ebuc_levels_unlocked(void) { return 0; }
+double net_load_buk_level(void) { return 0; }
+double net_load_buk_levels_unlocked(void) { return 0; }
 double net_load_azum_skin(void) { return 0; }
 double net_load_astra(void) { return 0; }
 double net_load_astra_level(void) { return 0; }
@@ -1161,20 +1161,21 @@ static void test_gifts_page(void) {
     draw_acct_gifts();
     /* Пять магазинных и три своих карточки, каждая со своей картинкой. */
     assert(gift_tex_draws == 8);
-    /* Изумруд - эксклюзивный, поэтому его подпись уходит в радужную. */
+    /* Изумруд подписан белым: цвет живёт на самом камне, радуга ушла. */
     int rainbow_emerald = 0;
     for (int i = 0; i < rainbow_text_n; i++)
         if (str_eq(rainbow_text[i], "Изумруд") == 1 || str_eq(rainbow_text[i], "ЭКСКЛЮЗИВНЫЙ") == 1)
             rainbow_emerald = 1;
-    assert(rainbow_emerald == 1);
+    assert(rainbow_emerald == 0);
 
-    /* Магазинная карточка: выбор и «Купить» под колонками. */
+    /* Магазинная карточка: выбор и «Осмотреть | Купить» под колонками. */
     double y = acct_gift_view_top() + 1 * acct_gift_step() + acct_gift_card_h() / 2;
     assert(touch_acct_gift_list(acct_gift_x(0) + 20, y, 0, 11) == 1);
     assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
-    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_inspect(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_buy(acct_x() + acct_gift_inspect_w() + ACCT_GIFT_COL_GAP + 10, acct_below_fields() + 5) == 1);
     assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_sell(acct_x() + acct_w() - 10, acct_below_fields() + 5) == 0);
 
     /* Тап по своей карточке только выбирает: кнопки внизу, в футере. */
     double oy = acct_gift_view_top() + 6;
@@ -1183,9 +1184,10 @@ static void test_gifts_page(void) {
     assert(acct_gift_own_sel() == 0 && acct_gift_sel_id() == 0 && acct_gift_picked() == 1);
     assert(acct_gift_drag < 0 && acct_gift_busy == 0);
     assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 1);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + acct_gift_col_w() / 2, acct_below_fields() + 5) == 1);
-    assert(acct_x() + 2 * acct_gift_btn_w() <= acct_x() + acct_w() + 1e-9);
+    assert(hit_acct_gift_inspect(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_send(acct_x() + acct_gift_inspect_w() + ACCT_GIFT_COL_GAP + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_sell(acct_x() + 2 * (acct_gift_inspect_w() + ACCT_GIFT_COL_GAP) + 10, acct_below_fields() + 5) == 1);
+    assert(acct_x() + 3 * acct_gift_inspect_w() + 2 * ACCT_GIFT_COL_GAP <= acct_x() + acct_w() + 1e-9);
     /* «Продать» из футера продаёт именно выбранную карточку. */
     acct_gift_sell();
     assert(acct_gift_busy == 1 && acct_gift_busy_mode == 3);
@@ -1215,6 +1217,27 @@ static void test_gifts_page(void) {
     acct_poll_gifts();
     assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
     acct_msg = "";
+
+    /* Админ покупает бесплатно: с нулём кубков покупка стартует, а баланс
+     * после покупки - нетронутый серверный, без вычета цены. */
+    {
+        char saved_nick[24];
+        snprintf(saved_nick, sizeof(saved_nick), "%s", stub_login_nick);
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+        assert(admin_playing() == 1);
+        cups = 0;
+        acct_gift_choice = 2; /* мишка, 250 кубков */
+        acct_gift_is_owned = 0;
+        acct_gift_buy();
+        assert(acct_gift_busy == 1 && acct_gift_busy_mode == 2);
+        stub_gift_cups = 55; /* в базе по-прежнему 55: цена не списана */
+        stub_gift_status = 2;
+        acct_poll_gifts();
+        assert(acct_gift_busy == 0 && cups == 55);
+        acct_msg = "";
+        net_gift_count_add(2, -1); /* откатить мишку из кэша коллекции */
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", saved_nick);
+    }
 
     /* Продажа убирает из коллекции только проданный стикер: вторая какашка
      * и изумруд остаются на месте. Раньше список обнулялся целиком, и
@@ -1580,14 +1603,14 @@ static void test_azum_buff(void) {
     player->hp = player->max_hp / 2;
     stub_azum_buff = 1;
     update_azum_buff();
-    assert(fabs(player->max_hp - azum_hp * 1.10) < 1e-9);
+    assert(fabs(player->max_hp - azum_hp * 1.10 * round_hp_mult()) < 1e-9);
     assert(fabs(player->hp / player->max_hp - 0.5) < 1e-9);
-    assert(fabs(enemy->max_hp - azum_hp * 1.10) < 1e-9);
+    assert(fabs(enemy->max_hp - azum_hp * 1.10 * round_hp_mult()) < 1e-9);
     assert(fabs(enemy->hp / enemy->max_hp - 0.5) < 1e-9);
     assert(fabs(class_punch_damage_for(CLASS_AZUM, 0) - punch_damage * 1.10) < 1e-9);
     assert(fabs(azum_dash_damage_for() - azum_dash_damage * 1.10) < 1e-9);
     assert(fabs(enemy_azum_dash_damage_for() - enemy_dash_damage * 1.10) < 1e-9);
-    assert(player_max_hp_for(CLASS_ORDINARY) == 20);
+    assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult());
     assert(class_punch_damage_for(CLASS_SANTA, 0) == santa_damage);
     assert(strcmp(tr_class_azum(), "@z&m") == 0);
     assert(strcmp(tr_class_azum_desc(), "Суббота-17") == 0);
@@ -1605,8 +1628,8 @@ static void test_azum_buff(void) {
     assert(azum_revived == 2 && enemy_revived == 2);
     stub_azum_buff = 0;
     update_azum_buff();
-    assert(fabs(player->max_hp - azum_hp) < 1e-9);
-    assert(fabs(enemy->max_hp - azum_hp) < 1e-9);
+    assert(fabs(player->max_hp - azum_hp * round_hp_mult()) < 1e-9);
+    assert(fabs(enemy->max_hp - azum_hp * round_hp_mult()) < 1e-9);
     assert(strcmp(tr_class_azum(), "Azum") == 0);
     assert(strcmp(tr_class_azum_desc(), "Lived once, buried twice...") == 0);
     assert(class_punch_damage_for(CLASS_AZUM, 0) == punch_damage);
@@ -1639,7 +1662,7 @@ static void test_azum_buff(void) {
     assert(class_owned_of(CLASS_AZUM) == 1 && cups == 0);
     stub_flash_sale = 0;
     update_flash_sale();
-    assert(flash_sale_active == 0 && class_cost_of(CLASS_EBUC) == ebuc_cost);
+    assert(flash_sale_active == 0 && class_cost_of(CLASS_BUK) == buk_cost);
     assert(level_cost(1) == level_base_cost);
     puts("flash sale: -10% on all prices and purchase OK");
 }
@@ -1879,7 +1902,7 @@ static void test_battle_events(void) {
 
     /* Азум: на 2% меньше HP (13 -> 12.74). */
     assert(fabs(azum_hp - 12.74) < 1e-9);
-    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74) < 1e-9);
+    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74 * round_hp_mult()) < 1e-9);
 
     /* Команды админа выбирают три РАЗНЫХ ивента. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
@@ -2100,7 +2123,7 @@ static void test_class_stars(void) {
     assert(class_imbalance_of(CLASS_ORDINARY) == 1);
     assert(class_imbalance_of(CLASS_SANTA) == 2);
     assert(class_imbalance_of(CLASS_AZUM) == 3);
-    assert(class_imbalance_of(CLASS_EBUC) == 3);
+    assert(class_imbalance_of(CLASS_BUK) == 3);
     assert(class_imbalance_of(CLASS_ASTRA) == 4);
     assert(class_imbalance_of(CLASS_CODECRACKER) == 5);
     double r = stat_star_r();
@@ -2224,7 +2247,10 @@ int main(void) {
     state_ready = 1;
     assert(player && enemy && punch && gift && enemy_gift);
     assert(ST_LOBBY == 0 && ST_SOLO == 1 && ST_ONLINE == 5);
-    assert(player->hp == 20 && enemy->hp == 20);
+    /* fighters are born with the bare placeholder pool; reset_battle applies
+     * the class pool and the round multiplier before any fight starts. */
+    assert(player->hp == class_base_hp_for(CLASS_ORDINARY) &&
+           enemy->hp == class_base_hp_for(CLASS_ORDINARY));
     assert(class_level_tbl && remote_punches && plates_candies && flake_cache);
 
     /* The game starts in Russian when the phone language is unknown (168-FZ). */
@@ -2247,7 +2273,7 @@ int main(void) {
     assert(fabs(astra_ability_final_time_for(0) - astra_ability_beat_time_for(astra_hit_count, 0) - astra_final_delay) < 1e-9);
     assert(class_cost_of(CLASS_AZUM) == 65);
     assert(class_cost_of(CLASS_SANTA) == 100);
-    assert(class_cost_of(CLASS_EBUC) == 120);
+    assert(class_cost_of(CLASS_BUK) == 120);
     assert(class_cost_of(CLASS_ASTRA) == 135);
     assert(class_has_super(CLASS_ASTRA) == 1);
     assert(astra_cd_for(0) == 8);
@@ -2260,15 +2286,16 @@ int main(void) {
     assert(strcmp(fighter_sprite(CLASS_ORDINARY, 1, SKIN_NORMAL), PUNCH_TEX) == 0);
     assert(strcmp(fighter_sprite(CLASS_ASTRA, 0, SKIN_NORMAL), ORDINARY_TEX) == 0);
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
-    assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp);
+    assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp * round_hp_mult());
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
-     * astra 18, ebuc 24) and the ability numbers scaled with them, while the
+     * astra 18, buk 24) and the ability numbers scaled with them, while the
      * basic attacks kept their old damage - that is what makes fights last.
      * Azum then got a 2% nerf: 13 -> 12.74. */
-    assert(player_max_hp_for(CLASS_ORDINARY) == 20 && player_max_hp_for(CLASS_SANTA) == 20);
-    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
-    assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
-    assert(ebuc_universe_damage >= ebuc_hp);
+    assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult() &&
+           player_max_hp_for(CLASS_SANTA) == 20 * round_hp_mult());
+    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && buk_hp == 24 && enemy_base_hp == 20);
+    assert(punch_damage == 1 && santa_damage == 0.25 && buk_damage == 1.0);
+    assert(buk_universe_damage >= buk_hp);
     azum_tex_ok = azum_punch_tex_ok = 1;
     azum_zombie_tex_ok = azum_zombie_punch_tex_ok = 1;
     assert(strcmp(fighter_sprite(CLASS_AZUM, 0, SKIN_NORMAL), AZUM_TEX) == 0);
@@ -2675,8 +2702,8 @@ int main(void) {
         finished = 0;
         cups_awarded = 0;
         achievement_mask = 0;
-        player_class = CLASS_EBUC;
-        player->max_hp = ebuc_hp;
+        player_class = CLASS_BUK;
+        player->max_hp = buk_hp;
         player->hp = player->max_hp;
         player_was_hit = 0;
         arr_clear(turret_x);
@@ -2844,20 +2871,20 @@ int main(void) {
     assert(class_skin_of(CLASS_ASTRA) == SKIN_NORMAL && current_skin() == SKIN_NORMAL);
     assert(class_owned_of(CLASS_ASTRA) == 1 && class_visible(CLASS_ASTRA) == 1);
     assert(strcmp(class_name_of(CLASS_ASTRA), tr_class_astra()) == 0);
-    assert(fabs(astra_ability_max_hp_for(CLASS_ASTRA, 1) - astra_hp * 0.95) < 1e-9);
-    assert(astra_ability_max_hp_for(CLASS_ASTRA, 1) < astra_hp);
-    assert(astra_ability_max_hp_for(CLASS_AZUM, 1) == azum_hp);
+    assert(fabs(astra_ability_max_hp_for(CLASS_ASTRA, 1) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
+    assert(astra_ability_max_hp_for(CLASS_ASTRA, 1) < astra_hp * round_hp_mult());
+    assert(astra_ability_max_hp_for(CLASS_AZUM, 1) == azum_hp * round_hp_mult());
     assert(fabs(astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1) - punch_damage * 0.93) < 1e-9);
     assert(astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1) <
            astra_ability_punch_damage_for(CLASS_ASTRA, 0, 0));
     assert(fabs(astra_ability_punch_damage_net(CLASS_ASTRA, 0, SKIN_NORMAL) -
                 astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1)) < 1e-9);
-    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95) < 1e-9);
+    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
     assert(fabs(class_power_of(CLASS_ASTRA) - punch_damage * 0.93) < 1e-9);
     classes_scroll = 0;
     codecracker_refresh();
     assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
-    assert(player_max_hp_for(CLASS_CODECRACKER) == 12 && codecracker_hp == 12);
+    assert(player_max_hp_for(CLASS_CODECRACKER) == 12 * round_hp_mult() && codecracker_hp == 12);
     assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.529);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
     /* The overclock recharges in 4 seconds. */
@@ -2981,7 +3008,7 @@ int main(void) {
         super_windup = 0;
         fire_super();
         assert(strcmp(stub_last_snd, "gift.wav") == 0);
-        player_class = CLASS_EBUC;
+        player_class = CLASS_BUK;
         punch_left = 0;
         punch_cd = 0;
         super_cd = 0;
@@ -3197,7 +3224,7 @@ int main(void) {
     pick_skin(SKIN_SPECIAL);
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
     assert(strcmp(class_card_tex(CLASS_ORDINARY, SKIN_NORMAL), ORDINARY_CARD_TEX) == 0);
-    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95) < 1e-9);
+    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
     /* The card keeps only its description; no rating graphic is drawn. */
     /* No developer account still hides only developer-only classes. */
     stub_login_nick[0] = 'x';
@@ -3345,7 +3372,7 @@ int main(void) {
     game_state = ST_ONLINE;
     cups = 999;
     game_reset();
-    assert(player->hp == 20);
+    assert(player->hp == class_base_hp_for(CLASS_ORDINARY));
     assert(game_state == ST_LOBBY);
     assert(cups == 0);
 
@@ -3636,7 +3663,10 @@ int main(void) {
         t_dir = 0;
 
         /* One shop card, sold once: the pill buys on the press, the rest of
-         * the card on the release, and a swipe pages instead of buying. */
+         * the card on the release, and a swipe pages instead of buying.
+         * The shop pays cups like an ordinary player: the admin nick from the
+         * panel block above buys free, so hand the shop to a tester. */
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
         cups = 1000;
         classes_scroll = 0; /* the second card: Azum, 65 cups */
         double v0 = 1;
@@ -3700,6 +3730,7 @@ int main(void) {
         logic_touch(card_x - classes_swipe_threshold() - 10, card_y, 1, 5);
         assert(class_owned_of(cls) == 0 && cups == 1000);
         classes_scroll = 0;
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
 
         /* Button hitboxes are exactly the drawn shape, and the squeeze is
          * claimed by the very same test: a press either fires and squeezes,
@@ -3900,7 +3931,7 @@ int main(void) {
         award_battle_result(1);
         assert(bp_xp == 10 && stub_bpx == 10);
         double cups_after_win = cups;
-        assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        assert(skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
         bp_claim(2); /* out of order: nothing happens */
         assert(bp_claimed == 0 && candies == 1000);
         bp_claim(1);
@@ -3909,9 +3940,9 @@ int main(void) {
         bp_xp = 300;
         bp_claim(2);
         bp_claim(3);
-        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
         bp_claim(4);
-        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
+        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 1);
         assert(class_owned_of(CLASS_SANTA) == 0);
         bp_claim(5);
         bp_claim(6);

@@ -154,7 +154,7 @@ double net_load_candies(void);
 double net_load_class(void);
 double net_load_azum(void);
 double net_load_santa(void);
-double net_load_ebuc(void);
+double net_load_buk(void);
 double net_load_level(void);
 double net_load_levels_unlocked(void);
 double net_load_ordinary_level(void);
@@ -163,8 +163,8 @@ double net_load_azum_level(void);
 double net_load_azum_levels_unlocked(void);
 double net_load_santa_level(void);
 double net_load_santa_levels_unlocked(void);
-double net_load_ebuc_level(void);
-double net_load_ebuc_levels_unlocked(void);
+double net_load_buk_level(void);
+double net_load_buk_levels_unlocked(void);
 
 double net_load_bp_level(void);
 void net_set_bp_xp(double v);
@@ -182,10 +182,10 @@ double net_load_codecracker_levels_unlocked(void);
 void net_save_codecracker(double level, double levels_unlocked);
 /* Forget a pending cloud save: the device holds nothing worth pushing. */
 void net_mark_progress_synced(void);
-void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
+void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double buk,
                            double level, double levels_unlocked, double ordinary_level, double ordinary_levels_unlocked,
                            double azum_level, double azum_levels_unlocked, double santa_level,
-                           double santa_levels_unlocked, double ebuc_level, double ebuc_levels_unlocked,
+                           double santa_levels_unlocked, double buk_level, double buk_levels_unlocked,
                            double bp_level, double azum_skin);
 
 #define ACH_FLAG_ALL_CHARACTERS (1u << 3)

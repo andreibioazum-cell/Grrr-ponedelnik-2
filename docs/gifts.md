@@ -15,6 +15,10 @@ The catalogue has five stickers; the emerald is the most expensive one
 | `rocket` | Ракета / Rocket | 400 |
 | `emerald` | Изумруд / Emerald | 500 |
 
+Для двух админских аккаунтов (тот же список, что в `admin_slot`) покупка
+стикера бесплатна: `gifts.inc` пишет только счётчик стикера и не трогает
+`cups`, а кнопка «Купить» для админа никогда не серая.
+
 The first sticker used to be `rose`; it is now `poop`. Old `rose` counters may
 still sit in profiles — the rules keep accepting them, but the game neither
 shows nor spends them.
@@ -117,21 +121,24 @@ which writes them itself).
   192x192 with transparency) and drawn by `gift_icon()` in
   `src/game/ui/gift_icons.inc`; the pixel font is never asked for a symbol.
   A card shows its picture once - there is no second sprite or badge.
-* The emerald shimmers. On top of its picture the engine draws a second,
+* The emerald shimmers. The stone itself is drawn white
+  (`tools/gen_gift_textures.py`), and on top of it the engine draws a second,
   translucent copy of the sprite in the current hue, so a coloured veil flows
-  over the gem; the hue drifts slowly (`ds_frame_seconds() * 0.08`), and the
-  rainbow name of the sticker walks the same wheel from the same base. The hue
-  is per player: 0 is the plain rainbow, 1..7 are the shades the admin picked
-  for that account.
+  over the white facets (a tint reads only on a white base - on a coloured
+  sprite the hue would turn to mud); the hue drifts slowly
+  (`ds_frame_seconds() * 0.08`) and the veil's strength breathes with a sine.
+  The hue is per player: 0 is the plain rainbow, 1..7 are the shades the admin
+  picked for that account.
 * The CCP panel's Gifts tab shows a row of eight colour tiles under the
   sticker list (they appear when the emerald is selected; the chosen one is
   outlined). Tapping a tile sets the hue that the next grant of an emerald
   writes to the recipient.
 * Each card also names the sticker and its rarity in the rarity colour:
   **common** white, **rare** light blue (`#5CC8FF`), **epic** violet
-  (`#C08CFF`) and **exclusive** drawn as a rainbow - the engine's
-  `text_rainbow()` walks the hue wheel glyph by glyph. The catalogue is
-  poop common, cake rare, teddy bear and rocket epic, emerald exclusive.
+  (`#C08CFF`) - and the **exclusive** emerald is signed plain white too: the
+  colour belongs to the stone itself, which drifts through the hue wheel. The
+  catalogue is poop common, cake rare, teddy bear and rocket epic, emerald
+  exclusive.
 * The page has two columns: the shop on the left and the player's own
   stickers on the right. The whole catalogue fits the left column at once;
   the collection lists **one card per owned sticker** - two poops are two

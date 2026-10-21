@@ -188,17 +188,17 @@ static int ach_loaded = 0;
 static unsigned int ach_flags = 0;
 static unsigned int ach_revives = 0;
 
-void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
+void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double buk,
                            double level, double levels_unlocked, double ordinary_level, double ordinary_levels_unlocked,
                            double azum_level, double azum_levels_unlocked, double santa_level,
-                           double santa_levels_unlocked, double ebuc_level, double ebuc_levels_unlocked,
+                           double santa_levels_unlocked, double buk_level, double buk_levels_unlocked,
                            double bp_level, double azum_skin) {
-    int c = (int)cups, cd = (int)candies, k = (int)cls, a = azum ? 1 : 0, sn = santa ? 1 : 0, eu = ebuc ? 1 : 0;
+    int c = (int)cups, cd = (int)candies, k = (int)cls, a = azum ? 1 : 0, sn = santa ? 1 : 0, eu = buk ? 1 : 0;
     int lv = (int)level, lu = (int)levels_unlocked;
     int ol = (int)ordinary_level, ou = (int)ordinary_levels_unlocked;
     int al = (int)azum_level, au = (int)azum_levels_unlocked;
     int sl = (int)santa_level, su = (int)santa_levels_unlocked;
-    int el = (int)ebuc_level, eul = (int)ebuc_levels_unlocked;
+    int el = (int)buk_level, eul = (int)buk_levels_unlocked;
     int bp = (int)bp_level, sk = (int)azum_skin;
 
     int at = 0, atl = 0, atu = 0;
@@ -229,7 +229,7 @@ void net_save_progress_all(double cups, double candies, double cls, double azum,
             a = 1;
         if (pg.santa == 1)
             sn = 1;
-        if (pg.ebuc == 1)
+        if (pg.buk == 1)
             eu = 1;
 
         if (pg.ordinary_levels_unlocked > ou)
@@ -238,16 +238,16 @@ void net_save_progress_all(double cups, double candies, double cls, double azum,
             au = pg.azum_levels_unlocked;
         if (pg.santa_levels_unlocked > su)
             su = pg.santa_levels_unlocked;
-        if (pg.ebuc_levels_unlocked > eul)
-            eul = pg.ebuc_levels_unlocked;
+        if (pg.buk_levels_unlocked > eul)
+            eul = pg.buk_levels_unlocked;
         if (pg.ordinary_level > ol)
             ol = pg.ordinary_level;
         if (pg.azum_level > al)
             al = pg.azum_level;
         if (pg.santa_level > sl)
             sl = pg.santa_level;
-        if (pg.ebuc_level > el)
-            el = pg.ebuc_level;
+        if (pg.buk_level > el)
+            el = pg.buk_level;
         at = pg.astra ? 1 : 0;
         atl = pg.astra_level;
         atu = pg.astra_levels_unlocked;
@@ -299,7 +299,7 @@ void net_save_progress_all(double cups, double candies, double cls, double azum,
     pg.cls = k;
     pg.azum = a;
     pg.santa = sn;
-    pg.ebuc = eu;
+    pg.buk = eu;
     pg.level = lv;
     pg.levels_unlocked = lu;
     pg.loaded = 1;
@@ -309,8 +309,8 @@ void net_save_progress_all(double cups, double candies, double cls, double azum,
     pg.azum_levels_unlocked = au;
     pg.santa_level = sl;
     pg.santa_levels_unlocked = su;
-    pg.ebuc_level = el;
-    pg.ebuc_levels_unlocked = eul;
+    pg.buk_level = el;
+    pg.buk_levels_unlocked = eul;
     pg.bp_level = bp;
     pg.azum_skin = sk;
     pg.astra = at;

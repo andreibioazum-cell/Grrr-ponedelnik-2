@@ -303,8 +303,8 @@ static void draw_controls(void) {
     }
     if (class_has_super(player_class) == 1 && (game_state == ST_SOLO || game_state == ST_ONLINE)) {
         const char *sl = tr_super();
-        if (player_class == CLASS_EBUC) {
-            sl = tr_super_ebuc();
+        if (player_class == CLASS_BUK) {
+            sl = tr_super_buk();
         } else if (player_class == CLASS_AZUM) {
             sl = tr_super_azum();
         } else if (class_is_astra(player_class) == 1) {

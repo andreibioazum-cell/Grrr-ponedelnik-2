@@ -175,7 +175,11 @@ def test_menu_and_battle(assets: Path) -> None:
     )
     check("в бою не было ошибок JS-хуков", battle.get("error") == "0", str(battle))
     end = reports.get(699, {})
-    check("враг отвечает (игрок получает урон)", float(end.get("hp", "20")) < 20, str(end))
+    check(
+        "враг отвечает (игрок получает урон)",
+        float(end.get("hp", "inf")) < float(battle.get("hp", "inf")),
+        f"после удара {battle.get('hp')}, к кадру 699 {end.get('hp')}",
+    )
     check("кадр боя сохранён", shot.is_file() and shot.stat().st_size > 100_000)
     if shot.is_file():
         width, height, pixels = read_bmp(shot)

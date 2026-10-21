@@ -12,7 +12,7 @@ static const char *tr_super(void) {
     return "Snowflake";
 }
 
-static const char *tr_super_ebuc(void) {
+static const char *tr_super_buk(void) {
     if (language == 1) {
         return "Ульта";
     }

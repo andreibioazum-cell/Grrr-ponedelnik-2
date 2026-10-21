@@ -1,6 +1,6 @@
 static const char *tr_super(void);
 static const char *tr_super_codecracker(void);
-static const char *tr_super_ebuc(void);
+static const char *tr_super_buk(void);
 static const char *tr_super_azum(void);
 static const char *tr_super_astra(void);
 static const char *tr_class_selected(void);

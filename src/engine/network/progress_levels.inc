@@ -57,7 +57,7 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
     k = pg.cls;
     a = pg.azum;
     sn = pg.santa;
-    eu = pg.ebuc;
+    eu = pg.buk;
     plv = pg.level;
     plu = pg.levels_unlocked;
     ol = pg.ordinary_level;
@@ -66,8 +66,8 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
     au = pg.azum_levels_unlocked;
     sl = pg.santa_level;
     su = pg.santa_levels_unlocked;
-    el = pg.ebuc_level;
-    eul = pg.ebuc_levels_unlocked;
+    el = pg.buk_level;
+    eul = pg.buk_levels_unlocked;
     bp = pg.bp_level;
     sk = pg.azum_skin;
     ccl = pg.codecracker_level;
@@ -124,7 +124,7 @@ void net_save_codecracker(double level, double levels_unlocked) {
     k = pg.cls;
     a = pg.azum;
     sn = pg.santa;
-    eu = pg.ebuc;
+    eu = pg.buk;
     plv = pg.level;
     plu = pg.levels_unlocked;
     ol = pg.ordinary_level;
@@ -133,8 +133,8 @@ void net_save_codecracker(double level, double levels_unlocked) {
     au = pg.azum_levels_unlocked;
     sl = pg.santa_level;
     su = pg.santa_levels_unlocked;
-    el = pg.ebuc_level;
-    eul = pg.ebuc_levels_unlocked;
+    el = pg.buk_level;
+    eul = pg.buk_levels_unlocked;
     bp = pg.bp_level;
     sk = pg.azum_skin;
     at = pg.astra;

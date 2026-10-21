@@ -46,7 +46,7 @@ static double take_damage(double dmg) {
         /* The running overclock absorbs half of everything that lands. */
         real = real * (1 - codecracker_absorb_for(player_level));
     }
-    if (player_class == CLASS_EBUC) {
+    if (player_class == CLASS_BUK) {
         real = player_shield_absorb(real);
     }
     if (player_class == CLASS_AZUM && azum_revived >= 1 && player_level >= 1) {
