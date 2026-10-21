@@ -1161,20 +1161,21 @@ static void test_gifts_page(void) {
     draw_acct_gifts();
     /* Пять магазинных и три своих карточки, каждая со своей картинкой. */
     assert(gift_tex_draws == 8);
-    /* Изумруд - эксклюзивный, поэтому его подпись уходит в радужную. */
+    /* Изумруд подписан белым: цвет живёт на самом камне, радуга ушла. */
     int rainbow_emerald = 0;
     for (int i = 0; i < rainbow_text_n; i++)
         if (str_eq(rainbow_text[i], "Изумруд") == 1 || str_eq(rainbow_text[i], "ЭКСКЛЮЗИВНЫЙ") == 1)
             rainbow_emerald = 1;
-    assert(rainbow_emerald == 1);
+    assert(rainbow_emerald == 0);
 
-    /* Магазинная карточка: выбор и «Купить» под колонками. */
+    /* Магазинная карточка: выбор и «Осмотреть | Купить» под колонками. */
     double y = acct_gift_view_top() + 1 * acct_gift_step() + acct_gift_card_h() / 2;
     assert(touch_acct_gift_list(acct_gift_x(0) + 20, y, 0, 11) == 1);
     assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
-    assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_inspect(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_buy(acct_x() + acct_gift_inspect_w() + ACCT_GIFT_COL_GAP + 10, acct_below_fields() + 5) == 1);
     assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + 20, acct_below_fields() + 5) == 0);
+    assert(hit_acct_gift_sell(acct_x() + acct_w() - 10, acct_below_fields() + 5) == 0);
 
     /* Тап по своей карточке только выбирает: кнопки внизу, в футере. */
     double oy = acct_gift_view_top() + 6;
@@ -1183,9 +1184,10 @@ static void test_gifts_page(void) {
     assert(acct_gift_own_sel() == 0 && acct_gift_sel_id() == 0 && acct_gift_picked() == 1);
     assert(acct_gift_drag < 0 && acct_gift_busy == 0);
     assert(hit_acct_gift_buy(acct_x() + 10, acct_below_fields() + 5) == 0);
-    assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 1);
-    assert(hit_acct_gift_sell(acct_x() + acct_gift_btn_w() + acct_gift_col_w() / 2, acct_below_fields() + 5) == 1);
-    assert(acct_x() + 2 * acct_gift_btn_w() <= acct_x() + acct_w() + 1e-9);
+    assert(hit_acct_gift_inspect(acct_x() + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_send(acct_x() + acct_gift_inspect_w() + ACCT_GIFT_COL_GAP + 10, acct_below_fields() + 5) == 1);
+    assert(hit_acct_gift_sell(acct_x() + 2 * (acct_gift_inspect_w() + ACCT_GIFT_COL_GAP) + 10, acct_below_fields() + 5) == 1);
+    assert(acct_x() + 3 * acct_gift_inspect_w() + 2 * ACCT_GIFT_COL_GAP <= acct_x() + acct_w() + 1e-9);
     /* «Продать» из футера продаёт именно выбранную карточку. */
     acct_gift_sell();
     assert(acct_gift_busy == 1 && acct_gift_busy_mode == 3);
@@ -1215,6 +1217,27 @@ static void test_gifts_page(void) {
     acct_poll_gifts();
     assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
     acct_msg = "";
+
+    /* Админ покупает бесплатно: с нулём кубков покупка стартует, а баланс
+     * после покупки - нетронутый серверный, без вычета цены. */
+    {
+        char saved_nick[24];
+        snprintf(saved_nick, sizeof(saved_nick), "%s", stub_login_nick);
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
+        assert(admin_playing() == 1);
+        cups = 0;
+        acct_gift_choice = 2; /* мишка, 250 кубков */
+        acct_gift_is_owned = 0;
+        acct_gift_buy();
+        assert(acct_gift_busy == 1 && acct_gift_busy_mode == 2);
+        stub_gift_cups = 55; /* в базе по-прежнему 55: цена не списана */
+        stub_gift_status = 2;
+        acct_poll_gifts();
+        assert(acct_gift_busy == 0 && cups == 55);
+        acct_msg = "";
+        net_gift_count_add(2, -1); /* откатить мишку из кэша коллекции */
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", saved_nick);
+    }
 
     /* Продажа убирает из коллекции только проданный стикер: вторая какашка
      * и изумруд остаются на месте. Раньше список обнулялся целиком, и
@@ -3636,7 +3659,10 @@ int main(void) {
         t_dir = 0;
 
         /* One shop card, sold once: the pill buys on the press, the rest of
-         * the card on the release, and a swipe pages instead of buying. */
+         * the card on the release, and a swipe pages instead of buying.
+         * The shop pays cups like an ordinary player: the admin nick from the
+         * panel block above buys free, so hand the shop to a tester. */
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
         cups = 1000;
         classes_scroll = 0; /* the second card: Azum, 65 cups */
         double v0 = 1;
@@ -3700,6 +3726,7 @@ int main(void) {
         logic_touch(card_x - classes_swipe_threshold() - 10, card_y, 1, 5);
         assert(class_owned_of(cls) == 0 && cups == 1000);
         classes_scroll = 0;
+        snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
 
         /* Button hitboxes are exactly the drawn shape, and the squeeze is
          * claimed by the very same test: a press either fires and squeezes,
