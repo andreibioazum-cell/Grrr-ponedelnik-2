@@ -1828,7 +1828,7 @@ static void test_dice_alone_and_bubbles(void) {
 
     /* Admin passwd command: resets a normal account, never an admin. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     stub_login_status = 2;
     stub_admin_reset_calls = 0;
     assert(admin_handle("passwd bob secret1") == 1);
@@ -1879,7 +1879,7 @@ static void test_battle_events(void) {
 
     /* Команды админа выбирают три РАЗНЫХ ивента. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     stub_login_status = 2;
     stub_event_mode = 0;
     assert(admin_handle("event 2") == 1 && stub_event_mode == 2);
@@ -2808,28 +2808,28 @@ int main(void) {
     assert(admin_slot("DIMASI4EK229") == 1);
     assert(admin_slot("QWERTYUIOPAJ1234") == 2);
     assert(admin_slot("regular_player") == 0);
+    /* Dev-права даёт профиль (ник), а не пароль: пароль можно менять
+     * сколько угодно, право не слетает; решает только ник и вход. */
     stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1);
     assert(astra_ability_is_dev() == 1);
-    stub_login_pass[0] = 'x';
-    stub_login_pass[1] = 0;
-    astra_ability_refresh();
-    assert(astra_ability_allowed() == 0);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
-    astra_ability_refresh();
-    assert(astra_ability_allowed() == 1);
-    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN2_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN2_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "completely-different");
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1 && astra_ability_is_dev() == 1);
-    stub_login_pass[0] = 'x';
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "regular_player");
     astra_ability_refresh();
-    assert(astra_ability_allowed() == 0);
+    assert(astra_ability_allowed() == 0 && astra_ability_is_dev() == 0);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN2_NICK);
+    astra_ability_refresh();
+    assert(astra_ability_allowed() == 1 && astra_ability_is_dev() == 1);
+    stub_login_status = 0;
+    astra_ability_refresh();
+    assert(astra_ability_allowed() == 0 && astra_ability_is_dev() == 0);
+    stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1);
 
@@ -3283,7 +3283,7 @@ int main(void) {
     /* --- admin panel -------------------------------------------------- */
     stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     assert(is_admin() == 1);
     screen_w = 1080;
     screen_h = 2400;

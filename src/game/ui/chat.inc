@@ -31,16 +31,15 @@ static void chat_sync_input(void) {
     chat_input = chat_input_buf;
 }
 
+/* Админ — это профиль (ник аккаунта), а не пароль. Вход в аккаунт уже
+ * проверил Firebase Auth, а ник подделать нельзя: это занятый e-mail
+ * <ник>@cb4.game. Поэтому пароль здесь не сравнивается вовсе — владелец
+ * может менять его хоть сто раз, админка от этого не слетает. */
 static double is_admin(void) {
     if (net_login_status() != 2) {
         return 0;
     }
-    const char *nick = net_login_nick();
-    const char *pass = net_login_pass();
-    if (str_eq(nick, ADMIN_NICK) == 1 && str_eq(pass, ADMIN_PASS) == 1) {
-        return 1;
-    }
-    return str_eq(nick, ADMIN2_NICK) == 1 && str_eq(pass, ADMIN2_PASS) == 1 ? 1 : 0;
+    return admin_slot(net_login_nick()) != 0 ? 1 : 0;
 }
 
 static char admin_passwd_target_buf[24];
