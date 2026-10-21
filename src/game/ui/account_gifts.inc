@@ -32,7 +32,6 @@ static double acct_gift_view_h(void) { return acct_gift_shop_rows() * acct_gift_
 static double acct_gift_view_bottom(void) { return acct_gift_view_top() + acct_gift_view_h(); }
 static double acct_gift_footer_top(void) { return acct_gift_view_bottom(); }
 static double acct_gift_col_w(void) { return (acct_w() - ACCT_GIFT_COL_GAP) / 2; }
-static double acct_gift_btn_w(void) { return (acct_w() - ACCT_GIFT_COL_GAP) / 2; }
 /* owned == 0 is the shop column on the left, 1 the collection on the right. */
 static double acct_gift_x(double owned) { return owned == 1 ? acct_x() + acct_gift_col_w() + ACCT_GIFT_COL_GAP : acct_x(); }
 static double acct_gift_panel_x(double owned) { return acct_gift_x(owned) - ACCT_GIFT_PANEL_PAD; }
@@ -133,17 +132,53 @@ static double hit_acct_gift_any(double x, double y) {
     }
     return 0;
 }
+/* Кнопка «Осмотреть»: слева в ряду действий. В магазине она стоит в паре с
+ * «Купить», в коллекции - первая из трёх («Осмотреть», «Подарить», «Продать»).
+ * Столбец 0 - осмотр, 1 - купить/подарить, 2 - продать. */
+static double acct_gift_inspect_w(void) {
+    double cols = acct_gift_is_owned == 1 ? 3 : 2;
+    return (acct_w() - (cols - 1) * ACCT_GIFT_COL_GAP) / cols;
+}
+static double acct_gift_action_x(double col) {
+    return acct_x() + (acct_gift_inspect_w() + ACCT_GIFT_COL_GAP) * col;
+}
 static double hit_acct_gift_buy(double x, double y) {
     return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 0 &&
-           hit_button(x, y, acct_x(), acct_below_fields(), acct_w(), btn_h) == 1;
+           hit_button(x, y, acct_gift_action_x(1), acct_below_fields(), acct_gift_inspect_w(), btn_h) == 1;
 }
 static double hit_acct_gift_send(double x, double y) {
     return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 1 &&
-           hit_button(x, y, acct_x(), acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
+           hit_button(x, y, acct_gift_action_x(1), acct_below_fields(), acct_gift_inspect_w(), btn_h) == 1;
 }
 static double hit_acct_gift_sell(double x, double y) {
     return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_is_owned == 1 &&
-           hit_button(x, y, acct_x() + acct_gift_btn_w() + ACCT_GIFT_COL_GAP, acct_below_fields(), acct_gift_btn_w(), btn_h) == 1;
+           hit_button(x, y, acct_gift_action_x(2), acct_below_fields(), acct_gift_inspect_w(), btn_h) == 1;
+}
+static double hit_acct_gift_inspect(double x, double y) {
+    return acct_open == ACCT_GIFTS && acct_gift_picked() == 1 && acct_gift_busy != 1 && acct_gift_view_open == 0 &&
+           hit_button(x, y, acct_x(), acct_below_fields(), acct_gift_inspect_w(), btn_h) == 1;
+}
+
+/* Осмотр стикера в полное разрешение: спрайт рисуется один в один со своим
+ * 192x192 (GIFT_TEX_PX), без уменьшения до размера карточки. Закрытие -
+ * любое новое нажатие (touch_account) или «назад» (acct_back). */
+static void draw_acct_gift_viewer(void) {
+    double id = acct_gift_sel_id();
+    double isz = GIFT_TEX_PX;
+    double ix = (screen_w - isz) / 2;
+    double iy = (screen_h - isz) / 2 - 34;
+    const char *name;
+    const char *hint;
+    rect(0, 0, screen_w, screen_h, 0xF2121212);
+    if (acct_gift_picked() == 0) {
+        acct_gift_view_open = 0;
+        return;
+    }
+    gift_icon(id, ix, iy, isz);
+    name = acct_gift_name(id);
+    gift_text_rarity(name, 0, iy + isz + 20, screen_w, 30, id, fit_text_scale(name, screen_w - 24, 0.64));
+    hint = language == 1 ? "Полное разрешение · нажмите, чтобы закрыть" : "Full resolution · tap to close";
+    ctext_scaled(hint, iy + isz + 64, text_color, fit_text_scale(hint, fit_w(screen_w), 0.5));
 }
 
 /* The collection keeps its own down/move/up machine: a drag scrolls, a short
@@ -317,6 +352,11 @@ static void draw_acct_gifts(void) {
                                           : "Shop on the left, your stickers on the right";
     ctext_scaled(hint_line, acct_top() + 27, text_color, fit_text_scale(hint_line, fit_w(screen_w), 0.5));
     acct_gift_draw_field();
+    if (acct_gift_view_open == 1) {
+        /* Осмотр занял весь экран: ряд действий под ним не нужен и не должен
+         * просвечивать сквозь тёмный фон. */
+        return;
+    }
     if (acct_gift_busy == 1) {
         const char *wait = acct_gift_busy_mode == 2 ? (language == 1 ? "Покупаем..." : "Buying...")
                            : acct_gift_busy_mode == 3 ? (language == 1 ? "Продаём..." : "Selling...")
@@ -326,19 +366,26 @@ static void draw_acct_gifts(void) {
         const char *hint = language == 1 ? "Нажмите на стикер" : "Tap a sticker";
         ctext_scaled(hint, acct_below_fields() + (btn_h - 16) / 2, text_color, 0.55);
     } else if (acct_gift_is_owned == 0) {
+        /* Пара «Осмотреть | Купить»: у админа покупка бесплатна, поэтому
+         * кнопка «Купить» для него никогда не серая. */
+        double bw = acct_gift_inspect_w();
+        const char *look = language == 1 ? "Осмотреть" : "Inspect";
         const char *buy = ds_concat(language == 1 ? "Купить · " : "Buy · ",
                                     acct_gift_cups_line(acct_gift_price(acct_gift_sel_id())));
-        if (cups < acct_gift_price(acct_gift_sel_id())) {
-            button_disabled_scaled(buy, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(buy, acct_w() - 24, 0.6));
+        button_scaled(look, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(look, bw - 12, 0.56));
+        if (admin_playing() == 0 && cups < acct_gift_price(acct_gift_sel_id())) {
+            button_disabled_scaled(buy, acct_gift_action_x(1), acct_below_fields(), bw, btn_h, fit_text_scale(buy, bw - 24, 0.6));
         } else {
-            button_scaled(buy, acct_x(), acct_below_fields(), acct_w(), btn_h, fit_text_scale(buy, acct_w() - 24, 0.6));
+            button_scaled(buy, acct_gift_action_x(1), acct_below_fields(), bw, btn_h, fit_text_scale(buy, bw - 24, 0.6));
         }
     } else {
-        double bw = acct_gift_btn_w();
+        double bw = acct_gift_inspect_w();
+        const char *look = language == 1 ? "Осмотреть" : "Inspect";
         const char *send = language == 1 ? "Подарить" : "Send";
         const char *sell = ds_concat(language == 1 ? "Продать · +" : "Sell · +",
                                      acct_gift_cups_line(acct_gift_refund(acct_gift_sel_id())));
-        button_scaled(send, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.56));
-        button_scaled(sell, acct_x() + bw + ACCT_GIFT_COL_GAP, acct_below_fields(), bw, btn_h, fit_text_scale(sell, bw - 12, 0.52));
+        button_scaled(look, acct_x(), acct_below_fields(), bw, btn_h, fit_text_scale(look, bw - 12, 0.56));
+        button_scaled(send, acct_gift_action_x(1), acct_below_fields(), bw, btn_h, fit_text_scale(send, bw - 12, 0.56));
+        button_scaled(sell, acct_gift_action_x(2), acct_below_fields(), bw, btn_h, fit_text_scale(sell, bw - 12, 0.52));
     }
 }

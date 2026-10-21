@@ -26,7 +26,8 @@ static void acct_gifts_page(void) {
 static void acct_gift_buy(void) {
     keyboard_hide();
     if (acct_gift_picked() != 1 || acct_gift_is_owned == 1) return;
-    if (cups < acct_gift_price(acct_gift_choice)) { acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups"; return; }
+    /* У админа стикер бесплатный (gifts.inc не трогает кубки в базе). */
+    if (admin_playing() == 0 && cups < acct_gift_price(acct_gift_choice)) { acct_msg = language == 1 ? "Не хватает кубков" : "Not enough cups"; return; }
     acct_gift_busy = 1; acct_gift_busy_mode = 2;
     acct_msg = language == 1 ? "Покупаем стикер..." : "Buying sticker...";
     if (net_gift_action(acct_gift_choice, "", 2, 0) == 0) acct_gift_refused();

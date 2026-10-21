@@ -155,8 +155,10 @@ def rocket():
 
 # ---------------------------------------------------------------- emerald
 def emerald():
+    """Белый изумруд: цвет камню даёт слой оттенка в gift_icon() (gift_icons.inc),
+    а он виден только на белом - на цветном спрайте оттенок превращается в грязь."""
     im = canvas(); d = ImageDraw.Draw(im)
-    dark = (8, 56, 36, 255)
+    dark = (56, 56, 64, 255)
 
     def P(x, y):
         return (x * S, y * S)
@@ -166,23 +168,23 @@ def emerald():
     bl, br = 72, 184        # bottom corners
     bot = 206
     # table (top facet), left lit, right shaded
-    d.polygon([P(128, top), P(R, 88), P(128, table_y), P(L, 88)], fill=(150, 255, 196, 255))
-    d.polygon([P(128, top), P(128, table_y), P(L, 88)], fill=(104, 238, 164, 255))
-    d.polygon([P(128, top), P(R, 88), P(128, table_y)], fill=(72, 220, 142, 255))
+    d.polygon([P(128, top), P(R, 88), P(128, table_y), P(L, 88)], fill=(252, 252, 255, 255))
+    d.polygon([P(128, top), P(128, table_y), P(L, 88)], fill=(234, 234, 241, 255))
+    d.polygon([P(128, top), P(R, 88), P(128, table_y)], fill=(210, 210, 220, 255))
     # pavilion halves
-    d.polygon([P(128, table_y), P(L, 88), P(bl, bot), P(128, bot)], fill=(30, 182, 106, 255))
-    d.polygon([P(128, table_y), P(R, 88), P(br, bot), P(128, bot)], fill=(16, 152, 88, 255))
+    d.polygon([P(128, table_y), P(L, 88), P(bl, bot), P(128, bot)], fill=(233, 233, 240, 255))
+    d.polygon([P(128, table_y), P(R, 88), P(br, bot), P(128, bot)], fill=(198, 198, 210, 255))
     # bright centre facet
-    d.polygon([P(128, table_y), P(162, 116), P(128, 170), P(94, 116)], fill=(126, 252, 180, 255))
-    d.polygon([P(128, 100), P(150, 116), P(128, 154), P(106, 116)], fill=(204, 255, 226, 255))
+    d.polygon([P(128, table_y), P(162, 116), P(128, 170), P(94, 116)], fill=(255, 255, 255, 255))
+    d.polygon([P(128, 100), P(150, 116), P(128, 154), P(106, 116)], fill=(243, 243, 249, 255))
     # seams
     d.line([P(128, table_y), P(L, 88), P(bl, bot), P(128, bot), P(br, bot), P(R, 88), P(128, table_y)],
-           fill=(10, 96, 58, 255), width=4 * S)
-    d.line([P(L, 88), P(128, table_y), P(R, 88)], fill=(10, 96, 58, 255), width=4 * S)
-    d.line([P(128, 28), P(L, 88)], fill=(10, 96, 58, 255), width=4 * S)
-    d.line([P(128, 28), P(R, 88)], fill=(10, 96, 58, 255), width=4 * S)
-    d.line([P(128, table_y), P(bl, bot)], fill=(10, 96, 58, 255), width=4 * S)
-    d.line([P(128, table_y), P(br, bot)], fill=(10, 96, 58, 255), width=4 * S)
+           fill=(132, 132, 142, 255), width=4 * S)
+    d.line([P(L, 88), P(128, table_y), P(R, 88)], fill=(132, 132, 142, 255), width=4 * S)
+    d.line([P(128, 28), P(L, 88)], fill=(132, 132, 142, 255), width=4 * S)
+    d.line([P(128, 28), P(R, 88)], fill=(132, 132, 142, 255), width=4 * S)
+    d.line([P(128, table_y), P(bl, bot)], fill=(132, 132, 142, 255), width=4 * S)
+    d.line([P(128, table_y), P(br, bot)], fill=(132, 132, 142, 255), width=4 * S)
     # outline
     d.line([P(128, 28), P(R, 88), P(br, bot), P(bl, bot), P(L, 88), P(128, 28)],
            fill=dark, width=6 * S, joint="curve")

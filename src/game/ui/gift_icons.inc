@@ -45,15 +45,16 @@ static uint32_t gift_hue_color(double hue) {
     return 0xFF000000u | ((uint32_t)(r * 255) << 16) | ((uint32_t)(g * 255) << 8) | (uint32_t)(b * 255);
 }
 
+/* The emerald: the white stone plus a shimmering layer of the hue, so the
+ * colour flows over it and drifts with time. The tint reads only on a white
+ * base - on a coloured sprite the hue would just turn to mud. */
 static void gift_icon(double id, double x, double y, double s) {
     if (s <= 0) return;
     tex(x, y, gift_tex(id), 0, s / GIFT_TEX_PX);
     if (id >= 4) {
-        /* The emerald: the picture plus a shimmering layer of the hue, so the
-         * colour flows over it instead of sitting still. */
-        double a = 70 + 55 * sin(ds_frame_seconds() * 2.4);
-        if (a < 20) a = 20;
-        if (a > 140) a = 140;
+        double a = 110 + 45 * sin(ds_frame_seconds() * 2.4);
+        if (a < 0) a = 0;
+        if (a > 180) a = 180;
         uint32_t c = gift_hue_color(gift_emerald_phase());
         tex_tint(x, y, gift_tex(id), 0, s / GIFT_TEX_PX, (uint32_t)(((unsigned)(int)a) << 24) | (c & 0x00FFFFFFu));
     }
@@ -80,8 +81,9 @@ static const char *gift_rarity_name(double id) {
     return "COMMON";
 }
 
-/* White, light blue and violet; the exclusive one is drawn as a rainbow and
- * returns white only so callers always have a plain colour to fall back on. */
+/* White, light blue and violet; the exclusive emerald is signed white as
+ * well - its colour lives on the stone itself, which drifts through the hue
+ * wheel, not in the lettering. */
 static uint32_t gift_rarity_color(double id) {
     double r = gift_rarity(id);
     if (r == 1) return 0xFF5CC8FF;
@@ -90,14 +92,15 @@ static uint32_t gift_rarity_color(double id) {
 }
 
 /* Centred rarity-coloured lettering inside a box, with the same baseline the
- * other card labels use (text_in_box). */
+ * other card labels use (text_in_box). The exclusive emerald is signed in
+ * plain white: the colour belongs to the stone itself, which drifts through
+ * the hue wheel on its own. */
 static void gift_text_rarity(const char *s, double x, double y, double w, double h, double id, double sc) {
     double tw = text_ink_width(s) * sc;
     double th = text_ink_height(s) * sc;
     double tt = text_ink_top(s) * sc;
     double tx = x + (w - tw) / 2, ty = y + (h - th) / 2 - tt + 1.5;
-    if (gift_rarity(id) == 3) text_rainbow(s, tx, ty, sc, gift_emerald_phase());
-    else text_scaled(s, tx, ty, gift_rarity_color(id), sc);
+    text_scaled(s, tx, ty, gift_rarity_color(id), sc);
 }
 
 /* Left-aligned variant for the one-line cards. */
@@ -105,6 +108,5 @@ static void gift_text_rarity_left(const char *s, double x, double y, double h, d
     double th = text_ink_height(s) * sc;
     double tt = text_ink_top(s) * sc;
     double ty = y + (h - th) / 2 - tt + 1.5;
-    if (gift_rarity(id) == 3) text_rainbow(s, x, ty, sc, gift_emerald_phase());
-    else text_scaled(s, x, ty, gift_rarity_color(id), sc);
+    text_scaled(s, x, ty, gift_rarity_color(id), sc);
 }

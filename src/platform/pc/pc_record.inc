@@ -170,6 +170,10 @@ static void pc_tri(int pipeline, const uint32_t *tex, int tw, int th, GeoVert a,
                         sa = sa * ta / 255;
                         pc_blend_pixel(&row[x], sr, sg, sb, sa);
                     } else {
+                        /* Pipeline 2, the tint shader: its GLSL is
+                         * out_color = vec4(v_col.rgb, tex.a * v_col.a) - the
+                         * vertex colour REPLACES the texel colour, the texel
+                         * only carries alpha. Keep this identical. */
                         sa = sa * ta / 255;
                         pc_blend_pixel(&row[x], sr, sg, sb, sa);
                     }

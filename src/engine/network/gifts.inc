@@ -92,6 +92,13 @@ static int gift_nick_same(const char *a, const char *b) {
     return a[i] == 0 && b[i] == 0;
 }
 
+/* Админы (список тот же, что в game/core/config.inc, но движок не видит её
+ * статиков): покупка стикера им бесплатна, кубки в базе не трогаем вовсе -
+ * «у админов кубки не снимаются». */
+static int gift_nick_is_admin(const char *nick) {
+    return gift_nick_same(nick, "Dimasi4ek229") == 1 || gift_nick_same(nick, "qwertyuiopaj1234") == 1;
+}
+
 /* Счётчики из users/<ник>/gifts.json; отсутствующий узел ("null") — нули. */
 static int gift_get_counts(const char *nick, int out[GIFT_N]) {
     char url[URL], resp[2048];
@@ -149,20 +156,25 @@ static int gift_recipient_exists(const char *nick) {
  * записью. Ключ счётчика - путь (через косую черту): REST PATCH заменяет
  * названное поддерево целиком, поэтому обычное "gifts":{"poop":0} стирало
  * остальные счётчики вместе с изумрудом. С путём "gifts/poop" пишется только
- * этот счётчик, а кубки и стикер меняются всё равно одной записью. */
+ * этот счётчик, а кубки и стикер меняются всё равно одной записью.
+ * cubes < 0 означает «кубки не трогать» - так админ покупает бесплатно. */
 static void gift_body(char *body, size_t cap, int cups, int id, int count) {
-    snprintf(body, cap, "{\"cups\":%d,\"gifts/%s\":%d}", cups, gift_id(id), count);
+    if (cups < 0)
+        snprintf(body, cap, "{\"gifts/%s\":%d}", gift_id(id), count);
+    else
+        snprintf(body, cap, "{\"cups\":%d,\"gifts/%s\":%d}", cups, gift_id(id), count);
     net_seal_body(body, cap);
 }
 
 static int gift_buy(const char *nick, int id) {
     char url[URL], body[BODY], resp[1024];
     int counts[GIFT_N], cups, code, price = gift_price(id);
+    int free_buy = gift_nick_is_admin(nick);
     snprintf(url, sizeof(url), "%s/users/%s/cups.json", net.base, nick);
     if (fb_http("GET", url, NULL, resp, sizeof(resp)) != 200)
         return 3;
     cups = num_int(resp, "", 0);
-    if (cups < price)
+    if (free_buy == 0 && cups < price)
         return 5;
     if (!gift_get_counts(nick, counts))
         return 3;
@@ -170,7 +182,7 @@ static int gift_buy(const char *nick, int id) {
         return 8;
     counts[id]++;
     snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
-    gift_body(body, sizeof(body), cups - price, id, counts[id]);
+    gift_body(body, sizeof(body), free_buy == 1 ? -1 : cups - price, id, counts[id]);
     code = fb_http("PATCH", url, body, NULL, 0);
     if (code != 200) {
         if (net_log_ok())
@@ -178,8 +190,9 @@ static int gift_buy(const char *nick, int id) {
         return 3;
     }
     /* The purchase wrote the balance itself; the shop takes this exact number
-     * instead of subtracting from a local copy that may be stale. */
-    s_gift_cups = cups - price;
+     * instead of subtracting from a local copy that may be stale. For the
+     * free admin buy this is the untouched server balance. */
+    s_gift_cups = free_buy == 1 ? cups : cups - price;
     return 2;
 }
 

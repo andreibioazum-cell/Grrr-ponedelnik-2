@@ -13,17 +13,20 @@ static double acct_gift_drag_y = 0;
 static double acct_gift_drag_move = 0;
 static double acct_gift_busy = 0;
 static double acct_gift_busy_mode = 0;
+static double acct_gift_view_open = 0; /* 1 - осмотр стикера в полное разрешение */
 static double acct_gift_footer_top(void);
 static double hit_acct_gift_any(double x, double y);
 static double hit_acct_gift_buy(double x, double y);
 static double hit_acct_gift_send(double x, double y);
 static double hit_acct_gift_sell(double x, double y);
+static double hit_acct_gift_inspect(double x, double y);
 static double touch_acct_gift_list(double x, double y, double action, double id);
 static void acct_gifts_page(void);
 static void acct_gift_buy(void);
 static void acct_gift_send(void);
 static void acct_gift_sell(void);
 static void draw_acct_gifts(void);
+static void draw_acct_gift_viewer(void);
 static void acct_poll_gifts(void);
 static void acct_gift_scroll_tick(void);
 static double acct_entry; /* режим, с которого открыли: «назад» возвращает туда */
@@ -76,6 +79,7 @@ static void acct_go(double mode) {
     acct_msg = "";
     acct_knob = 0;
     acct_drag = -1;
+    acct_gift_view_open = 0;
     acct_clear_fields();
     ui_nav_gen = ui_nav_gen + 1;
 }
@@ -89,9 +93,16 @@ static void acct_close(void) {
     acct_clear_fields();
     acct_open = 0;
     acct_drag = -1;
+    acct_gift_view_open = 0;
     ui_nav_gen = ui_nav_gen + 1;
 }
 static void acct_back(void) {
+    /* Осмотр закрывается первым: «назад» не уводит со страницы, пока
+     * открыто окно просмотра. */
+    if (acct_gift_view_open == 1) {
+        acct_gift_view_open = 0;
+        return;
+    }
     if (acct_open != ACCT_MENU && acct_entry == ACCT_MENU && acct_done == 0 && net_login_status() == 2) {
         acct_go(ACCT_MENU);
         return;
@@ -133,7 +144,7 @@ static double acct_button_hit(double x, double y) {
     return back_hit(x, y) == 1 || hit_acct_menu(x, y, 0) == 1 || hit_acct_menu(x, y, 1) == 1 ||
            hit_acct_menu(x, y, 2) == 1 || hit_acct_menu(x, y, 3) == 1 || hit_acct_menu(x, y, 4) == 1 ||
            hit_acct_submit(x, y) == 1 || hit_acct_gift_buy(x, y) == 1 || hit_acct_gift_send(x, y) == 1 ||
-           hit_acct_gift_sell(x, y) == 1 || hit_acct_gift_any(x, y) == 1;
+           hit_acct_gift_sell(x, y) == 1 || hit_acct_gift_inspect(x, y) == 1 || hit_acct_gift_any(x, y) == 1;
 }
 static void acct_sync(void) {
     if (keyboard_visible() == 1 && acct_field < acct_fields()) {
@@ -231,6 +242,15 @@ static void touch_acct_menu(double x, double y) {
     }
 }
 static void touch_account(double x, double y, double action, double id) {
+    /* Открытый осмотр съедает всё: любое новое нажатие закрывает его, а
+     * отпускание пальца, которое его открыло, ничего не делает. */
+    if (acct_gift_view_open == 1) {
+        if (action == 0) {
+            acct_gift_view_open = 0;
+            press_new = 0;
+        }
+        return;
+    }
     /* The collection scrolls with its own down/move/up machine, so it gets
      * the move and up events before the usual press handling below. */
     if (action != 0 && touch_acct_gift_list(x, y, action, id) == 1) return;
@@ -275,6 +295,7 @@ static void touch_account(double x, double y, double action, double id) {
     if (hit_acct_gift_buy(x, y) == 1) { acct_gift_buy(); return; }
     if (hit_acct_gift_send(x, y) == 1) { acct_gift_send(); return; }
     if (hit_acct_gift_sell(x, y) == 1) { acct_gift_sell(); return; }
+    if (hit_acct_gift_inspect(x, y) == 1) { acct_gift_view_open = 1; return; }
     if (hit_acct_submit(x, y) == 1) { acct_pass_try(); return; }
     if (hit_acct_knob(x, y) == 1) {
         acct_sync();
@@ -402,6 +423,9 @@ static void draw_account(void) {
         }
     }
     draw_acct_msg();
+    if (acct_open == ACCT_GIFTS && acct_gift_view_open == 1) {
+        draw_acct_gift_viewer();
+    }
     press_overlay = 0;
 }
 

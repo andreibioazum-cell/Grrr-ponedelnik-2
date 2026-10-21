@@ -333,12 +333,16 @@ static void select_level(double cls, double n) {
 
 static double buy_level(double cls, double n) {
     double cost = level_cost(n);
-    if (cups < cost) {
+    /* Кубки админа не снимаются: уровень открывается бесплатно. */
+    double free_buy = admin_playing() == 1;
+    if (free_buy == 0 && cups < cost) {
         level_msg_kind = 0;
         level_msg_t = msg_time;
         return 0;
     }
-    cups = cups - cost;
+    if (free_buy == 0) {
+        cups = cups - cost;
+    }
     set_class_progress(cls, n, n);
     if (cls == player_class) {
         sync_selected_class();
@@ -412,6 +416,8 @@ static void pick_class(double cls) {
             return;
         }
         candies = candies - cost;
+    } else if (admin_playing() == 1) {
+        /* Кубки админа не снимаются: класс бесплатен. */
     } else {
         if (cups < cost) {
             class_msg_t = msg_time;
