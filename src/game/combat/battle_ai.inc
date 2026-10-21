@@ -51,18 +51,14 @@ static void enemy_engage(double desired) {
     if (d < 1) {
         d = 1;
     }
-    enemy->wobble_t = enemy->wobble_t + dt * (1.2 + (rand() % 100) / 100.0);
-    double wobble_off = sin(enemy->wobble_t * 2.7) * 14 + cos(enemy->wobble_t * 1.3) * 9;
     desired = desired + (rand() % 100 - 50) / 100.0 * 18;
     double radial = clamp((d - desired) * enemy_close_gain, -bot_speed, bot_speed);
     double orbit = bot_strafe_speed * enemy->strafe * 0.5;
     if (d > desired + 110) {
         orbit = orbit * 0.4;
     }
-    double perp_x = 0 - dy / d * wobble_off;
-    double perp_y = dx / d * wobble_off;
-    double vx = dx / d * radial - dy / d * orbit + perp_x * 0.3;
-    double vy = dy / d * radial + dx / d * orbit + perp_y * 0.3;
+    double vx = dx / d * radial - dy / d * orbit;
+    double vy = dy / d * radial + dx / d * orbit;
     double cap = bot_speed * enemy->speed_var;
     double sp = sqrt(vx * vx + vy * vy);
     if (sp > cap && sp > 0.001) {
@@ -105,7 +101,6 @@ static void update_enemy(void) {
     enemy_track_player();
     enemy->mvx = 0;
     enemy->mvy = 0;
-    enemy->wobble_t = enemy->wobble_t + dt;
     if (enemy->freeze > 0) {
         enemy->freeze = enemy->freeze - dt;
         if (enemy->freeze < 0) {

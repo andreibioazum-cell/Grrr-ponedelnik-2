@@ -411,8 +411,10 @@ void tex_tint(float x, float y, const char *name, float angle, float scale, uint
     }
 }
 void net_mark_progress_synced(void) {}
+double stub_last_bp = -1;
 void net_save_progress_all(double a, double b, double c, double d, double e, double f, double g, double h, double i,
                            double j, double k, double l, double m, double n, double o, double p, double q, double r) {
+    stub_last_bp = q; /* bp_level: claimed tiers of the battle pass */
     (void)a;
     (void)b;
     (void)c;
@@ -429,15 +431,17 @@ void net_save_progress_all(double a, double b, double c, double d, double e, dou
     (void)n;
     (void)o;
     (void)p;
-    (void)q;
     (void)r;
 }
 
 int snd_load(const char *name) {
     return name && *name;
 }
+char stub_last_snd[64] = "";
 int snd_play(const char *name) {
-    (void)name;
+    if (name) {
+        snprintf(stub_last_snd, sizeof(stub_last_snd), "%s", name);
+    }
     return 1;
 }
 int snd_loop(const char *name) {
@@ -1828,7 +1832,7 @@ static void test_dice_alone_and_bubbles(void) {
 
     /* Admin passwd command: resets a normal account, never an admin. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     stub_login_status = 2;
     stub_admin_reset_calls = 0;
     assert(admin_handle("passwd bob secret1") == 1);
@@ -1879,7 +1883,7 @@ static void test_battle_events(void) {
 
     /* Команды админа выбирают три РАЗНЫХ ивента. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     stub_login_status = 2;
     stub_event_mode = 0;
     assert(admin_handle("event 2") == 1 && stub_event_mode == 2);
@@ -2808,28 +2812,28 @@ int main(void) {
     assert(admin_slot("DIMASI4EK229") == 1);
     assert(admin_slot("QWERTYUIOPAJ1234") == 2);
     assert(admin_slot("regular_player") == 0);
+    /* Dev-права даёт профиль (ник), а не пароль: пароль можно менять
+     * сколько угодно, право не слетает; решает только ник и вход. */
     stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1);
     assert(astra_ability_is_dev() == 1);
-    stub_login_pass[0] = 'x';
-    stub_login_pass[1] = 0;
-    astra_ability_refresh();
-    assert(astra_ability_allowed() == 0);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
-    astra_ability_refresh();
-    assert(astra_ability_allowed() == 1);
-    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN2_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN2_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "completely-different");
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1 && astra_ability_is_dev() == 1);
-    stub_login_pass[0] = 'x';
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "regular_player");
     astra_ability_refresh();
-    assert(astra_ability_allowed() == 0);
+    assert(astra_ability_allowed() == 0 && astra_ability_is_dev() == 0);
+    snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN2_NICK);
+    astra_ability_refresh();
+    assert(astra_ability_allowed() == 1 && astra_ability_is_dev() == 1);
+    stub_login_status = 0;
+    astra_ability_refresh();
+    assert(astra_ability_allowed() == 0 && astra_ability_is_dev() == 0);
+    stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
     astra_ability_refresh();
     assert(astra_ability_allowed() == 1);
 
@@ -2864,6 +2868,24 @@ int main(void) {
     player_class = CLASS_CODECRACKER;
     codecracker_super_t = codecracker_super_time;
     assert(codecracker_super_active() == 1);
+    /* The dash (overclock) cooldown starts when the dash ends, not when
+     * it starts: mid-dash there is no cooldown ticking yet, the frame the
+     * timer runs out the full cooldown lands on super_cd. */
+    {
+        double keep_dt = dt;
+        double keep_cd = super_cd;
+        dt = 0.05;
+        super_cd = 0;
+        codecracker_super_t = 1;
+        codecracker_tick_super_timer();
+        assert(codecracker_super_t > 0 && super_cd == 0);
+        codecracker_super_t = 0.03;
+        codecracker_tick_super_timer();
+        assert(codecracker_super_t == 0 && super_cd == codecracker_super_cd_for(player_level));
+        super_cd = keep_cd;
+        codecracker_super_t = codecracker_super_time;
+        dt = keep_dt;
+    }
     assert(fabs(player_walk_speed() - joy_speed * codecracker_speed_mult * admin_cheat_speed_mult()) < 1e-6);
     {
         double hp_before = player->hp;
@@ -2929,18 +2951,65 @@ int main(void) {
         assert(fabs(player->hp - (codecracker_hp - 1)) < 1e-9);
         codecracker_super_t = 0;
     }
-    /* The result window: purple for a win and in the new theme, rose for a
-     * loss in the old theme. */
+    /* Ability sounds: every ability plays its own effect, and the zombie
+     * Azum skin swaps both of its sounds for the custom zombie ones. */
+    {
+        player_class = CLASS_AZUM;
+        azum_skin = SKIN_NORMAL;
+        start_punch_now();
+        assert(strcmp(stub_last_snd, "punch.wav") == 0);
+        azum_skin = SKIN_ZOMBIE;
+        start_punch_now();
+        assert(strcmp(stub_last_snd, "zombie_punch.wav") == 0);
+        start_dash_now();
+        assert(strcmp(stub_last_snd, "zombie_dash.wav") == 0);
+        azum_skin = SKIN_NORMAL;
+        start_dash_now();
+        assert(strcmp(stub_last_snd, "dash.wav") == 0);
+        player_class = CLASS_CODECRACKER;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        codecracker_super_t = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "overclock.wav") == 0);
+        codecracker_super_t = 0;
+        player_class = CLASS_SANTA;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        super_windup = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "gift.wav") == 0);
+        player_class = CLASS_EBUC;
+        punch_left = 0;
+        punch_cd = 0;
+        super_cd = 0;
+        super_windup = 0;
+        fire_super();
+        assert(strcmp(stub_last_snd, "station.wav") == 0);
+        player_class = CLASS_ASTRA;
+        start_grab_now();
+        assert(strcmp(stub_last_snd, "grab.wav") == 0);
+        astra_state = 0;
+        player_class = CLASS_ORDINARY;
+        super_windup = 0;
+        super_cd = 0;
+    }
+    /* The result window: in the old theme both victory and defeat are
+     * rose (its button colour), in the new theme both stay purple. */
     {
         new_theme = 0;
         apply_theme();
         finished = 2;
         assert(result_face_color() == 0xFFD4508A);
         finished = 1;
-        assert(result_face_color() == 0xFF5F10A0);
+        assert(result_face_color() == 0xFFD4508A);
         new_theme = 1;
         apply_theme();
         finished = 2;
+        assert(result_face_color() == 0xFF5F10A0);
+        finished = 1;
         assert(result_face_color() == 0xFF5F10A0);
         finished = 0;
     }
@@ -3283,7 +3352,7 @@ int main(void) {
     /* --- admin panel -------------------------------------------------- */
     stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
-    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", ADMIN_PASS);
+    snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     assert(is_admin() == 1);
     screen_w = 1080;
     screen_h = 2400;
@@ -3836,6 +3905,7 @@ int main(void) {
         assert(bp_claimed == 0 && candies == 1000);
         bp_claim(1);
         assert(bp_claimed == 1 && cups == cups_after_win + 10 && candies == 1000 - 12);
+        assert(stub_last_bp == 1); /* claimed tier rides the cloud save (field "bp") */
         bp_xp = 300;
         bp_claim(2);
         bp_claim(3);
@@ -3847,6 +3917,7 @@ int main(void) {
         bp_claim(6);
         bp_claim(7);
         assert(bp_claimed == 7 && class_owned_of(CLASS_SANTA) == 1);
+        assert(stub_last_bp == 7);
         assert(class_visible(CLASS_SANTA) == 1);
         bp_xp = 0;
         bp_claimed = 0;

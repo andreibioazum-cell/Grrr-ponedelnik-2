@@ -34,6 +34,7 @@
 #include "ui/menu_input_part2.inc"
 #include "ui/admin.inc"
 #include "ui/admin_part2.inc"
+#include "fx/ability_sounds.inc"
 #include "combat/battle_rules.inc"
 #include "combat/hit_geometry.inc"
 #include "combat/battle_turrets.inc"
@@ -75,3 +76,8 @@
 #include "core/engine.inc"
 #include "ui/chat_bubbles.inc"
 #include "lifecycle.inc"
+
+#ifdef CB_PC
+/* Мост для клавиатуры и мыши: см. platform/pc/pc_main.c. */
+#include "pc_pads.inc"
+#endif

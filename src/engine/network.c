@@ -5,7 +5,11 @@
 #include "engine/network/progress_file.inc"
 #include "engine/network/progress_levels.inc"
 #include "engine/network/auth_json.inc"
+#ifdef CB_PC
+#include "platform/pc/network_http_pc.inc"
+#else
 #include "platform/android/network_http.inc"
+#endif
 #include "engine/network/http_json.inc"
 #include "engine/network/settings_storage.inc"
 #include "engine/network/promo.inc"
@@ -17,7 +21,6 @@
 #include "engine/network/net_auth_flow.inc"
 #include "engine/network/live_flags.inc"
 #include "engine/network/moderation.inc"
-#include "engine/network/ban_list.inc"
 #include "engine/network/account_delete.inc"
 #include "engine/network/account_password.inc"
 #include "engine/network/room_control.inc"

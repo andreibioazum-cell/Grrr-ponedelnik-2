@@ -5,7 +5,6 @@
 #define KB_BUF 384
 static ANativeActivity *kb_activity = NULL;
 static char kb_text[KB_BUF] = {0};
-static char kb_raw_snapshot[KB_BUF] = {0};
 static int kb_len = 0;
 static int kb_show = 0;
 static int kb_enter = 0;

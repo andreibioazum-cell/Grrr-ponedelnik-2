@@ -31,16 +31,15 @@ static void chat_sync_input(void) {
     chat_input = chat_input_buf;
 }
 
+/* Админ — это профиль (ник аккаунта), а не пароль. Вход в аккаунт уже
+ * проверил Firebase Auth, а ник подделать нельзя: это занятый e-mail
+ * <ник>@cb4.game. Поэтому пароль здесь не сравнивается вовсе — владелец
+ * может менять его хоть сто раз, админка от этого не слетает. */
 static double is_admin(void) {
     if (net_login_status() != 2) {
         return 0;
     }
-    const char *nick = net_login_nick();
-    const char *pass = net_login_pass();
-    if (str_eq(nick, ADMIN_NICK) == 1 && str_eq(pass, ADMIN_PASS) == 1) {
-        return 1;
-    }
-    return str_eq(nick, ADMIN2_NICK) == 1 && str_eq(pass, ADMIN2_PASS) == 1 ? 1 : 0;
+    return admin_slot(net_login_nick()) != 0 ? 1 : 0;
 }
 
 static char admin_passwd_target_buf[24];
@@ -85,90 +84,15 @@ static void chat_send(void) {
     net_chat_trim(chat_visible_limit());
 }
 
-static const char *chat_sticker_tex(const char *msg) {
-    const char *n = "";
-    if (str_starts_with(msg, STICKER_CMD) == 1) {
-        n = str_sub(msg, 9, str_len(msg) - 9);
-        if (str_eq(n, STICKER_LIKE) == 1 || str_eq(n, STICKER_DISLIKE) == 1 || str_eq(n, STICKER_75) == 1) {
-            return n;
-        }
-    }
-    return "";
-}
-
 static void chat_set_open(double v) {
     chat_open = v;
-    sticker_menu_open = 0;
     keyboard_hide();
 }
 
-static void chat_send_sticker(const char *texname) {
-    net_chat_send(ds_concat(STICKER_CMD, texname));
-    ds_log("chat sticker: %s", texname);
-    chat_set_open(0);
-}
-
-static double sticker_btn_x(void) {
-    double lx = 16;
-    double lw = screen_w - 32;
-    return lx + lw - 112 - 8 - STICKER_BTN;
-}
-
-static double sticker_menu_w(void) {
-    return 12 + 3 * STICKER_TILE + 2 * 12 + 12;
-}
-
-static double sticker_menu_h(void) {
-    return 12 + STICKER_TILE + 12;
-}
-
-static double sticker_menu_x(void) {
-    double lx = 16;
-    double lw = screen_w - 32;
-    return lx + lw - sticker_menu_w();
-}
-
-static double sticker_menu_y(void) {
-    return chat_input_y() - sticker_menu_h() - 10;
-}
-
-static double sticker_tile_x(double i) {
-    return sticker_menu_x() + 12 + i * (STICKER_TILE + 12);
-}
-
-static double sticker_tile_y(void) {
-    return sticker_menu_y() + 12;
-}
-
-static const char *sticker_tex_of(double i) {
-    if (i == 0) {
-        return STICKER_LIKE;
-    }
-    if (i == 1) {
-        return STICKER_DISLIKE;
-    }
-    return STICKER_75;
-}
-
-static void draw_sticker_face(double cx, double cy) {
-    /* Clear sticker-sheet icon: white smiling sticker with a folded corner. */
-    circle(cx, cy, 15, 0xFFFFFFFF);
-    ring(cx, cy, 15, 2, 0xFF292944);
-    circle(cx - 5, cy - 4, 2.2, 0xFF292944);
-    circle(cx + 5, cy - 4, 2.2, 0xFF292944);
-    line(cx - 6, cy + 4, cx - 2, cy + 7, 2.2, 0xFF292944);
-    line(cx - 2, cy + 7, cx + 3, cy + 7, 2.2, 0xFF292944);
-    line(cx + 3, cy + 7, cx + 7, cy + 3, 2.2, 0xFF292944);
-    /* Folded lower-right sticker corner. */
-    line(cx + 8, cy + 11, cx + 14, cy + 7, 2, 0xFF292944);
-    line(cx + 8, cy + 11, cx + 13, cy + 13, 2, 0xFF292944);
-}
-
-static void draw_sticker_tile(double i) {
-    double tx = sticker_tile_x(i);
-    double ty = sticker_tile_y();
-    roundrect(tx, ty, STICKER_TILE, STICKER_TILE, 10, 0xFF3A3A58);
-    tex(tx + 8, ty + 8, sticker_tex_of(i), 0, 0.4);
+/* Стикеры из чата убраны. Сообщения «/sticker …», оставшиеся в ленте,
+ * не печатаем, чтобы не показывать игрокам служебную команду. */
+static double chat_is_sticker_msg(const char *msg) {
+    return str_starts_with(msg, "/sticker ") == 1;
 }
 
 static void chat_update(void) {
@@ -253,14 +177,10 @@ static void draw_chat(void) {
             if (yy + line_h > iy - 8) {
                 idx = total;
             } else {
-                const char *uid = net_chat_uid(idx);
-                const char *st = chat_sticker_tex(net_chat_text(idx));
-                if (str_len(st) > 0) {
-                    tex(lx + 8, yy + (line_h - 24) / 2, st, 0, 0.24);
-                } else {
-                    draw_nick_msg(uid, ds_concat(": ", chat_clean(net_chat_text(idx))), lx, yy, text_color, 0.5);
+                if (chat_is_sticker_msg(net_chat_text(idx)) == 0) {
+                    draw_nick_msg(net_chat_uid(idx), ds_concat(": ", chat_clean(net_chat_text(idx))), lx, yy, text_color, 0.5);
+                    yy = yy + line_h;
                 }
-                yy = yy + line_h;
                 idx = idx + 1;
             }
         }
@@ -280,16 +200,6 @@ static void draw_chat(void) {
     }
     button_scaled(tr_send(), lx + lw - 112, iy, 112, ih, 0.5);
     press_overlay = 0;
-    roundrect(sticker_btn_x(), iy, STICKER_BTN, ih, 10, ui_purple);
-    draw_sticker_face(sticker_btn_x() + STICKER_BTN / 2, iy + ih / 2);
-    if (sticker_menu_open == 1) {
-        roundrect(sticker_menu_x(), sticker_menu_y(), sticker_menu_w(), sticker_menu_h(), 12, card_bg);
-        double st_i = 0;
-        while (st_i < 3) {
-            draw_sticker_tile(st_i);
-            st_i = st_i + 1;
-        }
-    }
 }
 
 static double touch_chat(double x, double y, double action) {
@@ -311,29 +221,6 @@ static double touch_chat(double x, double y, double action) {
     double lw = screen_w - 32;
     double iy = chat_input_y();
     double ih = 52;
-    if (hit_round(x, y, sticker_btn_x(), iy, STICKER_BTN, ih, 10) == 1) {
-        if (sticker_menu_open == 1) {
-            sticker_menu_open = 0;
-        } else {
-            sticker_menu_open = 1;
-        }
-        return 1;
-    }
-    if (sticker_menu_open == 1) {
-        double st_i = 0;
-        while (st_i < 3) {
-            if (hit_rect(x, y, sticker_tile_x(st_i), sticker_tile_y(), STICKER_TILE, STICKER_TILE) == 1) {
-                chat_send_sticker(sticker_tex_of(st_i));
-                return 1;
-            }
-            st_i = st_i + 1;
-        }
-        if (hit_rect(x, y, sticker_menu_x(), sticker_menu_y(), sticker_menu_w(), sticker_menu_h()) == 1) {
-            return 1;
-        }
-        sticker_menu_open = 0;
-        return 1;
-    }
     if (hit_rect(x, y, lx, iy, lw - 122, ih) == 1) {
         if (keyboard_visible() == 0) {
             keyboard_show();
@@ -359,19 +246,8 @@ static double chat_button_hit(double x, double y) {
         return hit_button(x, y, chat_btn_x(), chat_btn_y(), chat_btn_w(), chat_btn_h());
     }
     if (hit_button(x, y, chat_close_x(), chat_top_y(), btn_w, btn_h) == 1 ||
-        hit_round(x, y, sticker_btn_x(), iy, STICKER_BTN, ih, 10) == 1 ||
         hit_button(x, y, lx + lw - 112, iy, 112, ih) == 1) {
         return 1;
-    }
-    if (sticker_menu_open == 1) {
-        double st_i = 0;
-        while (st_i < 3) {
-            if (hit_rect(x, y, sticker_tile_x(st_i), sticker_tile_y(), STICKER_TILE, STICKER_TILE) == 1) {
-                return 1;
-            }
-            st_i = st_i + 1;
-        }
-        return hit_rect(x, y, sticker_menu_x(), sticker_menu_y(), sticker_menu_w(), sticker_menu_h());
     }
     return 0;
 }

@@ -12,6 +12,41 @@ defaults:
     shell: bash
 
 jobs:
+  build-pc:
+    name: Build Windows .exe (PC version)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Zig ships its own Win32 headers and C runtime glue: no MSVC, no
+      # Windows SDK, and the exe builds on Linux.
+      - name: Install Zig
+        run: pip install ziglang
+
+      - name: Build CubeBattle4.exe
+        run: python3 tools/build_pc.py --windows
+
+      - name: Stage assets next to the exe
+        run: |
+          set -euo pipefail
+          mkdir -p build/pc/dist
+          cp build/pc/CubicBattle4.exe build/pc/dist/
+          cp -r build/pc/assets build/pc/dist/assets
+          test -f build/pc/dist/assets/grass.png
+          test -f build/pc/dist/assets/fonts/ComicRelief-Regular.ttf
+          test -f build/pc/dist/assets/sounds/lobbymusic.wav
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cubic-Battle-4-PC-Windows
+          path: build/pc/dist/
+          if-no-files-found: error
+
   build-android:
     name: Build Android APK (Android 8-15)
     runs-on: ubuntu-latest
@@ -61,6 +96,27 @@ jobs:
           python3 tools/test_font_memory.py
           python3 tools/test_db_rules.py
           python3 tools/test_engine_formats.py
+
+      # ПК-версия (src/platform/pc): собирается теми же game.c/рантаймом, что
+      # и APK, и прогоняется без окна: меню, бой, удар, вход в аккаунт через
+      # подставную базу по настоящему HTTP.
+      - name: Build and play the PC build headless
+        run: python3 tools/test_pc.py
+
+      # Веб-панель админа (index.html): синтаксис скриптов, наличие всех
+      # кнопок и обработчиков, схема базы против firebase.rules.json.
+      - name: Check the web admin panel
+        run: |
+          python3 tools/test_admin_panel.py
+
+      # То же, но в настоящей DOM: jsdom открывает панель против подставной
+      # базы (test/fake_firebase.py) и нажимает каждую кнопку. Именно этот
+      # прогон ловит «страница выглядит живой, но ничего не нажимается».
+      - name: Click through the web admin panel in a real DOM
+        run: |
+          cd test
+          npm ci --no-audit --no-fund
+          node test_admin_panel_dom.mjs
 
       - name: Setup Java for Android build tools
         uses: actions/setup-java@v5

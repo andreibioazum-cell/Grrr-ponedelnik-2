@@ -25,6 +25,7 @@ static void logic_init(void) {
     if (button_click_ok == 1) {
         snd_volume(BUTTON_CLICK_SOUND, 0.7);
     }
+    ability_sounds_init();
     net_set_firebase_key(FB_KEY);
     net_autologin(FIREBASE);
     progress_from_storage();

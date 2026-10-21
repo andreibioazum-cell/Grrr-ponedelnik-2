@@ -49,16 +49,10 @@ struct Enemy {
     double poison_tick;
     double poison_damage;
     double stun;
-    double spawn_t;
-    double wobble;
-    double wobble_t;
     double react;
     double speed_var;
-    double miss_t;
-    double dodge_fail;
     double aim_err;
     double hesit;
-    double feint;
 };
 struct Punch {
     double x;

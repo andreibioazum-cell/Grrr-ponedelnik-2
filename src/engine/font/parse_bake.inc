@@ -1,5 +1,8 @@
 #include <limits.h>
+#ifndef DS_FONT_TYPEDEF
+#define DS_FONT_TYPEDEF
 typedef struct DSFont DSFont;
+#endif
 void ds_font_destroy(DSFont *font);
 #define DS_FONT_ATLAS_W 1024
 #define DS_FONT_ATLAS_H 2048

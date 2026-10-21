@@ -12,9 +12,6 @@
 #define LIVE_FLAG_POLL_MS 3000
 #define LIVE_FLAG_TTL_MS 30000
 #define LIVE_FLAG_FETCH_TIMEOUT_MS 10000
-/* Kept for the old Azum-only callers/tests. */
-#define AZUM_BUFF_POLL_MS LIVE_FLAG_POLL_MS
-#define AZUM_BUFF_TTL_MS LIVE_FLAG_TTL_MS
 
 typedef struct {
     const char *path;

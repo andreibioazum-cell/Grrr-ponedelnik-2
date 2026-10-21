@@ -26,7 +26,6 @@ typedef struct {
 
 static SndSound snd_sounds[SND_MAX_SOUNDS];
 static SndVoice snd_voices[SND_VOICES];
-static int snd_sounds_loaded = 0;
 
 #include <pthread.h>
 static pthread_mutex_t snd_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -37,7 +36,7 @@ static void snd_lock_drop(void) {
     pthread_mutex_unlock(&snd_lock);
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(CB_PC)
 static AAssetManager *snd_amgr = NULL;
 #endif
 
@@ -303,7 +302,6 @@ int snd_load(const char *name) {
     snd_sounds[slot].frames = frames;
     snd_sounds[slot].src_rate = rate > 0 ? rate : SND_RATE;
     snd_sounds[slot].volume = 1.0;
-    snd_sounds_loaded = 1;
     snd_lock_drop();
     return 1;
 }

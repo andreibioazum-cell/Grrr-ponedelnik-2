@@ -9,6 +9,7 @@ static void start_punch_now(void) {
     punch_left = punch_time;
     punch_cd = punch_cooldown;
     queued_punch = 0;
+    punch_snd();
 }
 
 static double station_boom_visual_busy(void) {
@@ -89,6 +90,7 @@ static void start_dash_now(void) {
     dash_cd = azum_dash_cd;
     dash_seq = dash_seq + 1;
     dash_pub = 0;
+    dash_snd();
     queued_super = 0;
     punch->active = 0;
     punch->hit = 0;
@@ -150,7 +152,9 @@ static void fire_super(void) {
         }
         queued_super = 0;
         codecracker_super_t = codecracker_super_time;
-        super_cd = codecracker_super_cd_for(player_level);
+        ability_snd(OVERCLOCK_SOUND);
+        /* Кулдаун здесь НЕ стартует: он начнётся, когда рывок (оверклок)
+         * закончится — см. codecracker_tick_super_timer(). */
         return;
     }
     if (player_class != 2 && player_class != 3) {
@@ -174,6 +178,7 @@ static void fire_super(void) {
     punch_left = punch_time;
     punch->active = 0;
     punch->hit = 0;
+    ability_snd(player_class == CLASS_SANTA ? GIFT_SOUND : STATION_SOUND);
     if (player_class == CLASS_EBUC) {
         super_cd = ebuc_station_cd;
     } else {

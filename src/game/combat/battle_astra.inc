@@ -118,6 +118,7 @@ static void start_grab_now(void) {
      * the body then glides onto that origin while the hitbox and published zone
      * are already there. */
     astra_ability_lunge_start();
+    ability_snd(GRAB_SOUND);
     astra_state = 1;
     astra_t = 0;
     astra_hits_done = 0;

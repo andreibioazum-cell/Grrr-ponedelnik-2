@@ -17,3 +17,14 @@ progress.dat
 achievements.dat
 bans.dat
 settings.dat
+
+## Веб-панель: зависимости jsdom-проверок (test/package.json)
+node_modules/
+package-lock.json
+!test/package-lock.json
+
+## ПК-версия: собранные бинарники и скриншоты харнесса
+*.exe
+cb4_shot.bmp
+cb4.log
+cb4_data/

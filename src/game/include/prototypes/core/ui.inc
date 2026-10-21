@@ -19,6 +19,7 @@ static void button_fixed(const char *label, double x, double y, double w, double
 static void button_scaled(const char *label, double x, double y, double w, double h, double scale);
 static void button_scaled_color(const char *label, double x, double y, double w, double h, double scale, uint32_t color);
 static void button_disabled_scaled(const char *label, double x, double y, double w, double h, double scale);
+static void button_scaled_face(const char *label, double x, double y, double w, double h, double scale, uint32_t face);
 static void roundrect_outline(double x, double y, double w, double h, double rad, double t, uint32_t c);
 static void outline_arc(double cx, double cy, double rr, double t, uint32_t c, double mx, double my);
 static void draw_back(void);
