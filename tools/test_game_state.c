@@ -1603,14 +1603,14 @@ static void test_azum_buff(void) {
     player->hp = player->max_hp / 2;
     stub_azum_buff = 1;
     update_azum_buff();
-    assert(fabs(player->max_hp - azum_hp * 1.10) < 1e-9);
+    assert(fabs(player->max_hp - azum_hp * 1.10 * round_hp_mult()) < 1e-9);
     assert(fabs(player->hp / player->max_hp - 0.5) < 1e-9);
-    assert(fabs(enemy->max_hp - azum_hp * 1.10) < 1e-9);
+    assert(fabs(enemy->max_hp - azum_hp * 1.10 * round_hp_mult()) < 1e-9);
     assert(fabs(enemy->hp / enemy->max_hp - 0.5) < 1e-9);
     assert(fabs(class_punch_damage_for(CLASS_AZUM, 0) - punch_damage * 1.10) < 1e-9);
     assert(fabs(azum_dash_damage_for() - azum_dash_damage * 1.10) < 1e-9);
     assert(fabs(enemy_azum_dash_damage_for() - enemy_dash_damage * 1.10) < 1e-9);
-    assert(player_max_hp_for(CLASS_ORDINARY) == 20);
+    assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult());
     assert(class_punch_damage_for(CLASS_SANTA, 0) == santa_damage);
     assert(strcmp(tr_class_azum(), "@z&m") == 0);
     assert(strcmp(tr_class_azum_desc(), "Суббота-17") == 0);
@@ -1628,8 +1628,8 @@ static void test_azum_buff(void) {
     assert(azum_revived == 2 && enemy_revived == 2);
     stub_azum_buff = 0;
     update_azum_buff();
-    assert(fabs(player->max_hp - azum_hp) < 1e-9);
-    assert(fabs(enemy->max_hp - azum_hp) < 1e-9);
+    assert(fabs(player->max_hp - azum_hp * round_hp_mult()) < 1e-9);
+    assert(fabs(enemy->max_hp - azum_hp * round_hp_mult()) < 1e-9);
     assert(strcmp(tr_class_azum(), "Azum") == 0);
     assert(strcmp(tr_class_azum_desc(), "Lived once, buried twice...") == 0);
     assert(class_punch_damage_for(CLASS_AZUM, 0) == punch_damage);
@@ -1902,7 +1902,7 @@ static void test_battle_events(void) {
 
     /* Азум: на 2% меньше HP (13 -> 12.74). */
     assert(fabs(azum_hp - 12.74) < 1e-9);
-    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74) < 1e-9);
+    assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74 * round_hp_mult()) < 1e-9);
 
     /* Команды админа выбирают три РАЗНЫХ ивента. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
@@ -2247,7 +2247,10 @@ int main(void) {
     state_ready = 1;
     assert(player && enemy && punch && gift && enemy_gift);
     assert(ST_LOBBY == 0 && ST_SOLO == 1 && ST_ONLINE == 5);
-    assert(player->hp == 20 && enemy->hp == 20);
+    /* fighters are born with the bare placeholder pool; reset_battle applies
+     * the class pool and the round multiplier before any fight starts. */
+    assert(player->hp == class_base_hp_for(CLASS_ORDINARY) &&
+           enemy->hp == class_base_hp_for(CLASS_ORDINARY));
     assert(class_level_tbl && remote_punches && plates_candies && flake_cache);
 
     /* The game starts in Russian when the phone language is unknown (168-FZ). */
@@ -2283,12 +2286,13 @@ int main(void) {
     assert(strcmp(fighter_sprite(CLASS_ORDINARY, 1, SKIN_NORMAL), PUNCH_TEX) == 0);
     assert(strcmp(fighter_sprite(CLASS_ASTRA, 0, SKIN_NORMAL), ORDINARY_TEX) == 0);
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
-    assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp);
+    assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp * round_hp_mult());
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
      * astra 18, ebuc 24) and the ability numbers scaled with them, while the
      * basic attacks kept their old damage - that is what makes fights last.
      * Azum then got a 2% nerf: 13 -> 12.74. */
-    assert(player_max_hp_for(CLASS_ORDINARY) == 20 && player_max_hp_for(CLASS_SANTA) == 20);
+    assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult() &&
+           player_max_hp_for(CLASS_SANTA) == 20 * round_hp_mult());
     assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
     assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
     assert(ebuc_universe_damage >= ebuc_hp);
@@ -2867,20 +2871,20 @@ int main(void) {
     assert(class_skin_of(CLASS_ASTRA) == SKIN_NORMAL && current_skin() == SKIN_NORMAL);
     assert(class_owned_of(CLASS_ASTRA) == 1 && class_visible(CLASS_ASTRA) == 1);
     assert(strcmp(class_name_of(CLASS_ASTRA), tr_class_astra()) == 0);
-    assert(fabs(astra_ability_max_hp_for(CLASS_ASTRA, 1) - astra_hp * 0.95) < 1e-9);
-    assert(astra_ability_max_hp_for(CLASS_ASTRA, 1) < astra_hp);
-    assert(astra_ability_max_hp_for(CLASS_AZUM, 1) == azum_hp);
+    assert(fabs(astra_ability_max_hp_for(CLASS_ASTRA, 1) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
+    assert(astra_ability_max_hp_for(CLASS_ASTRA, 1) < astra_hp * round_hp_mult());
+    assert(astra_ability_max_hp_for(CLASS_AZUM, 1) == azum_hp * round_hp_mult());
     assert(fabs(astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1) - punch_damage * 0.93) < 1e-9);
     assert(astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1) <
            astra_ability_punch_damage_for(CLASS_ASTRA, 0, 0));
     assert(fabs(astra_ability_punch_damage_net(CLASS_ASTRA, 0, SKIN_NORMAL) -
                 astra_ability_punch_damage_for(CLASS_ASTRA, 0, 1)) < 1e-9);
-    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95) < 1e-9);
+    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
     assert(fabs(class_power_of(CLASS_ASTRA) - punch_damage * 0.93) < 1e-9);
     classes_scroll = 0;
     codecracker_refresh();
     assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
-    assert(player_max_hp_for(CLASS_CODECRACKER) == 12 && codecracker_hp == 12);
+    assert(player_max_hp_for(CLASS_CODECRACKER) == 12 * round_hp_mult() && codecracker_hp == 12);
     assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.529);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
     /* The overclock recharges in 4 seconds. */
@@ -3220,7 +3224,7 @@ int main(void) {
     pick_skin(SKIN_SPECIAL);
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
     assert(strcmp(class_card_tex(CLASS_ORDINARY, SKIN_NORMAL), ORDINARY_CARD_TEX) == 0);
-    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95) < 1e-9);
+    assert(fabs(class_hp_of(CLASS_ASTRA) - astra_hp * 0.95 * round_hp_mult()) < 1e-9);
     /* The card keeps only its description; no rating graphic is drawn. */
     /* No developer account still hides only developer-only classes. */
     stub_login_nick[0] = 'x';
@@ -3368,7 +3372,7 @@ int main(void) {
     game_state = ST_ONLINE;
     cups = 999;
     game_reset();
-    assert(player->hp == 20);
+    assert(player->hp == class_base_hp_for(CLASS_ORDINARY));
     assert(game_state == ST_LOBBY);
     assert(cups == 0);
 

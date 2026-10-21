@@ -121,7 +121,12 @@ static double class_punch_damage_for(double cls, double lv) {
     return punch_damage;
 }
 
-static double player_max_hp_for(double cls) {
+/* Один множитель на все пулы здоровья (игрок, бот, сетевые бойцы): удары и
+ * способности остались прежними, а HP выросли, чтобы типичный бой длился
+ * около 45 секунд. Соотношения между классами не меняет. */
+static double round_hp_mult(void) { return 1.5; }
+
+static double class_base_hp_for(double cls) {
     if (cls == CLASS_CODECRACKER) {
         return codecracker_hp;
     }
@@ -137,6 +142,8 @@ static double player_max_hp_for(double cls) {
     /* Ordinary and Santa share the common pool. */
     return 20;
 }
+
+static double player_max_hp_for(double cls) { return class_base_hp_for(cls) * round_hp_mult(); }
 
 /* Level bonuses of CodeCracker: a track of his own, not the ordinary cube's.
  * 1 - the bite hits harder, 2 - the overclock comes back sooner,

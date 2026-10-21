@@ -9,7 +9,7 @@ static void reset_battle(void) {
     player->hp = player->max_hp;
     player->size = 25 * player_scale;
     enemy->size = 25 * enemy_scale;
-    enemy->max_hp = enemy_base_hp;
+    enemy->max_hp = enemy_base_hp * round_hp_mult();
     enemy->hp = enemy->max_hp;
     enemy->state = 0;
     enemy->state_time = 0;
