@@ -82,6 +82,7 @@ double game_pc_ult_mode(void) { return ball_mode; }
 
 double game_pc_chaos(void) { return chaos_on; }
 double game_pc_ball(void) { return ball.active; }
+double game_pc_bounces(void) { return ball.bounces; }
 double game_pc_class(void) { return player_class; }
 double game_pc_block(void) { return player_block; }
 
@@ -89,7 +90,7 @@ double game_pc_block(void) { return player_block; }
  * start a fight as a class with a super. Not owned means refused, as in the
  * menu - this is not a way to unlock anything. */
 void game_pc_pick_class(double cls) { pick_class(cls); }
-double game_pc_charge(void) { return ball.charged; }
+double game_pc_charge(void) { return ball.aim_on; }
 
 /* The consent checkbox on the login screen is part of the form: a PC player
  * clicks it like any other control. */
@@ -105,3 +106,33 @@ void game_pc_login_consent(float *x, float *y, float *size) {
 double game_pc_login_status(void) { return login_status; }
 
 const char *game_pc_login_nick(void) { return login_nick; }
+
+/* Harness only: enter a named online room the way the room screen does, so a
+ * headless run can stage a real fight between two clients. The handshake is
+ * the same one update_rooms() polls: prepare, wait for the base to accept,
+ * then hand the name over and switch screens. */
+static char pc_room_name[25];
+static double pc_room_waiting;
+
+void game_pc_join_room(const char *name, double create) {
+    double i = 0;
+    while (name[(int)i] != 0 && i < (double)(sizeof(pc_room_name) - 1)) {
+        pc_room_name[(int)i] = name[(int)i];
+        i = i + 1;
+    }
+    pc_room_name[(int)i] = 0;
+    net_room_prepare(FIREBASE, pc_room_name, "", create);
+    pc_room_waiting = 1;
+}
+
+void game_pc_room_tick(void) {
+    if (pc_room_waiting == 0) {
+        return;
+    }
+    if (net_room_prep_status() != 2) {
+        return;
+    }
+    pc_room_waiting = 0;
+    ROOM = pc_room_name;
+    start_transition(ST_ONLINE);
+}

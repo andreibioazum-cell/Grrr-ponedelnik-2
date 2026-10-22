@@ -319,7 +319,7 @@ static void touch_game(double x, double y, double action, double id) {
     if (action == 3) {
         blk_id = -1;
         player_block = 0;
-        ball_hold_release(1);
+        ball_aim_cancel();
         drop_joy();
         return;
     }
@@ -343,8 +343,24 @@ static void touch_game(double x, double y, double action, double id) {
     /* Ebuc keeps two ults and switches between them with his own button: the
      * letter on it is what the next tap throws. */
     if (game_state == ST_SOLO && player_class == CLASS_EBUC && action == 0 && ult_mode_hit(x, y) == 1) {
+        ball_aim_cancel();
         ult_mode_toggle();
         return;
+    }
+    /* Aiming the brick: the finger that tapped the pad may drag anywhere on
+     * the arena, and the throw follows it. Lifting the finger keeps the aim,
+     * the countdown runs to zero on its own. */
+    if (ball.aim_on == 1 && id == ball.aim_id) {
+        if (action == 2) {
+            ball_aim_point(x, y);
+            return;
+        }
+        if (action == 1 || action == 3) {
+            if (action == 3) {
+                ball_aim_cancel();
+            }
+            return;
+        }
     }
     /* The three combat buttons sit close together, so the nearest one wins the
      * press. Punch and super go off the moment the finger lands - a hit that
@@ -362,10 +378,9 @@ static void touch_game(double x, double y, double action, double id) {
         if (action == 0 && db <= pr && db <= dp && db <= dsu) {
             blk_id = id;
             player_block = 1;
-            /* A guard and a charge do not mix: letting go of the pad while the
-             * guard is up would swallow the ult, so the hold is dropped here
-             * with no charge and no cooldown. */
-            ball_hold_release(1);
+            /* A guard and a throw do not mix: the aim goes away with no
+             * countdown left behind. */
+            ball_aim_cancel();
             return;
         }
         if (id == blk_id) {
@@ -376,13 +391,12 @@ static void touch_game(double x, double y, double action, double id) {
             return;
         }
         if (class_has_super(player_class) == 1) {
-            /* The ult pad belongs to its own finger: a hold charges the ball,
-             * a quick tap still fires the ordinary super. In an online fight
-             * the super fires on the press, exactly as before. */
-            if (action == 0 && dsu <= pr && dsu <= dp && ball.hold_id == -1 && player_block == 0) {
-                /* In ball mode the pad throws the ball on the touch itself. */
+            /* The ult pad belongs to its own finger and fires on the press:
+             * nothing in the game waits for a hold. In brick mode the press
+             * only starts the countdown, and the throw comes later. */
+            if (action == 0 && dsu <= pr && dsu <= dp && player_block == 0 && ball.aim_on == 0) {
                 if (game_state == ST_SOLO && player_class == CLASS_EBUC && ball_mode == 1) {
-                    ball_tap_fire();
+                    ball_aim_start(id);
                     return;
                 }
                 if (game_state == ST_ONLINE) {
@@ -390,13 +404,7 @@ static void touch_game(double x, double y, double action, double id) {
                         fire_super();
                     }
                 } else if (game_state == ST_SOLO) {
-                    ball_hold_start(id);
-                }
-                return;
-            }
-            if (ball.hold_id != -1 && id == ball.hold_id) {
-                if (action == 1 || action == 3) {
-                    ball_hold_release(action == 3 ? 1 : 0);
+                    fire_super();
                 }
                 return;
             }

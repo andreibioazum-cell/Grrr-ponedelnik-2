@@ -5,7 +5,8 @@
 typedef struct {
     int frame;
     int kind; /* 0 touch, 1 goto, 2 type, 3 enter, 4 back, 5 dump, 6 report,
-               * 7 stick, 8 atk, 9 blk, 10 super */
+               * 7 stick, 8 atk, 9 blk, 10 super, 11 login, 12 logininfo,
+               * 13 class, 14 room */
     float x, y;
     int action, id;
     double state;
@@ -64,6 +65,24 @@ static void pc_event_parse(PcArgs *a) {
             e->kind = 2;
             e->frame = frame;
             snprintf(e->text, sizeof(e->text), "%s", colon + 1);
+        } else if (strcmp(name, "room") == 0) {
+            int frame = 0, create = 0;
+            const char *colon = strchr(rest, ':');
+            if (!colon)
+                continue;
+            frame = atoi(rest);
+            e->kind = 14;
+            e->frame = frame;
+            n = 0;
+            colon++;
+            while (colon[n] && colon[n] != ':' && n < PC_EVENT_LEN - 1) {
+                e->text[n] = colon[n];
+                n++;
+            }
+            e->text[n] = '\0';
+            if (colon[n] == ':')
+                create = atoi(colon + n + 1);
+            e->state = create;
         } else if (strcmp(name, "enter") == 0) {
             e->kind = 3;
             e->frame = atoi(rest);
@@ -142,11 +161,11 @@ static void pc_report_state(int frame) {
     double px = 0, py = 0;
     game_pc_player_xy(&px, &py);
     printf("frame %d: state=%.0f battle=%d hp=%.2f foe=%.2f finished=%.0f x=%.1f y=%.1f login=%.0f nick=%s chaos=%.0f "
-           "ball=%.0f charge=%.0f cls=%.0f block=%.0f mode=%.0f error=%d\n",
+           "ball=%.0f bounces=%.0f charge=%.0f cls=%.0f block=%.0f mode=%.0f error=%d\n",
            frame,
            game_pc_state(), game_pc_in_battle(), game_pc_player_hp(), game_pc_enemy_hp(), game_pc_finished(), px, py,
            game_pc_login_status(), game_pc_login_nick()[0] ? game_pc_login_nick() : "-", game_pc_chaos(),
-           game_pc_ball(), game_pc_charge(), game_pc_class(), game_pc_block(), game_pc_ult_mode(),
+           game_pc_ball(), game_pc_bounces(), game_pc_charge(), game_pc_class(), game_pc_block(), game_pc_ult_mode(),
            ds_game_has_error() ? 1 : 0);
     fflush(stdout);
 }
@@ -204,6 +223,9 @@ static void pc_apply_event(PcEvent *e, int frame) {
         break;
     case 6:
         pc_report_state(frame);
+        break;
+    case 14:
+        game_pc_join_room(e->text, e->state);
         break;
     case 7:
         pc_ctl_stick(e->x, e->y);
@@ -327,6 +349,7 @@ static int pc_run_headless(PcArgs *args) {
             if (pc_events[i].frame == frame)
                 pc_apply_event(&pc_events[i], frame);
         pc_login_retry_tick(frame);
+        game_pc_room_tick();
         (void)pc_step();
         if (ds_game_has_error())
             failed = 1;

@@ -293,6 +293,8 @@ static void draw_pad(double cx, double cy, double r, uint32_t col, const char *l
 
 static void draw_controls(void) {
     ring(joy.x, joy.y, joy.r, 4, 0x000000);
+    /* The brick countdown belongs to the interface, above the fight. */
+    draw_ball_count();
     circle(joy.x + joy.ox, joy.y + joy.oy, 34, 0x000000);
         /* All three battle buttons are the same size and much bigger than before:
          * block is no smaller than punch and super. */

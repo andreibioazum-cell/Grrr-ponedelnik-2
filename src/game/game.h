@@ -42,9 +42,14 @@ double game_pc_finished(void);
 double game_pc_chaos(void);
 double game_pc_ult_mode(void);
 double game_pc_ball(void);
+double game_pc_bounces(void);
 double game_pc_class(void);
 double game_pc_block(void);
 void game_pc_pick_class(double cls);
+/* Harness only: join or create a named online room, so two headless clients
+ * can meet in a real fight. game_pc_room_tick() finishes the handshake. */
+void game_pc_join_room(const char *name, double create);
+void game_pc_room_tick(void);
 double game_pc_charge(void);
 #endif
 

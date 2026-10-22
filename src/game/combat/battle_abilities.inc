@@ -342,7 +342,7 @@ static void update_game(void) {
     tick_candies();
     follow_punch();
     chaos_tick();
-    ball_hold_tick();
+    ball_aim_tick();
     ball_tick();
     ball_fade_tick();
     super_cd = tick_down(super_cd);

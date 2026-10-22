@@ -1,16 +1,18 @@
-/* Charged ult: hold the ult pad for 0.6 s and the super turns into a bouncing
- * ball with a particle trail instead of the usual ability.
+/* Ebuc has two ults and a small button above the pad to pick one: the letter
+ * says what the next tap throws - "Д" for the dispenser, "Ш" for the brick.
  *
- * The ball flies from the player towards the enemy, bounces off the arena
- * walls and keeps going until it touches the enemy. Ten bounces is the limit:
- * after that it just bursts without doing any damage. A quick tap still fires
- * the normal super - only a real hold swaps it.
+ * The brick is aimed by hand. Tapping the pad starts a 3-2-1 countdown above
+ * the cube, and while it runs a finger dragged anywhere on the arena points
+ * the throw; the brick leaves in that direction when the count hits zero and
+ * bounces off the walls. Ten bounces is the limit: after that it just bursts
+ * without doing any damage. Lifting the finger early is fine - the last
+ * direction stays.
  *
- * Solo only: an online fight keeps the plain super on tap, because the ball
- * would have to be synced to the other players and that is not worth it for a
- * joke that fits a single-player fight. */
+ * Ebuc only: every other class taps the pad and gets its usual super, and
+ * nothing in the game charges by holding. */
 
-#define BALL_HOLD_TIME 0.6     /* how long the pad must be held, seconds */
+#define BALL_COUNT_FROM 3.0      /* countdown digits: 3, 2, 1 */
+#define BALL_COUNT_STEP 0.7      /* seconds per digit */
 #define BALL_SPEED 620.0       /* px per second */
 #define BALL_RADIUS 24.0
 #define BALL_DAMAGE 6.0
@@ -22,7 +24,8 @@ typedef struct {
     double active;
     double x, y, vx, vy;
     double bounces, t;
-    double hold_id, hold_t, charged;
+    /* Aiming: the countdown runs in aim_t, the throw follows aim_dx/aim_dy. */
+    double aim_on, aim_id, aim_t, aim_dx, aim_dy;
     double trail_x[BALL_TRAIL], trail_y[BALL_TRAIL], trail_a[BALL_TRAIL];
 } UltBall;
 
@@ -78,9 +81,11 @@ static void ball_reset(void) {
     ball.vy = 0;
     ball.bounces = 0;
     ball.t = 0;
-    ball.hold_id = -1;
-    ball.hold_t = 0;
-    ball.charged = 0;
+    ball.aim_on = 0;
+    ball.aim_id = -1;
+    ball.aim_t = 0;
+    ball.aim_dx = 1;
+    ball.aim_dy = 0;
     ball_mode = 0;
     while (i < BALL_TRAIL) {
         ball.trail_a[(int)i] = 0;
@@ -103,82 +108,91 @@ static void ball_trail_push(double x, double y) {
     ball.trail_a[0] = 1;
 }
 
-/* The pad was pressed: start counting the hold. A second finger on the pad
- * while one is already holding it is ignored. */
-static void ball_hold_start(double id) {
-    if (ball.hold_id != -1) {
+/* The pad was pressed in brick mode: start the countdown. The finger that
+ * started it owns the aim, so a second finger cannot drag the throw away. */
+static void ball_aim_start(double id) {
+    if (ball.aim_on == 1 || ball.active == 1) {
         return;
     }
-    ball.hold_id = id;
-    ball.hold_t = 0;
-    ball.charged = 0;
+    if (finished != 0 || player_block == 1 || player_grabbed() == 1) {
+        return;
+    }
+    if (player_stun > 0 || player_freeze > 0 || super_cd > 0) {
+        return;
+    }
+    ball.aim_on = 1;
+    ball.aim_id = id;
+    ball.aim_t = BALL_COUNT_FROM * BALL_COUNT_STEP;
+    ball.aim_dx = cos(player->angle);
+    ball.aim_dy = sin(player->angle);
 }
 
-/* Held long enough: the ult is now the ball. Shown by the pad ring. */
-static void ball_hold_tick(void) {
-    if (ball.hold_id == -1) {
-        return;
+/* The digit the countdown shows right now: 3, 2 or 1. */
+static double ball_aim_digit(void) {
+    double d = ceil(ball.aim_t / BALL_COUNT_STEP);
+    if (d < 1) {
+        d = 1;
     }
-    ball.hold_t = ball.hold_t + dt;
-    if (ball.hold_t >= BALL_HOLD_TIME) {
-        ball.charged = 1;
+    if (d > BALL_COUNT_FROM) {
+        d = BALL_COUNT_FROM;
     }
+    return d;
 }
 
-/* Finger up: fire whatever was charged. Cancelled means the gesture was taken
- * away (a call came in, the app went away) - then nothing fires. */
-static void ball_hold_release(double cancelled) {
-    if (ball.hold_id == -1) {
+/* The finger moved: the brick goes where it points, from the cube outwards.
+ * A touch right on the cube means nothing yet, so the old aim stays. */
+static void ball_aim_point(double x, double y) {
+    double dx = x - player->x;
+    double dy = y - player->y;
+    double len = sqrt(dx * dx + dy * dy);
+    if (ball.aim_on == 0 || len < 14) {
         return;
     }
-    double charged = ball.charged;
-    ball.hold_id = -1;
-    ball.hold_t = 0;
-    ball.charged = 0;
-    if (cancelled == 1) {
-        return;
-    }
-    if (charged == 1 && game_state == ST_SOLO) {
-        ball_fire();
-        return;
-    }
-    fire_super();
+    ball.aim_dx = dx / len;
+    ball.aim_dy = dy / len;
 }
 
-/* The ball mode of Ebuc is a plain ult: one tap, no holding. */
-static void ball_tap_fire(void) {
-    if (ball_mode != 1) {
+static void ball_aim_cancel(void) {
+    ball.aim_on = 0;
+    ball.aim_id = -1;
+    ball.aim_t = 0;
+}
+
+/* The countdown is over: the brick is thrown. Lifting the finger early does
+ * not stop it, the aim is already chosen. */
+static void ball_aim_tick(void) {
+    if (ball.aim_on == 0) {
         return;
     }
+    if (finished != 0 || player_block == 1 || player_grabbed() == 1 || player_stun > 0 || player_freeze > 0) {
+        ball_aim_cancel();
+        return;
+    }
+    ball.aim_t = ball.aim_t - dt;
+    if (ball.aim_t > 0) {
+        return;
+    }
+    ball_aim_cancel();
     ball_fire();
 }
 
 static void ball_fire(void) {
-    double dx, dy, len;
     if (finished != 0 || ball.active == 1 || player_block == 1 || player_grabbed() == 1) {
         return;
     }
     if (player_stun > 0 || player_freeze > 0 || super_cd > 0) {
         return;
     }
-    dx = enemy->x - player->x;
-    dy = enemy->y - player->y;
-    len = sqrt(dx * dx + dy * dy);
-    if (len < 1) {
-        dx = cos(player->angle);
-        dy = sin(player->angle);
-        len = 1;
-    }
     ball.x = player->x;
     ball.y = player->y;
-    ball.vx = dx / len * BALL_SPEED;
-    ball.vy = dy / len * BALL_SPEED;
+    ball.vx = ball.aim_dx * BALL_SPEED;
+    ball.vy = ball.aim_dy * BALL_SPEED;
     ball.bounces = 0;
     ball.t = 0;
     ball.active = 1;
     super_cd = super_cd_time;
     ability_snd(STATION_SOUND);
-    ds_log("charged ult: ball away");
+    ds_log("brick thrown");
 }
 
 static void ball_burst(double damage) {
@@ -240,18 +254,45 @@ static void ball_tick(void) {
     ball_trail_push(ball.x, ball.y);
 }
 
+/* Aim preview: a dashed line from the cube the way the brick will go, and the
+ * countdown digit over the head. */
+static void draw_ball_aim(void) {
+    double i = 1;
+    double len = punch_reach * 2.4;
+    if (ball.aim_on == 0) {
+        return;
+    }
+    while (i <= 5) {
+        double k = i / 6;
+        circle(player->x + ball.aim_dx * len * k, player->y + ball.aim_dy * len * k, 3 + 4 * (1 - k),
+               ((unsigned)(int)(150 + 90 * k) << 24) | 0x00FFD54F);
+        i = i + 1;
+    }
+}
+
+/* The digit of the countdown, drawn with the pads: the fight itself is drawn
+ * under the colour correction, and a 3 lost under it is not a warning. */
+static void draw_ball_count(void) {
+    const char *digit;
+    double d = ball_aim_digit();
+    double sc = 1.7;
+    if (ball.aim_on == 0) {
+        return;
+    }
+    digit = d > 2 ? "3" : (d > 1 ? "2" : "1");
+    text_scaled(digit, player->x - text_ink_width(digit) * sc / 2, player->y - 118,
+                (unsigned)0xFFFFD54F, sc);
+}
+
 static void draw_ball(void) {
     double i = 0;
     double a;
     draw_ult_mode();
-    if (ball.hold_id != -1) {
-        /* The pad shows the charge: a ring grows around it while held. */
-        double k = clamp(ball.hold_t / BALL_HOLD_TIME, 0, 1);
-        double r = battle_pad_r() * (1.05 + 0.35 * k);
-        ring(atk2_x, atk2_y, r, 5, ball.charged == 1 ? 0xFFFFD54F : 0x99FFD54F);
-        if (ball.charged == 1) {
-            circle(atk2_x, atk2_y, battle_pad_r() * 1.02, 0x33FFD54F);
-        }
+    draw_ball_aim();
+    if (ball.aim_on == 1) {
+        /* The pad is armed: the countdown is running and the aim can be pulled
+         * around with the same finger. */
+        ring(atk2_x, atk2_y, battle_pad_r() + 9, 5, 0xFFFFD54F);
     }
     while (i < BALL_TRAIL) {
         if (ball.trail_a[(int)i] > 0) {
