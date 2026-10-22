@@ -6,7 +6,8 @@ game with fixed frames: the warning screen -> lobby -> Play -> Solo -> battle, t
 stick and a punch through the same layer the PC keyboard uses. A separate run
 checks signing in against the fake database in test/fake_firebase.py over real
 HTTP (the only way to see the whole network path: WinHTTP cannot run in the
-sandbox, and the POSIX transport in the harness behaves like it).
+sandbox, and the POSIX transport in the harness behaves like it), and the joke
+HitboxChaos flag set from the admin panel.
 
 Run: python3 tools/test_pc.py            (needs gcc + g++)
      python3 tools/test_pc.py --no-build (harness already built)
@@ -15,6 +16,7 @@ Run: python3 tools/test_pc.py            (needs gcc + g++)
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import socket
@@ -22,6 +24,7 @@ import struct
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -267,6 +270,92 @@ def test_walk_feel(assets: Path) -> None:
           abs(x(660) - x(stop)) < 0.01, f"{x(stop):.2f} -> {x(660):.2f}")
 
 
+def fake_request(path: str, body: bytes | None = None, method: str = "GET") -> bytes:
+    url = f"http://127.0.0.1:{FAKE_PORT}{path}"
+    request = urllib.request.Request(url, body, {"Content-Type": "application/json"}, method=method)
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return response.read()
+
+
+def set_chaos_flag(value: int) -> None:
+    """Writes /HitboxChaos the way the admin panel does: as a signed-in admin."""
+    login = json.dumps({"email": "dimasi4ek229@cb4.game", "password": "admin|cb4v1"}).encode()
+    token = json.loads(fake_request("/v1/accounts:signInWithPassword?key=K", login, "POST"))["idToken"]
+    fake_request(f"/HitboxChaos.json?auth={token}", str(value).encode(), "PUT")
+
+
+def test_chaos(assets: Path) -> None:
+    """The masterpiece hitboxes from the panel: the flag reaches the game and the
+    punch stops landing.
+
+    The flag lives in the database root, so it is set through the fake database
+    over HTTP. The same punch is thrown twice, once with the flag off and once
+    with it on: with the flag on the hitbox turns away from the enemy and runs,
+    so the enemy keeps its health, while the enemy still hits the player back.
+    """
+    print("\n== 3d. Masterpiece hitboxes from the panel ==")
+    fake = None
+    own = not wait_port(FAKE_PORT, timeout=0.3)
+    if own:
+        fake = subprocess.Popen(
+            [sys.executable, "test/fake_firebase.py", str(FAKE_PORT)],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    try:
+        if not wait_port(FAKE_PORT):
+            check("подставная база поднялась", False)
+            return
+
+        def swing(flag: int) -> dict[int, dict[str, str]]:
+            set_chaos_flag(flag)
+            result = harness(
+                assets,
+                SCRATCH / f"chaos{flag}",
+                [
+                    "--frames", "700",
+                    "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+                    "--touch", "400:270:336:0", "--touch", "403:270:336:1",
+                    "--touch", "460:270:404:0", "--touch", "463:270:404:1",
+                    "--report", "590",
+                    "--stick", "600:0:-1",
+                    "--atk", "620:1", "--atk", "640:0",
+                    "--report", "650",
+                ],
+            )
+            return parse_reports(result.stdout)
+
+        normal = swing(0)
+        joke = swing(1)
+        before, after = joke.get(590, {}), joke.get(650, {})
+        check("флаг HitboxChaos дошёл до игры", after.get("chaos") == "1", str(after))
+        check(
+            "с флагом удар улетает мимо врага",
+            float(after.get("foe", "nan")) == float(before.get("foe", "nan")),
+            f"до удара {before.get('foe')}, после {after.get('foe')}",
+        )
+        check(
+            "без флага тот же удар попадает",
+            float(normal.get(650, {}).get("foe", "nan")) < float(normal.get(590, {}).get("foe", "nan")),
+            f"до удара {normal.get(590, {}).get('foe')}, после {normal.get(650, {}).get('foe')}",
+        )
+        check(
+            "шедевро-режим не отключает врага",
+            float(after.get("hp", "nan")) < float(before.get("hp", "nan")),
+            f"{before.get('hp')} -> {after.get('hp')}",
+        )
+        check("в шедевро-режиме нет ошибок", after.get("error") == "0", str(after))
+    finally:
+        try:
+            set_chaos_flag(0)
+        except OSError:
+            pass
+        if own and fake:
+            fake.terminate()
+            fake.wait(timeout=5)
+
+
 def wait_port(port: int, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -352,6 +441,7 @@ def main() -> int:
     test_menu_and_battle(assets)
     test_controls(assets)
     test_walk_feel(assets)
+    test_chaos(assets)
     test_login(assets)
 
     print()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Host tests for the live Firebase flags (AzumBuff, FlashSale), without
-Firebase access or real threads."""
+"""Host tests for the live Firebase flags (AzumBuff, FlashSale, HitboxChaos),
+without Firebase access or real threads."""
 import os
 from pathlib import Path
 import subprocess
@@ -22,15 +22,15 @@ typedef int DSThread;
 #define NET_FIREBASE_URL "https://test.invalid"
 static long long clock_ms = 100;
 static int thread_ok = 1, reads;
-static int azum_code = 200, sale_code = 200;
-static const char *azum_response = "1", *sale_response = "0";
-static void *(*pending[2])(void *);
-static void *pending_arg[2];
+static int azum_code = 200, sale_code = 200, chaos_code = 200;
+static const char *azum_response = "1", *sale_response = "0", *chaos_response = "0";
+static void *(*pending[3])(void *);
+static void *pending_arg[3];
 static int pending_n;
 static long long now_ms(void) { return clock_ms; }
 static DSThread ds_thread_start(void *(*fn)(void *), void *arg) {
     if (!thread_ok) return 0;
-    assert(pending_n < 2);
+    assert(pending_n < 3);
     pending[pending_n] = fn;
     pending_arg[pending_n] = arg;
     pending_n++;
@@ -45,18 +45,25 @@ static int fb_http(const char *method, const char *url, const char *body, char *
         snprintf(out, cap, "%s", azum_response);
         return azum_code;
     }
-    assert(strcmp(url, NET_FIREBASE_URL "/FlashSale.json") == 0);
-    snprintf(out, cap, "%s", sale_response);
-    return sale_code;
+    if (strcmp(url, NET_FIREBASE_URL "/FlashSale.json") == 0) {
+        snprintf(out, cap, "%s", sale_response);
+        return sale_code;
+    }
+    assert(strcmp(url, NET_FIREBASE_URL "/HitboxChaos.json") == 0);
+    snprintf(out, cap, "%s", chaos_response);
+    return chaos_code;
 }
 #include "engine/network/live_flags.inc"
 static void complete_all(void) {
     while (pending_n) {
         void *(*fn)(void *) = pending[0];
         void *arg = pending_arg[0];
+        int i;
         pending_n--;
-        pending[0] = pending[1];
-        pending_arg[0] = pending_arg[1];
+        for (i = 0; i < pending_n; i++) {
+            pending[i] = pending[i + 1];
+            pending_arg[i] = pending_arg[i + 1];
+        }
         fn(arg);
     }
 }
@@ -112,10 +119,22 @@ int main(void) {
     /* The flag simply follows the node; there is no account state that
      * could keep it off for one player and on for another. */
     assert(net_azum_buff() == 1);
+    /* HitboxChaos - the joke flag the admin panel sets - reads exactly like
+     * the other two. */
+    chaos_response = "1";
+    clock_ms += LIVE_FLAG_POLL_MS;
+    assert(net_hitbox_chaos() == 0);
+    complete_all();
+    assert(net_hitbox_chaos() == 1);
+    chaos_response = "0";
+    clock_ms += LIVE_FLAG_POLL_MS;
+    assert(net_hitbox_chaos() == 1); /* the old value lives until the reply */
+    complete_all();
+    assert(net_hitbox_chaos() == 0);
     thread_ok = 0;
     clock_ms += LIVE_FLAG_POLL_MS;
     assert(net_azum_buff() == 0 && !pending_n);
-    puts("live flags: async polling, exact values, errors, expiry, account-free, shop refresh OK");
+    puts("live flags: async polling, exact values, errors, expiry, account-free, shop refresh, chaos OK");
 }
 '''
 

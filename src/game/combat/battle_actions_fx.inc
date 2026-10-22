@@ -9,6 +9,7 @@ static void start_punch_now(void) {
     punch_left = punch_time;
     punch_cd = punch_cooldown;
     queued_punch = 0;
+    chaos_punch_escape();
     punch_snd();
 }
 

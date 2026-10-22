@@ -385,6 +385,7 @@ static void draw_game(void) {
     draw_enemy_boom();
     draw_universe();
     draw_enemy_turrets();
+    chaos_draw();
     draw_codecracker_fx_local();
     draw_player_body_layer();
     draw_status_aura(player->x, player->y, player->size, freeze_rgb, freeze_rim, pfreeze_a);

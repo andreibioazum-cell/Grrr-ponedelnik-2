@@ -39,6 +39,7 @@ double game_pc_login_status(void);
 const char *game_pc_login_nick(void);
 double game_pc_enemy_hp(void);
 double game_pc_finished(void);
+double game_pc_chaos(void);
 #endif
 
 #endif

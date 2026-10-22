@@ -78,6 +78,7 @@ void game_pc_player_xy(double *x, double *y) {
 double game_pc_enemy_hp(void) { return enemy ? enemy->hp : 0.0; }
 
 double game_pc_finished(void) { return finished; }
+double game_pc_chaos(void) { return chaos_on; }
 
 /* The consent checkbox on the login screen is part of the form: a PC player
  * clicks it like any other control. */

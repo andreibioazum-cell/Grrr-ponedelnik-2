@@ -26,10 +26,12 @@ From Firebase Auth:
 The access rules repeat firebase.rules.json closely enough to check the panel in
 both modes:
   * the root and "foreign" nodes are read and written by the admin only;
-  * event, banner, bans, AzumBuff, FlashSale, rooms/*/meta are admin writes;
+  * event, banner, bans, AzumBuff, FlashSale, HitboxChaos, rooms/*/meta are
+    admin writes;
   * users/<nick> - the player or the admin;
   * slots and chat - any signed-in player;
-  * AzumBuff and FlashSale are readable by all (".read": true in the rules);
+  * AzumBuff, FlashSale and HitboxChaos are readable by all (".read": true in
+    the rules);
   * no token gives 401, a token without rights gives 403 (the panel reacts to
     exactly these codes by switching to a per-node snapshot and deleting per
     child).
@@ -50,10 +52,10 @@ PANEL = os.path.join(ROOT, "index.html")
 
 ADMINS = ("dimasi4ek229@cb4.game", "qwertyuiopaj1234@cb4.game")
 SECRET = "BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc"  # из firebase.rules.json (поле "w")
-PUBLIC_ROOT = ("AzumBuff", "FlashSale")      # ".read": true в правилах
+PUBLIC_ROOT = ("AzumBuff", "FlashSale", "HitboxChaos")      # ".read": true в правилах
 GAME_ROOT = ("users", "rooms", "bans", "event", "banner")
 KNOWN_ROOT = GAME_ROOT + PUBLIC_ROOT
-ADMIN_ONLY_WRITE = ("event", "banner", "bans", "AzumBuff", "FlashSale")
+ADMIN_ONLY_WRITE = ("event", "banner", "bans", "AzumBuff", "FlashSale", "HitboxChaos")
 
 LOCK = threading.Lock()
 AUTH = {}       # email -> password
@@ -156,6 +158,7 @@ DB = {
                "color": "white"},
     "AzumBuff": 0,
     "FlashSale": 0,
+    "HitboxChaos": 0,
         # root junk: nodes the game knows nothing about
     "freeCupsHack": {"cups": 999999},
     "testtest": "junk",
