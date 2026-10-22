@@ -6,86 +6,34 @@
  * No flying foe, no phrases, no sparks. The flag is polled once a frame
  * through net_hitbox_chaos(); off means every function here returns at once. */
 
-#define CHAOS_FLEE_SPEED 640.0
-#define CHAOS_TURN_MIN 58.0
-#define CHAOS_TURN_MAX 92.0
-#define CHAOS_GHOST_SPEED 980.0
 #define CHAOS_GHOST_TIME 0.65
-#define CHAOS_FOE_SIZE 34.0
-#define CHAOS_FOE_SPEED 280.0
-#define CHAOS_SPARKS 8
-
-static const uint32_t chaos_foe_rgb[6] = {0xFFFF4081, 0xFF4FC3F7, 0xFFFFD54F,
-                                          0xFF69F0AE, 0xFFB388FF, 0xFFFF8A65};
 
 static double chaos_on;
 static double chaos_flee_t;
 static double chaos_off_x, chaos_off_y;
 static double chaos_dir_x = 1, chaos_dir_y;
 static double chaos_ghost_x, chaos_ghost_y, chaos_ghost_a;
-static double chaos_ghost_dx, chaos_ghost_dy, chaos_ghost_vx, chaos_ghost_vy;
+static double chaos_ghost_dx, chaos_ghost_dy;
 static double chaos_ghost_shot;
-static double chaos_foe_x, chaos_foe_y, chaos_foe_vx, chaos_foe_vy;
-static double chaos_foe_turn, chaos_foe_tele, chaos_foe_spin, chaos_foe_clock;
-static double chaos_foe_say_t, chaos_foe_say, chaos_foe_a;
-static double chaos_spark_x[CHAOS_SPARKS], chaos_spark_y[CHAOS_SPARKS];
-static double chaos_spark_vx[CHAOS_SPARKS], chaos_spark_vy[CHAOS_SPARKS];
-static double chaos_spark_a[CHAOS_SPARKS];
 
 static double chaos_rand(double lo, double hi) {
     return lo + (rand() % 1000) / 1000.0 * (hi - lo);
 }
 
 static void chaos_reset(void) {
-    double i = 0;
     chaos_on = 0;
     chaos_flee_t = 0;
     chaos_off_x = 0;
     chaos_off_y = 0;
     chaos_ghost_a = 0;
     chaos_ghost_shot = -1;
-    chaos_foe_x = screen_w * 0.5;
-    chaos_foe_y = screen_h * 0.3;
-    chaos_foe_vx = CHAOS_FOE_SPEED * 0.6;
-    chaos_foe_vy = CHAOS_FOE_SPEED * 0.4;
-    chaos_foe_turn = 0.4;
-    chaos_foe_tele = 4.0;
-    chaos_foe_spin = 0;
-    chaos_foe_clock = 0;
-    chaos_foe_say_t = 1.2;
-    chaos_foe_say = 0;
-    chaos_foe_a = 0;
-    while (i < CHAOS_SPARKS) {
-        chaos_spark_a[(int)i] = 0;
-        chaos_spark_x[(int)i] = 0;
-        chaos_spark_y[(int)i] = 0;
-        chaos_spark_vx[(int)i] = 0;
-        chaos_spark_vy[(int)i] = 0;
-        i = i + 1;
-    }
 }
 
 static void chaos_hide(void) {
-    double i = 0;
     chaos_flee_t = 0;
     chaos_off_x = 0;
     chaos_off_y = 0;
     chaos_ghost_a = 0;
-    chaos_foe_a = 0;
-    while (i < CHAOS_SPARKS) {
-        chaos_spark_a[(int)i] = 0;
-        i = i + 1;
-    }
-}
-
-/* Removed phrase/spark/foe visuals – they were the “flying guy + inscriptions” bug.
- * Keep stubs for compatibility. */
-static const char *chaos_phrase(double n) {
-    (void)n;
-    return "";
-}
-static void chaos_spark(double x, double y) {
-    (void)x; (void)y;
 }
 
 /* Every punch instantly teleports the hitbox to a random place, not smoothly
@@ -121,8 +69,6 @@ static void chaos_ghost_spawn(void) {
     double ang = chaos_rand(-pi, pi);
     chaos_ghost_dx = cos(ang);
     chaos_ghost_dy = sin(ang);
-    chaos_ghost_vx = 0;
-    chaos_ghost_vy = 0;
     chaos_ghost_a = 1;
 }
 
@@ -152,10 +98,6 @@ static void chaos_flee_tick(void) {
     punch->y = clamp(player->y + chaos_off_y, punch_width, screen_h - punch_width);
 }
 
-static void chaos_foe_tick(void) {
-    /* Removed: no flying foe. */
-}
-
 static void chaos_tick(void) {
     chaos_on = net_hitbox_chaos() == 1 || admin_cheat_chaos() == 1 ? 1 : 0;
     if (chaos_on == 0) {
@@ -175,9 +117,6 @@ static void chaos_draw_box(double x, double y, double dx, double dy, uint32_t co
     rect_rot(x + dx * mid - punch_reach / 2, y + dy * mid - punch_width / 2, punch_reach, punch_width,
              atan2(dy, dx), colour);
 }
-
-static void chaos_draw_sparks(void) {}
-static void chaos_draw_foe(void) {}
 
 static void chaos_draw(void) {
     if (chaos_on == 0) {
