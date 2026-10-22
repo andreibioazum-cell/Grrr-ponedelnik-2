@@ -121,11 +121,11 @@ static double class_punch_damage_for(double cls, double lv) {
     return punch_damage;
 }
 
-/* One multiplier for every health pool (player, bot, network fighters): the
- * hits are unchanged, only the pools get a small bump, so a fight lasts long
- * enough to use an ability. It does not change the ratios between classes.
- * Anything above a tenth made fights drag: 2.5 and 1.25 both did. */
-static double round_hp_mult(void) { return 1.1; }
+/* One multiplier for every health pool (player, bot, network fighters), so a
+ * round can be tuned in one place and never changes the ratios between classes.
+ * Back to 1.0: the pools are the class ones again. A bigger pool only made
+ * fights drag, so any future bump should stay a couple of percent. */
+static double round_hp_mult(void) { return 1.0; }
 
 static double class_base_hp_for(double cls) {
     if (cls == CLASS_CODECRACKER) {

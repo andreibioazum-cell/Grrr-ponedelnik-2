@@ -89,6 +89,9 @@ static void finish_game(double result) {
     enemy_super_windup = 0;
     enemy_super_kind = 0;
     enemy_grab_clear();
+    /* A brick still in the air would freeze on the result screen: the fight is
+     * over, so it bursts where it is and does nothing. */
+    ball_clear_after_finish();
     turret_heal_t = 0;
     universe_active = 0;
     keyboard_hide();

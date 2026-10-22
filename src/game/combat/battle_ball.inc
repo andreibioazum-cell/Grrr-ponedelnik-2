@@ -1,15 +1,9 @@
-/* Ebuc has two ults and a small button above the pad to pick one: the letter
- * says what the next tap throws - "Д" for the dispenser, "Ш" for the brick.
- *
- * The brick is aimed by hand. Tapping the pad starts a 3-2-1 countdown above
- * the cube, and while it runs a finger dragged anywhere on the arena points
- * the throw; the brick leaves in that direction when the count hits zero and
- * bounces off the walls. Ten bounces is the limit: after that it just bursts
- * without doing any damage. Lifting the finger early is fine - the last
- * direction stays.
- *
- * Ebuc only: every other class taps the pad and gets its usual super, and
- * nothing in the game charges by holding. */
+/* Ebuc has two ults, picked by the small button above the pad: "Д" for the
+ * dispenser, "Ш" for the brick. The brick is aimed by hand - the tap starts a
+ * 3-2-1 countdown over the cube, a dragged finger points the throw, and the
+ * brick leaves that way when the count hits zero and bounces off the walls
+ * (ten bounces, then it just bursts). Lifting the finger early keeps the aim.
+ * Ebuc only, and nothing in the game charges by holding. */
 
 #define BALL_COUNT_FROM 3.0      /* countdown digits: 3, 2, 1 */
 #define BALL_COUNT_STEP 0.7      /* seconds per digit */
@@ -264,8 +258,7 @@ static void ball_tick(void) {
     ball_trail_push(ball.x, ball.y);
 }
 
-/* Aim preview: a dashed line from the cube the way the brick will go, and the
- * countdown digit over the head. */
+/* Aim preview: a dashed line the way the brick will go. */
 static void draw_ball_aim(void) {
     double i = 1;
     double len = punch_reach * 2.4;
@@ -300,8 +293,7 @@ static void draw_ball(void) {
     draw_ult_mode();
     draw_ball_aim();
     if (ball.aim_on == 1) {
-        /* The pad is armed: the countdown is running and the aim can be pulled
-         * around with the same finger. */
+        /* Armed: the countdown runs, the finger can still pull the aim. */
         ring(atk2_x, atk2_y, battle_pad_r() + 9, 5, 0xFFFFD54F);
     }
     while (i < BALL_TRAIL) {
@@ -313,8 +305,7 @@ static void draw_ball(void) {
         i = i + 1;
     }
     if (ball.active == 1) {
-        /* A brick, not a ball: a spinning block of fired clay with a mortar
-         * line across it, so the flight reads as something thrown. */
+        /* A spinning brick: fired clay with mortar lines. */
         ring(ball.x, ball.y, BALL_RADIUS * 1.25, 4, 0xCCFFD54F);
         rect_rot(ball.x - 23, ball.y - 14, 46, 28, ball.spin, 0xFFD2703F);
         rect_rot(ball.x - 23, ball.y - 8, 46, 2, ball.spin, 0xFFFFE9CC);
@@ -439,6 +430,15 @@ static double remote_bricks_live(void) {
     return n;
 }
 #endif
+
+/* The round is over: the brick goes away and so do the ones in the air. */
+static void ball_clear_after_finish(void) {
+    ball.active = 0;
+    ball.aim_on = 0;
+    ball.aim_id = -1;
+    ball.aim_t = 0;
+    remote_bricks_reset();
+}
 
 /* Everything the brick needs per frame in an online fight: the local aim and
  * flight plus the bricks of the others. */

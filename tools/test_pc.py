@@ -696,12 +696,13 @@ def test_longer_fights(assets: Path) -> None:
         hp = float(frame.get("hp", "0"))
         foe = float(frame.get("foe", "0"))
         # Raw pools: ordinary 20, azum 12.74, santa 20, ebuc 24, astra 18,
-        # codecracker 12. The round adds a quarter of that and nothing more.
+        # codecracker 12. The pools are back to these class values.
         raw = {"0": 20.0, "1": 12.74, "2": 20.0, "3": 24.0, "4": 18.0, "6": 12.0}
         cls = frame.get("cls", "0")
         base = raw.get(cls, 20.0)
-        check("здоровья больше, чем у голого класса", hp > base, f"hp={hp}, база={base}")
-        check("и всего на десятую часть, а не в разы", abs(hp - base * 1.1) < 0.01, f"hp={hp}, база={base}")
+        check("здоровья не меньше, чем даёт класс", hp >= base, f"hp={hp}, база={base}")
+        check("ровно столько, сколько даёт класс", abs(hp - base) < 0.01, f"hp={hp}, база={base}")
+        check("и не больше прежних раздутых пулов", hp <= 25, f"hp={hp}")
         # The enemy brings the pool of its own class, so only the range is fixed.
         check("у врага свой пул, тоже умеренный", 15 < foe <= 30, f"foe={foe}")
 
