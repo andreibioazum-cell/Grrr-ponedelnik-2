@@ -22,6 +22,7 @@
 #include "ui/progress_rewards.inc"
 #include "ui/promo.inc"
 #include "ui/layout.inc"
+#include "ui/account_msg.inc"
 #include "ui/account.inc"
 #include "ui/legal.inc"
 #include "ui/chat.inc"

@@ -11,6 +11,7 @@
 #include "platform/android/network_http.inc"
 #endif
 #include "engine/network/http_json.inc"
+#include "engine/network/json_unescape.inc"
 #include "engine/network/settings_storage.inc"
 #include "engine/network/promo.inc"
 #include "engine/network/profile_apply.inc"

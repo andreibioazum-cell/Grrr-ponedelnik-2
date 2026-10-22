@@ -95,3 +95,7 @@ const char *BUK_ELF_CARD_TEX;
 const char *ASTRA_CARD_TEX;
 double astra_ability_ok;
 double ST_BPASS;
+/* Сколько кубик набирает ход и сколько тормозит: стик задаёт желаемую
+ * скорость, а тело подтягивается к ней (см. player_walk_move). */
+double walk_accel_time;
+double walk_stop_time;

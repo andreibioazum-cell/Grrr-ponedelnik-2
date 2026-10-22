@@ -413,43 +413,13 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show) {
 #else
 int main(int argc, char **argv) {
     PcArgs args;
-    int i;
     char joined[4096];
-    size_t used;
+    char dump[260];
     pc_args_default(&args);
-    snprintf(joined, sizeof(joined), "cb4_headless ");
-    used = strlen(joined);
-    for (i = 1; i < argc; i++) {
-        /* strncat counts the terminator out of its limit, so the old "- 2" left
-         * no room for the separating space and a long command line (many
-         * --touch events) ran off the end of this buffer. Arguments are only
-         * added while the whole "<arg> " pair fits. */
-        size_t need = strlen(argv[i]) + 1;
-        if (need + 1 > sizeof(joined) - used)
-            break;
-        memcpy(joined + used, argv[i], need - 1);
-        used += need - 1;
-        joined[used++] = ' ';
-        joined[used] = '\0';
-    }
+    pc_args_join(argc, argv, joined, sizeof(joined));
     pc_args_parse(joined, &args);
     if (strstr(joined, "--gfx-test")) {
-        const char *dump = "gfx_test.bmp";
-        const char *p = strstr(joined, "--dump ");
-        if (p) {
-            const char *colon = strchr(p, ':');
-            if (colon)
-                dump = colon + 1;
-            {
-                char clean[260];
-                size_t n = strcspn(dump, " \t\n");
-                if (n >= sizeof(clean))
-                    n = sizeof(clean) - 1;
-                memcpy(clean, dump, n);
-                clean[n] = '\0';
-                return pc_gfx_test(&args, clean);
-            }
-        }
+        pc_args_dump_path(joined, dump, sizeof(dump));
         return pc_gfx_test(&args, dump);
     }
     return pc_run_headless(&args);

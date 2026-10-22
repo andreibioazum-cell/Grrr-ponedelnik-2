@@ -136,3 +136,43 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
 }
 
 #endif
+
+/* Склеивает argv в одну строку для pc_args_parse. strncat считает
+ * терминатор из своего лимита, поэтому старый "- 2" не оставлял места для
+ * разделителя, и длинная командная строка (много --touch) уезжала за конец
+ * буфера. Аргумент добавляется, только если помещается вместе с пробелом. */
+static void pc_args_join(int argc, char **argv, char *dst, size_t cap) {
+    size_t used = 0;
+    int i;
+    if (!dst || cap < 2)
+        return;
+    dst[0] = '\0';
+    snprintf(dst, cap, "cb4_headless ");
+    used = strlen(dst);
+    for (i = 1; i < argc; i++) {
+        size_t need = strlen(argv[i]) + 1;
+        if (need + 1 > cap - used)
+            break;
+        memcpy(dst + used, argv[i], need - 1);
+        used += need - 1;
+        dst[used++] = ' ';
+        dst[used] = '\0';
+    }
+}
+
+/* Путь для --gfx-test из строки аргументов (по умолчанию gfx_test.bmp). */
+static void pc_args_dump_path(const char *cmdline, char *dst, size_t cap) {
+    const char *dump = "gfx_test.bmp";
+    const char *p = cmdline ? strstr(cmdline, "--dump ") : NULL;
+    size_t n;
+    if (p) {
+        const char *colon = strchr(p, ':');
+        if (colon)
+            dump = colon + 1;
+    }
+    n = strcspn(dump, " \t\n");
+    if (n >= cap)
+        n = cap - 1;
+    memcpy(dst, dump, n);
+    dst[n] = '\0';
+}

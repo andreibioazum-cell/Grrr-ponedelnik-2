@@ -393,10 +393,6 @@ double banner_seen_ts;
 double banner_t;
 double block_guard;
 double block_speed_k;
-/* Сколько кубик набирает ход и сколько тормозит: стик задаёт желаемую
- * скорость, а тело подтягивается к ней (см. player_walk_move). */
-double walk_accel_time;
-double walk_stop_time;
 double block_front_angle;
 double login_field;
 double login_status;

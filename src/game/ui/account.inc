@@ -37,25 +37,6 @@ static char acct_buf[3][ACCT_BUF];
 static char acct_mask_buf[3][ACCT_BUF + 4];
 static double acct_busy; /* 1 - идёт удаление, 2 - идёт смена пароля */
 static double acct_done; /* 1 - аккаунт удалён */
-/* Текст сообщения живёт на экране много кадров, а строки пула (ds_concat,
- * ds_num_to_string) освобождаются через два кадра: продажа стикера писала
- * такой указатель в acct_msg, и уже через пару кадров draw_acct_msg читал
- * освобождённую память - на телефоне это вылет. Поэтому всё, что приходит
- * снаружи, копируется в собственный буфер. */
-static char acct_msg_buf[160];
-static const char *acct_msg = "";
-static void acct_msg_set(const char *text) {
-    double i = 0;
-    if (!text) {
-        text = "";
-    }
-    while (text[(int)i] != 0 && i < (double)(sizeof(acct_msg_buf) - 1)) {
-        acct_msg_buf[(int)i] = text[(int)i];
-        i = i + 1;
-    }
-    acct_msg_buf[(int)i] = 0;
-    acct_msg = acct_msg_buf;
-}
 static double acct_knob;     /* положение ползунка удаления, 0..1 */
 static double acct_drag = -1; /* палец, который тащит ползунок */
 static double acct_pending;  /* 1 - открыть аккаунт в конце перехода */

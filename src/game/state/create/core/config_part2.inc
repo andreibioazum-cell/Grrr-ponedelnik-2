@@ -104,3 +104,7 @@ BUK_ELF_CARD_TEX = "buk_elf_card.png";
 ASTRA_CARD_TEX = "astra_card.png";
 astra_ability_ok = 0;
 ST_BPASS = 16;
+/* Полный ход набирается за walk_accel_time, а с полного хода кубик встаёт
+ * примерно за walk_stop_time - без мгновенного рывка и без «стопа в стену». */
+walk_accel_time = 0.14;
+walk_stop_time = 0.09;
