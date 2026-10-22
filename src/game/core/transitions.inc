@@ -69,6 +69,7 @@ static double enter_screen(double state) {
             banned_msg = tr_banned();
             game_state = ST_LOBBY;
             ui_nav_gen = ui_nav_gen + 1;
+            press_pulses_clear();
             t_dir = -1;
             t_fade = 1;
             return 0;

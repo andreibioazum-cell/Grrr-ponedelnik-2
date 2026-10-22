@@ -83,6 +83,8 @@ static void acct_go(double mode) {
     acct_gift_view_open = 0;
     acct_clear_fields();
     ui_nav_gen = ui_nav_gen + 1;
+    /* The panel takes the finger; the game below must not keep it. */
+    press_pulses_clear();
 }
 static void acct_show(double mode) {
     acct_entry = mode;
@@ -96,6 +98,7 @@ static void acct_close(void) {
     acct_drag = -1;
     acct_gift_view_open = 0;
     ui_nav_gen = ui_nav_gen + 1;
+    press_pulses_clear();
 }
 static void acct_back(void) {
         /* The viewer closes first: back does not leave the page while the view
