@@ -33,7 +33,7 @@ FAILED: list[str] = []
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
-    print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f" — {detail}" if detail and not ok else ""))
+    print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f" - {detail}" if detail and not ok else ""))
     if not ok:
         FAILED.append(name)
 
@@ -305,11 +305,11 @@ def test_login(assets: Path) -> None:
             SCRATCH / "login",
             [
                 "--frames", "900",
-                "--touch", "220:360:686:0", "--touch", "223:360:686:1",  # предупреждение
-                "--touch", "400:270:558:0", "--touch", "403:270:558:1",  # «Аккаунт»
+                "--touch", "220:360:686:0", "--touch", "223:360:686:1",  # warning
+                "--touch", "400:270:558:0", "--touch", "403:270:558:1",  # "Account"
                 "--logininfo", "430",
-                # Пароль вводится без хвоста: хвост игра добавляет сама, как
-                # на телефоне. Фейк знает админский пароль «admin|cb4v1».
+                # The password goes in without the suffix: the game adds it,
+                # as on a phone. The fake knows the admin password.
                 "--login", "450:Dimasi4ek229:admin",
                 "--report", "700",
                 "--report", "890",
