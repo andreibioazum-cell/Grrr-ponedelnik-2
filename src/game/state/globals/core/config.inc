@@ -412,6 +412,7 @@ const char *login_pass;
 char login_nick_buf[128];
 char login_pass_buf[128];
 const char *LOBBY_MUSIC;
+const char *SERAPHIM_MUSIC;
 const char *BUTTON_CLICK_SOUND;
 double button_click_ok;
 /* 1 = the new look (purple, gradients, centred menu, NPC cube),

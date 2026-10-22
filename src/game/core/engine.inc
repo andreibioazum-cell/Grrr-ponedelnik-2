@@ -8,14 +8,74 @@ static void play_button_click(void) {
 
 static void start_music(void) {
     music_ok = snd_load(LOBBY_MUSIC);
-    if (music_ok == 0) {
+    if (music_ok == 1) {
+        music_level = 1;
+        snd_volume(LOBBY_MUSIC, music_volume / 100);
+        snd_loop(LOBBY_MUSIC);
+        ds_log("init: lobby music on");
+    } else {
         ds_log("init: no lobby music");
+    }
+    seraphim_ok = snd_load(SERAPHIM_MUSIC);
+    if (seraphim_ok == 1) {
+        seraphim_level = 0;
+        ds_log("init: seraphim battle music ready");
+    } else {
+        ds_log("init: no seraphim music");
+    }
+}
+
+/* Azum vs Astra battle music: original And_The_Seraphim_Wept style but royalty-free.
+ * Plays only when one side is Azum and the other is Astra (both directions). */
+static int seraphim_should_play(void) {
+    if (game_state != ST_SOLO && game_state != ST_ONLINE) {
+        return 0;
+    }
+    if (game_state == ST_SOLO) {
+        if ((player_class == CLASS_AZUM && enemy_class == CLASS_ASTRA) ||
+            (player_class == CLASS_ASTRA && enemy_class == CLASS_AZUM)) {
+            return 1;
+        }
+        return 0;
+    }
+    /* Online: check if room contains at least one Azum and at least one Astra
+     * (local player or any remote). This triggers for both participants and
+     * spectators when the matchup is present. */
+    {
+        int has_azum = 0;
+        int has_astra = 0;
+        if (player_class == CLASS_AZUM) has_azum = 1;
+        if (player_class == CLASS_ASTRA) has_astra = 1;
+        double s = 0;
+        while (s < max_players) {
+            if (net_player_online(s) == 1) {
+                double c = net_player_class(s);
+                if (c == CLASS_AZUM) has_azum = 1;
+                if (c == CLASS_ASTRA) has_astra = 1;
+            }
+            s = s + 1;
+        }
+        if (has_azum == 1 && has_astra == 1) return 1;
+        return 0;
+    }
+}
+
+static void update_seraphim_music(void) {
+    if (seraphim_ok == 0) return;
+    if (seraphim_should_play() == 1) {
+        if (snd_playing(SERAPHIM_MUSIC) == 0) {
+            seraphim_level = 0;
+            snd_loop(SERAPHIM_MUSIC);
+        }
+        seraphim_level = clamp(seraphim_level + dt / seraphim_fade_in, 0, 1);
+        snd_volume(SERAPHIM_MUSIC, music_volume / 100 * seraphim_level);
         return;
     }
-    music_level = 1;
-    snd_volume(LOBBY_MUSIC, music_volume / 100);
-    snd_loop(LOBBY_MUSIC);
-    ds_log("init: lobby music on");
+    seraphim_level = clamp(seraphim_level - dt / seraphim_fade_out, 0, 1);
+    snd_volume(SERAPHIM_MUSIC, music_volume / 100 * seraphim_level);
+    if (seraphim_level <= 0 && snd_playing(SERAPHIM_MUSIC) == 1) {
+        snd_stop(SERAPHIM_MUSIC);
+    }
 }
 
 static void logic_init(void) {
@@ -71,6 +131,7 @@ static void logic_update(void) {
     update_studio();
     update_transition();
     update_music();
+    update_seraphim_music();
     reload_textures();
     tick_achievement_toast();
     update_button_press();

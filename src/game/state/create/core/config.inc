@@ -421,6 +421,7 @@ login_btn_gap = 22;
 login_nick = "";
 login_pass = "";
 LOBBY_MUSIC = "lobbymusic.wav";
+SERAPHIM_MUSIC = "azum_vs_astra.wav";
 BUTTON_CLICK_SOUND = "button_click.wav";
 button_click_ok = 0;
 
