@@ -683,8 +683,8 @@ def test_ult_mode_switch(assets: Path) -> None:
 
 
 def test_longer_fights(assets: Path) -> None:
-    """Both fighters start a fight with enough health to use their abilities."""
-    print("\n== 3h. Longer fights ==")
+    """The pools are a bit bigger than the raw class ones, and not wildly so."""
+    print("\n== 3h. Fight length ==")
     with fake_server():
         result = harness(
             assets,
@@ -694,8 +694,10 @@ def test_longer_fights(assets: Path) -> None:
         frame = parse_reports(result.stdout).get(880, {})
         hp = float(frame.get("hp", "0"))
         foe = float(frame.get("foe", "0"))
-        check("у игрока больше здоровья", hp >= 50, f"hp={hp}")
-        check("у врага тоже", foe >= 50 and foe == hp, f"hp={hp}, foe={foe}")
+        base = 24.0  # the raw pool of the class, before the round multiplier
+        check("здоровья больше, чем у голого класса", hp > base, f"hp={hp}, база={base}")
+        check("но и не втрое: бой не тянется", hp <= 40, f"hp={hp}")
+        check("у врага столько же", foe == hp, f"hp={hp}, foe={foe}")
 
 
 def wait_port(port: int, timeout: float = 5.0) -> bool:
