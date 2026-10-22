@@ -23,7 +23,7 @@
 typedef struct {
     double active;
     double x, y, vx, vy;
-    double bounces, t;
+    double bounces, t, spin;
     /* Aiming: the countdown runs in aim_t, the throw follows aim_dx/aim_dy. */
     double aim_on, aim_id, aim_t, aim_dx, aim_dy;
     double trail_x[BALL_TRAIL], trail_y[BALL_TRAIL], trail_a[BALL_TRAIL];
@@ -189,6 +189,7 @@ static void ball_fire(void) {
     ball.vy = ball.aim_dy * BALL_SPEED;
     ball.bounces = 0;
     ball.t = 0;
+    ball.spin = 0;
     ball.active = 1;
     super_cd = super_cd_time;
     ability_snd(STATION_SOUND);
@@ -214,6 +215,7 @@ static void ball_tick(void) {
         return;
     }
     ball.t = ball.t + dt;
+    ball.spin = ball.spin + dt * 6;
     /* The move is split into small pieces: on a slow frame the ball would
      * otherwise fly straight through the enemy without ever touching it. */
     left = 1;
@@ -303,9 +305,13 @@ static void draw_ball(void) {
         i = i + 1;
     }
     if (ball.active == 1) {
+        /* A brick, not a ball: a spinning block of fired clay with a mortar
+         * line across it, so the flight reads as something thrown. */
         ring(ball.x, ball.y, BALL_RADIUS * 1.25, 4, 0xCCFFD54F);
-        circle(ball.x, ball.y, BALL_RADIUS, 0xFFFFB300);
-        circle(ball.x - BALL_RADIUS * 0.3, ball.y - BALL_RADIUS * 0.3, BALL_RADIUS * 0.3, 0xFFFFFFFF);
+        rect_rot(ball.x - 23, ball.y - 14, 46, 28, ball.spin, 0xFFD2703F);
+        rect_rot(ball.x - 23, ball.y - 8, 46, 2, ball.spin, 0xFFFFE9CC);
+        rect_rot(ball.x - 23, ball.y + 6, 46, 2, ball.spin, 0xFFFFE9CC);
+        rect_rot(ball.x - 8, ball.y - 14, 2, 8, ball.spin, 0xFFFFE9CC);
     }
 }
 
