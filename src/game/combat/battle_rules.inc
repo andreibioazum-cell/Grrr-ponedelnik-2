@@ -122,10 +122,11 @@ static double class_punch_damage_for(double cls, double lv) {
 }
 
 /* One multiplier for every health pool (player, bot, network fighters): the
- * hits are unchanged, only the pools are bigger, so a fight lasts long enough
- * to use the abilities instead of ending in two punches. It does not change the
- * ratios between classes. Kept modest on purpose: 2.5 dragged fights out. */
-static double round_hp_mult(void) { return 1.5; }
+ * hits are unchanged, only the pools are a little bigger, so a fight lasts long
+ * enough to use an ability instead of ending in two punches. It does not change
+ * the ratios between classes. Small on purpose: 2.5 and then 1.5 both made a
+ * fight feel like homework. */
+static double round_hp_mult(void) { return 1.25; }
 
 static double class_base_hp_for(double cls) {
     if (cls == CLASS_CODECRACKER) {

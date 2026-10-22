@@ -689,15 +689,21 @@ def test_longer_fights(assets: Path) -> None:
         result = harness(
             assets,
             SCRATCH / "long_fight",
-            ["--frames", "900", *login_taps(), "--class", "750:3", "--goto", "800:1", "--report", "880"],
+            # The first frames of the fight, before anyone has landed a hit.
+            ["--frames", "900", *login_taps(), "--class", "750:3", "--goto", "800:1", "--report", "815"],
         )
-        frame = parse_reports(result.stdout).get(880, {})
+        frame = parse_reports(result.stdout).get(815, {})
         hp = float(frame.get("hp", "0"))
         foe = float(frame.get("foe", "0"))
-        base = 24.0  # the raw pool of the class, before the round multiplier
+        # Raw pools: ordinary 20, azum 12.74, santa 20, ebuc 24, astra 18,
+        # codecracker 12. The round adds a quarter of that and nothing more.
+        raw = {"0": 20.0, "1": 12.74, "2": 20.0, "3": 24.0, "4": 18.0, "6": 12.0}
+        cls = frame.get("cls", "0")
+        base = raw.get(cls, 20.0)
         check("здоровья больше, чем у голого класса", hp > base, f"hp={hp}, база={base}")
-        check("но и не втрое: бой не тянется", hp <= 40, f"hp={hp}")
-        check("у врага столько же", foe == hp, f"hp={hp}, foe={foe}")
+        check("и ровно на четверть, а не в разы", abs(hp - base * 1.25) < 0.01, f"hp={hp}, база={base}")
+        # The enemy brings the pool of its own class, so only the range is fixed.
+        check("у врага свой пул, тоже умеренный", 15 < foe <= 30, f"foe={foe}")
 
 
 def wait_port(port: int, timeout: float = 5.0) -> bool:
