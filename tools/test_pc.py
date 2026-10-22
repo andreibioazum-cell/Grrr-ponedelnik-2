@@ -290,7 +290,7 @@ def test_chaos(assets: Path) -> None:
 
     The flag lives in the database root, so it is set through the fake database
     over HTTP. The same punch is thrown twice, once with the flag off and once
-    with it on: with the flag on the hitbox turns away from the enemy and runs,
+    with it on: with the flag on the hitbox teleports away from the enemy,
     so the enemy keeps its health, while the enemy still hits the player back.
     """
     print("\n== 3d. Masterpiece hitboxes from the panel ==")
@@ -331,7 +331,7 @@ def test_chaos(assets: Path) -> None:
         before, after = joke.get(590, {}), joke.get(650, {})
         check("флаг HitboxChaos дошёл до игры", after.get("chaos") == "1", str(after))
         check(
-            "с флагом удар улетает мимо врага",
+            "с флагом хитбокс телепортируется мимо врага",
             float(after.get("foe", "nan")) == float(before.get("foe", "nan")),
             f"до удара {before.get('foe')}, после {after.get('foe')}",
         )
@@ -373,9 +373,8 @@ def test_chaos_online(assets: Path) -> None:
     """The joke mode inside a real online fight: two clients in one room.
 
     Solo said nothing about the online screen - it has its own update and draw
-    path, and the masterpiece enemy used to be missing there. Two headless
-    clients sign in, one creates the room, the other joins it, and the fight
-    has to come up with the joke mode on.
+    path. Two headless clients sign in, one creates the room, the other joins
+    it, and the fight has to come up with the joke mode on.
     """
     print("\n== 3i. Шедевро-режим в онлайне ==")
     room = f"ccp{int(time.time()) % 100000}"

@@ -390,7 +390,6 @@ static void update_online(void) {
     tick_hurt_fades();
     tick_remote_punches();
     update_aim();
-    chaos_tick(); /* joke mode runs online too */
     ball_online_tick(); /* buK brick */
     if (finished != 0) {
         return;
@@ -408,6 +407,7 @@ static void update_online(void) {
     }
     punch_left = tick_down(punch_left);
     follow_punch();
+    chaos_tick(); /* after follow_punch, or the normal anchored box is published */
     super_cd = tick_down(super_cd);
     if (admin_cheat_nocd() == 1) {
         super_cd = 0;

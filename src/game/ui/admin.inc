@@ -185,19 +185,23 @@ static double admin_cheat_value(double idx) {
     return cheat_chaos;
 }
 
-/* True while at least one cheat switch is on. */
+/* True while at least one cheat switch is on, masterpiece hitboxes included. */
 static double admin_any_cheat_on(void) {
     if (cheat_god == 1 || cheat_damage == 1 || cheat_speed == 1 || cheat_nocd == 1 || cheat_cc == 1 ||
-        cheat_estun == 1) {
+        cheat_estun == 1 || cheat_chaos == 1) {
         return 1;
     }
     return 0;
 }
 
 /* Called when a battle starts: entering a fight with a cheat already on marks
- * it just like flipping one on during the fight does. */
+ * it just like flipping one on during the fight does. The web-panel chaos
+ * flag follows the same rule as the local switches. */
 static void admin_battle_stain_reset(void) {
     cheat_stain = admin_any_cheat_on();
+    if (net_hitbox_chaos() == 1) {
+        cheat_stain = 1;
+    }
         /* New fight: the previous admin state is forgotten, the ring makes sense again. */
     cheat_estun_mark = 0;
 }
@@ -236,7 +240,6 @@ static void admin_press_cheat(double idx) {
         cheat_estun = v;
     }
     if (idx == 6) {
-        /* A joke, not an advantage: it does not stain the battle. */
         cheat_chaos = v;
         if (v == 1) {
             ds_log("admin: masterpiece hitboxes on");

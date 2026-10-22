@@ -132,7 +132,7 @@ double net_azum_buff(void) { return live_flag_get(&live_flags.azum, 0); }
 
 double net_flash_sale(void) { return live_flag_get(&live_flags.sale, 0); }
 
-/* Joke mode from the admin panel: the punch hitbox runs away from the enemy.
+/* Joke mode from the admin panel: the punch hitbox teleports away from the enemy.
  * Polled every frame during a battle, so it is the cheap getter. */
 double net_hitbox_chaos(void) { return live_flag_get(&live_flags.chaos, 0); }
 

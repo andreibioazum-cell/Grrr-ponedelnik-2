@@ -638,8 +638,10 @@ double net_auth(const char *url, const char *nick, const char *pass) {
 static double stub_azum_buff;
 double net_azum_buff(void) { return stub_azum_buff; }
 static double stub_flash_sale;
+static double stub_hitbox_chaos;
 static int stub_live_refreshes;
 double net_flash_sale(void) { return stub_flash_sale; }
+double net_hitbox_chaos(void) { return stub_hitbox_chaos; }
 void net_live_flags_refresh(void) { stub_live_refreshes++; }
 static double stub_event_mode;
 double net_event(void) { return stub_event_mode; }
@@ -2254,6 +2256,128 @@ static void test_overlay_transitions(void) {
     game_reset();
     assert(t_action == NULL && t_dir == 0);
     puts("navigation: deferred overlays, outgoing press, topmost curtain and input lock OK");
+}
+
+static void test_masterpiece_hitboxes(void) {
+    double *switches[7] = {&cheat_god, &cheat_damage, &cheat_speed, &cheat_nocd,
+                           &cheat_cc, &cheat_estun, &cheat_chaos};
+
+    /* Every switch, including the joke one, stains a battle even when it was
+     * enabled before reset_battle(). This used to omit masterpiece hitboxes. */
+    stub_hitbox_chaos = 0;
+    for (int i = 0; i < 7; i++) {
+        *switches[i] = 1;
+        cheat_stain = 0;
+        admin_battle_stain_reset();
+        assert(admin_cups_allowed() == 0);
+        *switches[i] = 0;
+    }
+    cheat_stain = 0;
+    cups = 0;
+    cup_win = 50;
+    cheat_chaos = 1;
+    admin_battle_stain_reset();
+    award_battle_result(1);
+    assert(cups == 0);
+
+    /* The global web-panel flag follows the same payout rule. */
+    cheat_chaos = 0;
+    stub_hitbox_chaos = 1;
+    cheat_stain = 0;
+    admin_battle_stain_reset();
+    assert(admin_cups_allowed() == 0);
+    award_battle_result(1);
+    assert(cups == 0);
+    stub_hitbox_chaos = 0;
+    admin_battle_stain_reset();
+    assert(admin_cups_allowed() == 1);
+
+    /* Turning a cheat straight back off does not wash the stain away. */
+    admin_press_cheat(6);
+    admin_press_cheat(6);
+    assert(cheat_chaos == 0 && admin_cups_allowed() == 0);
+
+    /* Start on shot five with the cached mode still off. Both the old fifth-
+     * shot exemption and the one-frame enable delay used to leave this punch
+     * at the player's normal position. */
+    game_state = ST_SOLO;
+    screen_w = 540;
+    screen_h = 960;
+    dt = 1.0 / 60.0;
+    player->x = 120;
+    player->y = 480;
+    player->angle = 0;
+    enemy->x = 390;
+    enemy->y = 480;
+    punch->shot = 4;
+    punch->active = 0;
+    punch->hit = 0;
+    punch_left = 0;
+    cheat_chaos = 1;
+    chaos_reset();
+    assert(chaos_on == 0);
+    start_punch_now();
+    assert(chaos_on == 1 && chaos_escape_active == 1);
+    assert(punch->shot == 5 && punch->active == 1);
+    assert(dist(punch->x, punch->y, player->x, player->y) > 1);
+    assert(punch_hits_enemy(punch->x, punch->y, punch->dx, punch->dy, punch_reach, punch_width) == 0);
+
+    /* follow_punch() may repeatedly restore the ordinary anchor, but chaos
+     * always puts back the SAME teleported point: there is no smooth escape. */
+    double escaped_x = punch->x;
+    double escaped_y = punch->y;
+    double escaped_dx = punch->dx;
+    double escaped_dy = punch->dy;
+    for (int i = 0; i < 6; i++) {
+        follow_punch();
+        chaos_tick();
+        assert(fabs(punch->x - escaped_x) < 0.0001);
+        assert(fabs(punch->y - escaped_y) < 0.0001);
+        assert(fabs(punch->dx - escaped_dx) < 0.0001);
+        assert(fabs(punch->dy - escaped_dy) < 0.0001);
+        assert(punch_hits_enemy(punch->x, punch->y, punch->dx, punch->dy, punch_reach, punch_width) == 0);
+    }
+
+    /* The after-hit ghost also appears immediately and then only fades: its
+     * coordinates do not travel between frames. */
+    punch->hit = 1;
+    chaos_ghost_shot = -1;
+    chaos_tick();
+    assert(chaos_ghost_a == 1);
+    double ghost_x = chaos_ghost_x;
+    double ghost_y = chaos_ghost_y;
+    double ghost_a = chaos_ghost_a;
+    chaos_tick();
+    assert(chaos_ghost_a < ghost_a && chaos_ghost_a > 0);
+    assert(fabs(chaos_ghost_x - ghost_x) < 0.0001);
+    assert(fabs(chaos_ghost_y - ghost_y) < 0.0001);
+
+    cheat_chaos = 0;
+    chaos_tick();
+    assert(chaos_on == 0 && chaos_escape_active == 0 && chaos_ghost_a == 0);
+    assert(admin_cups_allowed() == 0); /* use earlier in the fight still counts */
+
+    /* Enabling the mode in the middle of an ordinary punch teleports that
+     * active hitbox too; it does not wait for the next shot. */
+    punch->active = 0;
+    punch->hit = 0;
+    punch_left = 0;
+    start_punch_now();
+    assert(chaos_escape_active == 0);
+    assert(fabs(punch->x - player->x) < 0.0001 && fabs(punch->y - player->y) < 0.0001);
+    cheat_chaos = 1;
+    chaos_tick();
+    assert(chaos_escape_active == 1);
+    assert(dist(punch->x, punch->y, player->x, player->y) > 1);
+    cheat_chaos = 0;
+    chaos_tick();
+
+    punch->active = 0;
+    punch->hit = 0;
+    punch_left = 0;
+    cheat_stain = 0;
+    game_state = ST_LOBBY;
+    puts("masterpiece hitboxes: instant fixed teleports, no fifth-shot exception, no Cups after cheats");
 }
 
 int main(void) {
@@ -4021,6 +4145,8 @@ int main(void) {
         bp_claimed = 0;
         stub_bpx = 0;
     }
+
+    test_masterpiece_hitboxes();
 
     state_destroy();
     state_ready = 0;
