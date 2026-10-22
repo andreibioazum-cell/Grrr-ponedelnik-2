@@ -172,14 +172,19 @@ static void admin_panel_press(double x, double y) {
     double bw = (pw - 2 * admin_pad() - admin_gap()) / 2;
     double rh = admin_cheat_row_h();
     double row = floor((y - admin_grid_top()) / (rh + admin_gap()));
-    if (row < 0 || row > 2 || x < px + admin_pad() || x > px + pw - admin_pad()) {
+    if (row < 0 || row > floor((ADMIN_CHEATS - 1) / 2) || x < px + admin_pad() || x > px + pw - admin_pad()) {
         return;
     }
     double col = 0;
     if (x >= px + admin_pad() + bw + admin_gap()) {
         col = 1;
     }
-    admin_press(row * 2 + col);
+    double idx = row * 2 + col;
+    if (idx >= ADMIN_CHEATS) {
+        /* The last row holds a single button: the empty half is not a button. */
+        return;
+    }
+    admin_press(idx);
 }
 
 static double admin_ball_hit(double x, double y) {
@@ -266,7 +271,7 @@ static void admin_draw_cheats(void) {
     double bw = (pw - admin_gap()) / 2;
     double rh = admin_cheat_row_h();
     double idx = 0;
-    while (idx < 6) {
+    while (idx < ADMIN_CHEATS) {
         double row = floor(idx / 2);
         double col = idx - row * 2;
         double bx = px + col * (bw + admin_gap());

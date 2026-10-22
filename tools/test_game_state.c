@@ -3498,8 +3498,8 @@ int main(void) {
     /* The panel calls itself a content creator panel and the orb wears the
      * short name; the admin nick and the old "label: on/off" status line under
      * the panel are gone. */
-    /* The title, close button, orb, two tabs and six cheat labels. */
-    assert(adm_text_n == 11);
+    /* The title, close button, orb, two tabs and seven cheat labels. */
+    assert(adm_text_n == 12);
     assert(adm_has_text(tr_admin_title()) == 1);
     assert(adm_has_text(admin_orb_label()) == 1);
     assert(adm_has_text(language == 1 ? "Читы" : "Cheats") == 1);
@@ -3507,7 +3507,7 @@ int main(void) {
     assert(adm_has_text("ADMIN") == 0);
     assert(adm_has_text(ADMIN_NICK) == 0);
     assert(adm_has_text(": ") == 0);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 7; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
 
         /* The panel has separate cheat and gift tabs. */
@@ -3515,11 +3515,11 @@ int main(void) {
     admin_draw();
     assert(adm_all_greyscale() == 1);
     assert(adm_all_flat() == 1);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 7; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
     /* The cheat grid starts below the tabs and remains inside the panel. */
     assert(fabs(admin_grid_top() - admin_content_top() - admin_row_h() - admin_gap()) < 0.001);
-    assert(admin_grid_top() + 3 * admin_cheat_row_h() + 2 * admin_gap() <=
+    assert(admin_grid_top() + 4 * admin_cheat_row_h() + 3 * admin_gap() <=
                admin_panel_y() + admin_panel_h() - admin_pad() + 0.01);
 
         /* The keyboard writes into the field's own buffer: two fields do not have
@@ -3548,8 +3548,8 @@ int main(void) {
         /* the panel is a fifth wider than the old one: 20% up */
         assert(admin_panel_w() >= screen_w * 0.58);
         assert(admin_content_top() < admin_panel_y() + admin_panel_h() - admin_pad());
-        /* six cheat buttons always fit between the header and the bottom edge */
-        assert(admin_grid_top() + 3 * admin_cheat_row_h() + 2 * admin_gap() <=
+        /* seven cheat buttons always fit between the header and the bottom edge */
+        assert(admin_grid_top() + 4 * admin_cheat_row_h() + 3 * admin_gap() <=
                admin_panel_y() + admin_panel_h() - admin_pad() + 0.01);
         assert(admin_cheat_row_h() >= 26);
         adm_reset_log();

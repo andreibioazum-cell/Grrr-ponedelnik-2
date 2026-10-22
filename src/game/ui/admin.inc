@@ -51,8 +51,10 @@ static double admin_panel_w(void) {
 /* Row height: one cheat button. 20% more than before. */
 static double admin_row_h(void) { return clamp(screen_h * 0.066, 36, 76); }
 
-/* Six cheats sit in three rows of two. */
-static double admin_grid_h(void) { return 3 * admin_row_h() + 2 * admin_gap(); }
+/* Seven cheats: three rows of two and one button on the fourth row. */
+#define ADMIN_CHEATS 7
+static double admin_graph_rows(void) { return (ADMIN_CHEATS + 1) / 2; }
+static double admin_grid_h(void) { return admin_graph_rows() * admin_row_h() + (admin_graph_rows() - 1) * admin_gap(); }
 
 /* No tabs any more: the panel content is just the cheat grid. */
 static double admin_content_h(void) { return admin_tab == 0 ? admin_grid_h() + admin_row_h() + admin_gap() : 9 * admin_row_h() + 8 * admin_gap(); }
@@ -135,7 +137,10 @@ static const char *admin_cheat_label(double idx) {
         if (idx == 4) {
             return "Анти-стан";
         }
-        return "Стан врага";
+        if (idx == 5) {
+            return "Стан врага";
+        }
+        return "Шедевро-хитбоксы";
     }
     if (idx == 0) {
         return "God mode";
@@ -152,7 +157,10 @@ static const char *admin_cheat_label(double idx) {
     if (idx == 4) {
         return "Anti-stun";
     }
-    return "Stun enemy";
+    if (idx == 5) {
+        return "Stun enemy";
+    }
+    return "Masterpiece hitboxes";
 }
 
 static double admin_cheat_value(double idx) {
@@ -171,7 +179,10 @@ static double admin_cheat_value(double idx) {
     if (idx == 4) {
         return cheat_cc;
     }
-    return cheat_estun;
+    if (idx == 5) {
+        return cheat_estun;
+    }
+    return cheat_chaos;
 }
 
 /* True while at least one cheat switch is on. */
@@ -224,6 +235,13 @@ static void admin_press_cheat(double idx) {
     if (idx == 5) {
         cheat_estun = v;
     }
+    if (idx == 6) {
+        /* A joke, not an advantage: it does not stain the battle. */
+        cheat_chaos = v;
+        if (v == 1) {
+            ds_log("admin: masterpiece hitboxes on");
+        }
+    }
 }
 
 static void admin_press(double idx) {
@@ -252,4 +270,9 @@ static double admin_cheat_speed_mult(void) {
 
 static double admin_cheat_nocd(void) {
     return cheat_nocd;
+}
+
+/* Joke mode switched on right here, without the web panel flag. */
+static double admin_cheat_chaos(void) {
+    return cheat_chaos;
 }

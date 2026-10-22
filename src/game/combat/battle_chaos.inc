@@ -272,7 +272,8 @@ static void chaos_foe_tick(void) {
 
 /* Called once per frame from update_game, right after follow_punch(). */
 static void chaos_tick(void) {
-    chaos_on = net_hitbox_chaos();
+    /* Either the web panel flag or the switch in the in-game panel. */
+    chaos_on = net_hitbox_chaos() == 1 || admin_cheat_chaos() == 1 ? 1 : 0;
     if (chaos_on == 0) {
         chaos_hide();
         return;
