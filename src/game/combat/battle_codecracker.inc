@@ -50,9 +50,9 @@ static void codecracker_heal(void) {
     player->hp = clamp(player->hp + codecracker_touch_heal, 0, player->max_hp);
 }
 
-/* Тикает таймер рывка (оверклока). Кулдаун супера начинается не в момент
- * включения, а ровно когда рывок заканчивается: пока оверклок работает,
- * super_cd стоит на нуле, в кадр его окончания ставится полный кулдаун. */
+/* Ticks the dash (overclock) timer. The super cooldown does not start when the
+ * overclock turns on, but exactly when the dash ends: while overclock runs,
+ * super_cd stays at zero, and the full cooldown is set on its last frame. */
 static void codecracker_tick_super_timer(void) {
     double was = codecracker_super_t;
     codecracker_super_t = tick_down(codecracker_super_t);

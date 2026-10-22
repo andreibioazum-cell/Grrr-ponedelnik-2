@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
-"""Проверки веб-панели админа (index.html) и её подставной базы.
+"""Checks of the web admin panel (index.html) and its fake database.
 
-Панель уже один раз «работала» так, что на сайте не нажималось ничего:
-в блочном комментарии встретилось «rooms/*/chat», звёздочка со слэшем закрыла
-комментарий раньше времени, остаток текста поехал в код, скрипт упал на этапе
-загрузки — и страница с кнопками превратилась в картинку. Поэтому здесь три
-слоя проверок:
+The panel once "worked" in a way that nothing on the page could be pressed: a
+block comment contained "rooms/*/chat", the star-slash closed the comment early,
+the rest of the text slid into the code, the script died while loading, and the
+page with buttons turned into a picture. So there are three layers of checks:
 
-1. Синтаксис скриптов панели (node --check, если node есть) и порядок блоков:
-   первым идёт сторож, который показывает любую ошибку красной плашкой.
-2. Каждой кнопке и каждому полю — свой элемент: все селекторы из скрипта
-   находятся в разметке, у всех <button> есть обработчик.
-3. Схема базы в панели совпадает с firebase.rules.json: панель предлагает
-   удалить ровно то, что правила не пускают, и никогда не считает мусором
-   живой прогресс (подарки, bp/bpx, playtime, pd_consent_*, секрет «w»).
+1. Syntax of the panel scripts (node --check, if node is there) and the order of
+   blocks: a guard comes first and shows any error in a red strip.
+2. Every button and field has its element: all selectors from the script are
+   found in the markup, every <button> has a handler.
+3. The database schema in the panel matches firebase.rules.json: the panel offers
+   to delete exactly what the rules do not allow, and never treats live progress
+   as junk (gifts, bp/bpx, playtime, pd_consent_*, the "w" secret).
 
-Плюс короткий прогон test/fake_firebase.py: на нём панель можно открыть и
-понажимать без боевой базы. Полный «кликабельный» прогон в настоящей DOM —
-test/test_admin_panel_dom.mjs (нужен jsdom: cd test && npm install).
+Plus a short run of test/fake_firebase.py: with it the panel can be opened and
+clicked without the live database. The full clickable run in a real DOM lives in
+test/test_admin_panel_dom.mjs (needs jsdom: cd test && npm install).
 """
 import json
 import os
@@ -49,7 +48,7 @@ def scripts_of(html: str) -> list[str]:
 
 
 def extract_const(js: str, name: str) -> str | None:
-    """Текст инициализатора `const name = …` (со скобками, если это они)."""
+    """The initializer text of `const name = ...` (with parens if they are there)."""
     match = re.search(r"\bconst\s+%s\s*=\s*" % re.escape(name), js)
     if not match:
         return None
@@ -93,7 +92,7 @@ def spec_fields(block: str | None) -> dict[str, str]:
 
 
 def panel_spec(raw: str):
-    """`num(0,3)` → ("num", 0.0, 3.0); `flag()` → ("num", 0, 1); и т.д."""
+    """`num(0,3)` -> ("num", 0.0, 3.0); `flag()` -> ("num", 0, 1); and so on."""
     raw = raw.strip()
     if raw == "flag()":
         return ("num", 0.0, 1.0)
@@ -114,7 +113,7 @@ def panel_spec(raw: str):
 
 
 def rules_spec(validate):
-    """Тот же вид, но из `.validate` правил."""
+    """The same shape, but from the `.validate` of the rules."""
     if validate is False:
         return ("forbidden",)
     if not isinstance(validate, str):
@@ -152,14 +151,14 @@ def child_keys(node: dict) -> list[str]:
 
 
 def compare(title: str, panel: dict[str, str], rules: dict, allow_extra=()) -> None:
-    """Сверить поля панели с правилами: состав и границы значений."""
+    """Compare the panel fields with the rules: which fields, and their bounds."""
     panel_keys = set(panel)
     rule_keys = {k for k in child_keys(rules)}
     for key in rule_keys - panel_keys:
-        error(f"{title}: панель не знает поле «{key}» из правил — "
+        error(f"{title}: панель не знает поле «{key}» из правил - "
               f"оно будет предложено к удалению как мусор")
     for key in panel_keys - rule_keys - set(allow_extra):
-        error(f"{title}: панель разрешает «{key}», которого нет в правилах — "
+        error(f"{title}: панель разрешает «{key}», которого нет в правилах - "
               f"база такую запись всё равно отклонит")
     for key in sorted(panel_keys & rule_keys):
         got = panel_spec(panel[key])
@@ -173,8 +172,8 @@ def compare(title: str, panel: dict[str, str], rules: dict, allow_extra=()) -> N
             error(f"{title}/{key}: тип {got[0]}, а правила ждут {want[0]}")
             continue
         if got[0] in ("num", "str"):
-            # Границы: нижняя у строки в правилах может отсутствовать (ник),
-            # тогда панель вправе требовать непустую строку.
+                        # Bounds: a rule may have no lower bound for a string (the nick),
+                        # so the panel may then require a non-empty string.
             if want[1] is not None and got[1] != want[1]:
                 error(f"{title}/{key}: нижняя граница {got[1]}, правила ждут {want[1]}")
             if want[2] is not None and got[2] != want[2]:
@@ -184,14 +183,14 @@ def compare(title: str, panel: dict[str, str], rules: dict, allow_extra=()) -> N
 def check_syntax(js_blocks: list[str]) -> None:
     node = shutil.which("node")
     if not node:
-        print("  node не найден — синтаксис скриптов не проверяется (установи node для полной проверки)")
+        print("  node не найден - синтаксис скриптов не проверяется (установи node для полной проверки)")
         return
     for index, block in enumerate(js_blocks):
         tmp = Path(os.environ.get("TMPDIR", "/tmp")) / f"cb4_panel_block{index}.js"
         tmp.write_text(block, encoding="utf-8")
         proc = subprocess.run([node, "--check", str(tmp)], capture_output=True, text=True)
         if proc.returncode != 0:
-            error(f"скрипт №{index + 1} не компилируется — страница будет мёртвой:\n{proc.stderr.strip()}")
+            error(f"скрипт №{index + 1} не компилируется - страница будет мёртвой:\n{proc.stderr.strip()}")
         tmp.unlink(missing_ok=True)
 
 
@@ -204,13 +203,13 @@ def check_dom_wiring(html: str, js: str) -> None:
     used_ids = set(re.findall(r"""\$\$?\(\s*"#([A-Za-z0-9_-]+)\"""", js))
     used_ids |= set(re.findall(r"""\bon(?:All|Change)?\(\s*"#([A-Za-z0-9_-]+)\"""", js))
     for used in sorted(used_ids - ids):
-        error(f"скрипт обращается к #{used}, которого нет в разметке — кнопка/поле не будет работать")
+        error(f"скрипт обращается к #{used}, которого нет в разметке - кнопка/поле не будет работать")
 
     used_classes = set(re.findall(r"""\$\$\(\s*"\.([A-Za-z0-9_-]+)\"""", js))
     for used in sorted(used_classes - classes):
         error(f"скрипт обращается к классу .{used}, которого нет в разметке")
 
-    # Каждой кнопке — обработчик: по id (on("#id", …)) или по data-атрибуту.
+        # Every button gets a handler: by id (on("#id", ...)) or by data attribute.
     bound_ids = set(re.findall(r"""\bon\(\s*"#([A-Za-z0-9_-]+)\"""", js))
     bound_attrs = set(re.findall(r"""\bonAll\(\s*"\[data-([A-Za-z0-9_-]+)\]\"""", js))
     for tag in re.findall(r"<button\b[^>]*>", html):
@@ -221,9 +220,9 @@ def check_dom_wiring(html: str, js: str) -> None:
         if any(name in bound_attrs for name in data):
             continue
         label = button_id.group(1) if button_id else tag
-        error(f"у кнопки {label} нет обработчика — она не нажимается")
+        error(f"у кнопки {label} нет обработчика - она не нажимается")
 
-    # Селекторы атрибутов из onAll обязаны что-то находить.
+        # Attribute selectors from onAll must find something.
     for attr in sorted(bound_attrs):
         if f"data-{attr}=" not in html:
             error(f"onAll([data-{attr}]) не находит ни одного элемента")
@@ -235,7 +234,7 @@ def check_guard(js_blocks: list[str]) -> None:
         return
     guard = js_blocks[0]
     if 'addEventListener("error"' not in guard or "cb4Fatal" not in guard:
-        error("первый скрипт не ловит ошибки страницы — поломка снова будет молчаливой")
+        error("первый скрипт не ловит ошибки страницы - поломка снова будет молчаливой")
     if "cb4Fatal" not in js_blocks[1]:
         error("основной скрипт не сообщает о фатальной ошибке")
 
@@ -251,9 +250,9 @@ def check_schema(html: str, js: str, rules: dict) -> None:
         missing = sorted(set(root_keys) - set(panel))
         extra = sorted(set(panel) - set(root_keys))
         if missing:
-            error(f"{name}: нет узлов из правил {missing} — панель сочтёт их мусором")
+            error(f"{name}: нет узлов из правил {missing} - панель сочтёт их мусором")
         if extra:
-            error(f"{name}: лишние узлы {extra} — правила их не пускают")
+            error(f"{name}: лишние узлы {extra} - правила их не пускают")
 
     users = rules["users"]["$nick"]
     want_req = required_children(users)
@@ -284,7 +283,7 @@ def check_schema(html: str, js: str, rules: dict) -> None:
 
     compare("banner", spec_fields(extract_const(js, "BANNER_FIELDS")), rules["banner"])
 
-    # Диапазон ивента: правила пускают 0..4, кнопки панели обязаны совпадать.
+        # Event range: the rules allow 0..4, so the panel buttons must match.
     event_rule = rules["event"][".validate"]
     upper = re.search(r"<=\s*(\d+)", event_rule)
     panel_max = extract_const(js, "EVENT_MAX")
@@ -296,7 +295,7 @@ def check_schema(html: str, js: str, rules: dict) -> None:
     if buttons != list(range(int(upper.group(1)) + 1)):
         error(f"кнопки ивента {buttons} не покрывают 0..{upper.group(1)}")
 
-    # Админы панели = админы правил.
+        # Panel admins are the rule admins.
     admins = set(a.lower() for a in re.findall(r'"([a-z0-9]+@cb4\.game)"',
                                                 extract_const(js, "ADMINS") or ""))
     rule_admins = set(re.findall(r"([a-z0-9]+@cb4\.game)", json.dumps(rules)))
@@ -305,7 +304,7 @@ def check_schema(html: str, js: str, rules: dict) -> None:
     if not admins:
         error("в панели пустой список админов")
 
-    # Суффикс пароля обязан совпадать с игровым: иначе вход молча не проходит.
+        # The password suffix must match the game one, or signing in fails silently.
     suffix = re.search(r'#define\s+FB_PASS_SUFFIX\s+"([^"]*)"',
                        (ROOT / "src" / "engine" / "network" / "http_json.inc").read_text(encoding="utf-8"))
     if suffix:
@@ -315,7 +314,7 @@ def check_schema(html: str, js: str, rules: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Прогон подставной базы: панель без неё нельзя ни открыть, ни проверить.
+# The fake database run: without it the panel can be neither opened nor checked.
 # ---------------------------------------------------------------------------
 def free_port() -> int:
     with socket.socket() as sock:
@@ -337,7 +336,7 @@ def request(url: str, method: str = "GET", body=None, expect_json: bool = True):
 
 def check_fake_server() -> None:
     if not FAKE.exists():
-        error("нет test/fake_firebase.py — тестовый режим панели не запустить")
+        error("нет test/fake_firebase.py - тестовый режим панели не запустить")
         return
     port = free_port()
     base = f"http://127.0.0.1:{port}"
@@ -365,7 +364,7 @@ def check_fake_server() -> None:
         if code != 200 or '<button id="login"' not in page:
             error(f"подставная база не раздаёт панель: HTTP {code}")
         if request(f"{base}/.json")[0] != 403:
-            error("корень базы читается без входа — правила не воспроизведены")
+            error("корень базы читается без входа - правила не воспроизведены")
         if request(f"{base}/AzumBuff.json")[0] != 200:
             error("AzumBuff должен читаться всеми (\".read\": true)")
 
@@ -389,9 +388,9 @@ def check_fake_server() -> None:
             return
         player = body["idToken"]
         if request(f"{base}/.json?auth={player}")[0] != 403:
-            error("игрок читает корень — панель не проверит режим «снимок по узлам»")
+            error("игрок читает корень - панель не проверит режим «снимок по узлам»")
         if request(f"{base}/event.json?auth={player}", "PUT", 1)[0] != 403:
-            error("игрок пишет event — правила не воспроизведены")
+            error("игрок пишет event - правила не воспроизведены")
         if request(f"{base}/users.json?auth={player}")[0] != 200:
             error("игрок не читает users")
         if request(f"{base}/users/Dimasi4ek229/cups.json?auth={player}", "PUT", 1)[0] != 403:
@@ -408,7 +407,7 @@ def check_fake_server() -> None:
 
 def main() -> int:
     if not PANEL.exists():
-        print("index.html не найден — веб-панель не возвращена в репозиторий", file=sys.stderr)
+        print("index.html не найден - веб-панель не возвращена в репозиторий", file=sys.stderr)
         return 1
     html = PANEL.read_text(encoding="utf-8")
     blocks = scripts_of(html)

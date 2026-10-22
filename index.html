@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CB4 — админ-панель Firebase</title>
+<title>CB4 - админ-панель Firebase</title>
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c2430; --line:#2a3441;
@@ -54,7 +54,7 @@
   label.chk{display:flex;gap:7px;align-items:center;font-size:13px}
   .sp{flex:1}
   /* Плашка «панель не запустилась»: раньше любая ошибка скрипта оставляла
-     страницу молча мёртвой — кнопки были, но не нажимались. */
+     страницу молча мёртвой - кнопки были, но не нажимались. */
   .fatal{position:sticky;top:0;z-index:99;margin:0;padding:12px 18px;background:#5c1414;
          color:#fff;border-bottom:2px solid var(--red);font:13px/1.5 ui-monospace,Consolas,monospace;
          white-space:pre-wrap}
@@ -66,7 +66,7 @@
 <body>
 <div id="fatal" class="hide"></div>
 <header>
-  <h1>CB4 — админ-панель Realtime Database</h1>
+  <h1>CB4 - админ-панель Realtime Database</h1>
   <span class="tag" id="who">не авторизован</span>
   <span class="pill" id="modePill">боевая база</span>
   <span class="sp"></span>
@@ -105,7 +105,7 @@
     <div class="row" style="margin-top:8px">
       <button id="testMode">Тестовый режим: база на этом же сервере</button>
       <button id="prodMode">Обратно на боевую базу</button>
-      <span class="muted" id="testHint">тестовый режим — для <code>test/fake_firebase.py</code>: вход любой парой
+      <span class="muted" id="testHint">тестовый режим - для <code>test/fake_firebase.py</code>: вход любой парой
         «ник + пароль», аккаунт создаётся сам, ничего боевого не трогается</span>
     </div>
     <p class="muted" style="margin:8px 0 0">
@@ -120,9 +120,9 @@
     </p>
     <p class="muted" style="margin:8px 0 0">
       Текущий хвост печатает <code>python3 tools/rotate_db_secret.py --show</code>
-      (строка «хвост пароля аккаунта») — скопируй его в поле «суффикс» выше.
+      (строка «хвост пароля аккаунта») - скопируй его в поле «суффикс» выше.
       В файл панели он не вшивается нарочно: страница лежит в открытом репозитории,
-      а хвост — это половина секрета аккаунтов.
+      а хвост - это половина секрета аккаунтов.
     </p>
   </details>
 </section>
@@ -167,7 +167,7 @@
     <code>gifts</code>, уровни всех классов, <code>bp/bpx</code>, <code>playtime</code>,
     <code>pd_consent_*</code> и секрет записи <code>w</code>), живые слоты
     <code>rooms/*/players</code>, <code>event</code>, <code>banner</code>,
-    <code>AzumBuff</code>, <code>FlashSale</code>, структура комнат.
+    <code>AzumBuff</code>, <code>FlashSale</code>, <code>HitboxChaos</code>, структура комнат.
     Список полей сверяется с <code>firebase.rules.json</code> тестом
     <code>tools/test_admin_panel.py</code>.
   </p>
@@ -176,7 +176,7 @@
 <section id="tools" class="hide">
   <h2>3. Точечные инструменты</h2>
 
-  <h3>Ивент боя (0..4 — как в игре)</h3>
+  <h3>Ивент боя (0..4 - как в игре)</h3>
   <div class="row">
     <button data-ev="0">0 · выкл</button>
     <button data-ev="1">1 · диско</button>
@@ -195,6 +195,19 @@
     <button data-flag="FlashSale" data-v="0">FlashSale: выкл</button>
     <span class="muted" id="flagNow"></span>
   </div>
+
+  <h3>Шедевро-режим</h3>
+  <div class="row">
+    <button data-flag="HitboxChaos" data-v="1">Шедевро-хитбоксы: вкл</button>
+    <button data-flag="HitboxChaos" data-v="0">Шедевро-хитбоксы: выкл</button>
+  </div>
+  <p class="muted" style="margin:8px 0 0">
+    Твой удар больше не бьёт: хитбокс разворачивается от врага и убегает, а если
+    всё-таки попал - улетает от него. По арене летает шедевро-враг: кубик с
+    глазами, который скачет, телепортируется, сыплет искры и болтает ерунду.
+    Работает в любом бою, и в соло, и в онлайне. Жизни, кубки и сеть не
+    трогаются - это шутка, а не чит.
+  </p>
 
   <h3>Баннер в лобби</h3>
   <div class="row">
@@ -249,7 +262,7 @@
 /* Страховка от «на сайте ничего не нажимается».
  *
  * Раньше одна опечатка в скрипте (например, «rooms/&#42;/chat» внутри блочного
- * комментария — звёздочка со слэшем закрывали комментарий раньше времени)
+ * комментария - звёздочка со слэшем закрывали комментарий раньше времени)
  * роняла весь скрипт на этапе загрузки, и страница выглядела живой, но ни одна
  * кнопка не работала. Теперь:
  *   1) этот скрипт грузится первым и ловит любые ошибки страницы;
@@ -271,7 +284,7 @@
   window.addEventListener("error", function (e) {
     show("Панель не запустилась: " + (e.message || "ошибка скрипта") +
          (e.lineno ? " (строка " + e.lineno + ")" : "") +
-         "\nКнопки работать не будут, пока ошибка не исправлена. Подробности — консоль браузера (F12).");
+         "\nКнопки работать не будут, пока ошибка не исправлена. Подробности - консоль браузера (F12).");
   });
   window.addEventListener("unhandledrejection", function (e) {
     var reason = e.reason;
@@ -314,7 +327,7 @@ function onChange(sel, fn){
   return el;
 }
 /* Любая ошибка обработчика попадает в журнал и в красную плашку: кнопка
- * «нажалась», но что-то пошло не так — это видно сразу. */
+ * «нажалась», но что-то пошло не так - это видно сразу. */
 function run(fn, ev, el){
   try{
     const out = fn(ev, el);
@@ -341,7 +354,7 @@ const DEFAULT_WORDS = [
 
 /* ---------- схема базы: ровно то, что пускает firebase.rules.json ---------- */
 /* Это сердце панели: всё, чего нет в схеме, предлагается удалить. Поэтому
- * схема обязана совпадать с правилами — иначе панель предлагает снести живой
+ * схема обязана совпадать с правилами - иначе панель предлагает снести живой
  * прогресс (так уже было: подарки, bpx, playtime, pd_consent_ts и секрет записи
  * «w» правила пускают, а старая схема считала мусором).
  * Сверяет их tools/test_admin_panel.py, он же падает в CI при расхождении. */
@@ -350,14 +363,14 @@ const flag = ()      => ({t:"num", lo:0, hi:1});
 const str  = (min, max) => ({t:"str", min, max});
 const secret = ()    => ({t:"str", min:1, max:64, note:"секрет записи «w»"});
 
-/* Корневые узлы игры. AzumBuff и FlashSale читает live_flags.inc, event и
- * banner — room_control.inc/room_stream.inc, bans — moderation.inc. */
-const ROOT_OK   = ["users","rooms","bans","event","banner","AzumBuff","FlashSale"];
+/* Корневые узлы игры. AzumBuff, FlashSale и HitboxChaos читает live_flags.inc, event и
+ * banner - room_control.inc/room_stream.inc, bans - moderation.inc. */
+const ROOT_OK   = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos"];
 /* Узлы, которые читаются по отдельности, если корень закрыт правилами. */
-const ROOT_PARTS = ["users","rooms","bans","event","banner","AzumBuff","FlashSale"];
+const ROOT_PARTS = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos"];
 
 const USER_REQ  = ["nick","cups","candies","cls","azum","santa","level","levels"];
-/* Подарки — отдельный узел users/<ник>/gifts со своими счётчиками. */
+/* Подарки - отдельный узел users/<ник>/gifts со своими счётчиками. */
 const GIFT_FIELDS = {
   poop: num(0,999), cake: num(0,999), bear: num(0,999), rocket: num(0,999),
   emerald: num(0,999), rose: num(0,999),
@@ -368,8 +381,8 @@ const USER_FIELDS = {
   nick: str(1,16),
   /* Секрет записи: правила требуют именно строку, значение проверяет база. */
   w: secret(),
-  /* Пароль в базе запрещён правилами (".validate": false) — это мусор. */
-  pass: {t:"forbidden", why:"пароль в базе — так больше нельзя"},
+  /* Пароль в базе запрещён правилами (".validate": false) - это мусор. */
+  pass: {t:"forbidden", why:"пароль в базе - так больше нельзя"},
   cups: num(0,10000000), candies: num(0,10000000),
   cls: num(0,4), azum: flag(), santa: flag(), ebuc: flag(), astra: flag(),
   level: num(0,3), levels: num(0,3),
@@ -412,6 +425,8 @@ const SLOT_FIELDS = {
   grab: num(0,1000000000000),
   uzx: num(0,1), uzy: num(0,1), universe: num(0,1000000000000),
   thud: num(0,1000000000000), blk: flag(), ccu: flag(),
+  bkx: num(0,1), bky: num(0,1), bkdx: num(-1.001,1.001), bkdy: num(-1.001,1.001),
+  brick: num(0,1000000000000),
   cls: num(0,4), level: num(0,3), skin: num(0,1)
 };
 
@@ -440,7 +455,7 @@ function log(msg, cls){
 const dbUrl = () => ($("#dbUrl").value || "").trim().replace(/\/+$/,"");
 const key   = () => ($("#apiKey").value || "").trim();
 /* Тестовый прогон (test/fake_firebase.py) ходит за auth туда же, куда и за
- * данными — ровно как fb_auth_endpoint() в net.c. Боевой адрес узнаётся по
+ * данными - ровно как fb_auth_endpoint() в net.c. Боевой адрес узнаётся по
  * домену Firebase, поэтому тестовая база работает и по http, и по https
  * (например, когда панель открыта через прокси предпросмотра). */
 const isTest = () => !!dbUrl() && !PROD_DB_RE.test(dbUrl());
@@ -455,8 +470,8 @@ function updateMode(){
   pill.className = "pill" + (test ? " live" : "");
   const hint = $("#testHint");
   if(hint) hint.innerHTML = test
-    ? "сейчас панель смотрит на <b>этот же сервер</b> — можно нажимать всё подряд, боевая база не трогается"
-    : "тестовый режим — для <code>test/fake_firebase.py</code>: вход любой парой «ник + пароль», " +
+    ? "сейчас панель смотрит на <b>этот же сервер</b> - можно нажимать всё подряд, боевая база не трогается"
+    : "тестовый режим - для <code>test/fake_firebase.py</code>: вход любой парой «ник + пароль», " +
       "аккаунт создаётся сам, ничего боевого не трогается";
   suffixWarn();
 }
@@ -493,7 +508,7 @@ function emailHint(){
 }
 
 /* Хвост пароля ротирован (rotate_db_secret.py): сейчас это 32 символа
- * [A-Za-z0-9]. Старый «|cb4v1» в поле — почти наверняка не то, что ждёт
+ * [A-Za-z0-9]. Старый «|cb4v1» в поле - почти наверняка не то, что ждёт
  * боевая база, поэтому говорим об этом заранее, а не после трех отказов. */
 function suffixLooksCurrent(s){
   return /^[A-Za-z0-9]{32}$/.test(s || "");
@@ -513,7 +528,7 @@ function suffixWarn(){
     return;
   }
   if(suffixLooksCurrent(sfx)){
-    box.innerHTML = "Хвост похож на текущий (32 символа) — хорошо.";
+    box.innerHTML = "Хвост похож на текущий (32 символа) - хорошо.";
     box.className = "muted good";
     return;
   }
@@ -525,8 +540,8 @@ function suffixWarn(){
 
 /* ---------- auth ---------- */
 const ADMINS = ["dimasi4ek229@cb4.game", "qwertyuiopaj1234@cb4.game"];
-/* Сюда — исторические ступени хвоста пароля: по ним входили аккаунты,
- * созданные раньше. Текущий хвост — 32 случайных символа из NET_PASS_SECRET_*
+/* Сюда - исторические ступени хвоста пароля: по ним входили аккаунты,
+ * созданные раньше. Текущий хвост - 32 случайных символа из NET_PASS_SECRET_*
  * (src/engine/network.h), он в панель НЕ вшит: страница лежит в открытом
  * репозитории. Текущий хвост вставляется в поле «суффикс» из вывода
  * `python3 tools/rotate_db_secret.py --show`. */
@@ -534,24 +549,24 @@ const KNOWN_SUFFIXES = ["|cb4v1", "#cb4", ""];
 
 const AUTH_ERR = {
   EMAIL_NOT_FOUND:
-    "аккаунта с таким e-mail нет в Firebase Auth. Один раз зайди в игру под этим ником — игра сама его создаст (accounts:signUp) с правильным хвостом пароля — и возвращайся сюда. Панель нарочно не создаёт аккаунты на боевой базе: созданный с чужим хвостом аккаунт потом не пустит и саму игру.",
+    "аккаунта с таким e-mail нет в Firebase Auth. Один раз зайди в игру под этим ником - игра сама его создаст (accounts:signUp) с правильным хвостом пароля - и возвращайся сюда. Панель нарочно не создаёт аккаунты на боевой базе: созданный с чужим хвостом аккаунт потом не пустит и саму игру.",
   INVALID_PASSWORD: "неверный пароль",
   INVALID_LOGIN_CREDENTIALS:
     "неверный пароль или такого аккаунта нет (Firebase намеренно не говорит, что именно). " +
     "Чаще всего дело в хвосте пароля: он ротирован, и «|cb4v1» теперь работает только для аккаунтов, " +
     "которые не входили в игру после ротации. Текущий хвост печатает " +
-    "`python3 tools/rotate_db_secret.py --show` — вставь его в «Настройки проекта» → поле суффикса. " +
-    "Панель перебирает известные варианты, так что если и это не помогло — проверь, что ник и пароль те же, что в игре.",
-  USER_DISABLED: "аккаунт отключён — Firebase Console → Authentication → Users",
+    "`python3 tools/rotate_db_secret.py --show` - вставь его в «Настройки проекта» → поле суффикса. " +
+    "Панель перебирает известные варианты, так что если и это не помогло - проверь, что ник и пароль те же, что в игре.",
+  USER_DISABLED: "аккаунт отключён - Firebase Console → Authentication → Users",
   TOO_MANY_ATTEMPTS_TRY_LATER: "слишком много попыток входа, подожди пару минут и попробуй снова",
-  OPERATION_NOT_ALLOWED: "вход по e-mail/паролю выключён — Firebase Console → Authentication → Sign-in method → Email/Password",
-  WEAK_PASSWORD: "пароль короче 6 символов — Firebase не принимает, как раз поэтому игра и добавляет суффикс",
+  OPERATION_NOT_ALLOWED: "вход по e-mail/паролю выключён - Firebase Console → Authentication → Sign-in method → Email/Password",
+  WEAK_PASSWORD: "пароль короче 6 символов - Firebase не принимает, как раз поэтому игра и добавляет суффикс",
   API_KEY_INVALID: "API-ключ не подходит к этому проекту (или набран с опечаткой)",
   PERMISSION_DENIED:
     "API-ключ ограничен и из браузера не работает. В Google Cloud Console ограничения " +
     "ставятся по HTTP-referrer / IP / Android-пакету (com.cb4); для этой панели нужен ключ " +
     "с разрешённым referrer этой страницы либо вовсе без ограничений.",
-  REFERER_BLOCKED: "API-ключ ограничен по HTTP-referrer — добавь адрес этой страницы в список разрешённых",
+  REFERER_BLOCKED: "API-ключ ограничен по HTTP-referrer - добавь адрес этой страницы в список разрешённых",
   NETWORK_ERROR:
     "запрос вообще не ушёл: нет сети, база недоступна или браузер заблокировал запрос (CORS/смешанный контент). " +
     "Если страница открыта по https, адрес базы тоже должен быть https."
@@ -585,7 +600,7 @@ async function idp(method, body){
 }
 /* idToken живёт час: обновляем его по refreshToken, чтобы панель не отваливалась. */
 async function refreshToken(){
-  if(!REFRESH) throw new Error("нет refresh-токена — нужно войти заново");
+  if(!REFRESH) throw new Error("нет refresh-токена - нужно войти заново");
   const r = await fetch(`${tokenHost()}/v1/token?key=${encodeURIComponent(key())}`,
     {method:"POST",headers:{"Content-Type":"application/json"},
      body:JSON.stringify({grant_type:"refresh_token", refresh_token:REFRESH})});
@@ -630,19 +645,19 @@ async function doLogin(){
       }catch(e){
         last = e;
         tried.push((sfx ? "«" + sfx + "»" : "без суффикса") + " → " + e.message);
-        if(!RETRYABLE.test(e.message)) break;   // ключ заблокирован, лимит попыток и т.п. — дальше пробовать бессмысленно
+        if(!RETRYABLE.test(e.message)) break;   // ключ заблокирован, лимит попыток и т.п. - дальше пробовать бессмысленно
       }
     }
     if(!ok){
       /* Ни один вариант хвоста не подошёл. При включённой защите от перебора
        * Firebase отвечает одинаково на «нет аккаунта» и «неверный пароль»,
        * поэтому разницу узнаём так же, как fb_sign_in() в net_auth_flow.inc:
-       * пробуем signUp. Аккаунта нет — он создаётся; аккаунт есть — Firebase
+       * пробуем signUp. Аккаунта нет - он создаётся; аккаунт есть - Firebase
        * ответит EMAIL_EXISTS, то есть дело в пароле или в хвосте.
        *
        * На боевой базе панель аккаунты НЕ создаёт: созданный отсюда аккаунт
        * получит хвост из поля, а игра при входе переберёт свой текущий хвост и
-       * «|cb4v1» — и не подойдёт ни один, игрок окажется заперт. Поэтому на
+       * «|cb4v1» - и не подойдёт ни один, игрок окажется заперт. Поэтому на
        * боевой базе предлагаем правильный путь (зайти один раз в игру), а
        * signUp оставляем только тестовой базе, где это безопасно. */
       if(isTest()){
@@ -650,7 +665,7 @@ async function doLogin(){
         try{
           const j = await idp("signUp", {email, password: pass + sfx});
           ok = {j, sfx, created: true};
-          log("тестовая база: аккаунт создан — " + email, "good");
+          log("тестовая база: аккаунт создан - " + email, "good");
         }catch(e){
           if(/EMAIL_EXISTS/.test(e.message))
             throw new Error("аккаунт " + email + " существует, значит пароль (или хвост) не подошёл");
@@ -683,12 +698,12 @@ async function doLogin(){
     log("база: " + dbUrl() + (isTest() ? " · тестовый режим" : ""), isTest() ? "warn" : "");
     log("токен: провайдер " + ((p.firebase || {}).sign_in_provider || "?") +
         ", годен до " + new Date((p.exp || 0) * 1000).toLocaleTimeString(), "");
-    if(isAdmin) log("права админа есть — правила пустят запись в event/banner/bans/флаги, полный снимок корня и чистку комнат", "good");
+    if(isAdmin) log("права админа есть - правила пустят запись в event/banner/bans/флаги, полный снимок корня и чистку комнат", "good");
     else{
-      log("это не админский аккаунт: читаются игровые узлы, чат и слоты чистить можно, а event/banner/bans/флаги, чужие users и мусор в корне/комнатах — нет", "warn");
+      log("это не админский аккаунт: читаются игровые узлы, чат и слоты чистить можно, а event/banner/bans/флаги, чужие users и мусор в корне/комнатах - нет", "warn");
       alert("Вход прошёл, но " + email + " нет в списке админов firebase.rules.json.\n\n" +
             "Чат и слоты (в т.ч. целиком) чистить можно; /event, /banner, /bans, /AzumBuff, /FlashSale, " +
-            "чужие /users и мусор в корне/комнатах — нет. Корневой мусор виден и удаляется только админами.");
+            "чужие /users и мусор в корне/комнатах - нет. Корневой мусор виден и удаляется только админами.");
     }
     await scan();
   }catch(e){
@@ -704,7 +719,7 @@ async function doLogin(){
 
 /* ---------- REST к базе ---------- */
 /* Удаление идёт параллельным пулом запросов, и несколько из них могут
- * одновременно обнаружить протухший токен — держим одно общее обновление,
+ * одновременно обнаружить протухший токен - держим одно общее обновление,
  * а не десяток одинаковых. */
 let tokenBusy = null;
 function ensureToken(){
@@ -714,13 +729,13 @@ function ensureToken(){
 }
 async function rtdb(path, method = "GET", body, retried){
   if(!TOKEN){
-    const e = new Error("нет входа — сначала «Войти»");
+    const e = new Error("нет входа - сначала «Войти»");
     e.noAuth = true;
     throw e;
   }
   if(REFRESH && Date.now() > EXP){
     try{ await ensureToken(); }
-    catch(e){ log("не удалось обновить токен: " + e.message + " — " + explain(e.message), "warn"); }
+    catch(e){ log("не удалось обновить токен: " + e.message + " - " + explain(e.message), "warn"); }
   }
   const url = `${dbUrl()}/${path}.json?auth=${encodeURIComponent(TOKEN || "")}`;
   const opt = {method};
@@ -739,7 +754,7 @@ async function rtdb(path, method = "GET", body, retried){
     let msg = `${method} /${path || "(корень)"} → ${r.status} ${txt.slice(0,160)}`;
     if(r.status === 401 || r.status === 403)
       msg += "  (401/403 = протухший токен либо правила базы; опубликуй свежие " +
-             "firebase.rules.json — мусор в корне и в комнатах пишут только админы, " +
+             "firebase.rules.json - мусор в корне и в комнатах пишут только админы, " +
              "а при запрете контейнера панель удаляет по детям)";
     throw new Error(msg);
   }
@@ -749,9 +764,9 @@ async function rtdb(path, method = "GET", body, retried){
 }
 
 /* ---------- сканирование ---------- */
-/* Полный снимок читается с корня — это умеют админы (firebase.rules.json:
+/* Полный снимок читается с корня - это умеют админы (firebase.rules.json:
  * ".read" на корне для админов). Если корень закрыт (не-админ или старые
- * правила), читаем известные игровые узлы по отдельности — так панель
+ * правила), читаем известные игровые узлы по отдельности - так панель
  * продолжает работать и под обычным аккаунтом (чат/слоты), просто без
  * корневого мусора. */
 async function takeSnapshot(){
@@ -764,7 +779,7 @@ async function takeSnapshot(){
       try{
         const v = await rtdb(p);
         if(v !== null && typeof v === "object") out[p] = v;
-        else if(v !== null && typeof v !== "object") out[p] = v;   // event/AzumBuff/FlashSale — числа
+        else if(v !== null && typeof v !== "object") out[p] = v;   // event/AzumBuff/FlashSale - числа
       }catch(e2){ firstErr = firstErr || e2; }
     }
     if(Object.keys(out).length) return {data: out, scoped: true};
@@ -778,7 +793,7 @@ async function scan(){
     SNAP = snap.data;
     SCOPED = snap.scoped;
     if(SCOPED)
-      log("корень базы закрыт правилами — читаю игровые узлы по отдельности (корневой мусор виден только админам)", "warn");
+      log("корень базы закрыт правилами - читаю игровые узлы по отдельности (корневой мусор виден только админам)", "warn");
     analyze();
     $("#scanInfo").textContent = "снимок получен " + new Date().toLocaleTimeString() +
                                  (SCOPED ? " · корень закрыт, по узлам" : "");
@@ -838,7 +853,7 @@ function analyze(){
     const bad = badValue(num(0, EVENT_MAX), d.event);
     if(bad) add("unknown_field", "event", "значение ивента вне 0.." + EVENT_MAX + ": " + bad, JSON.stringify(d.event));
   }
-  for(const f of ["AzumBuff","FlashSale"])
+  for(const f of ["AzumBuff","FlashSale","HitboxChaos"])
     if(f in d){
       const bad = badValue(flag(), d[f]);
       if(bad) add("unknown_field", f, "флаг должен быть 0 или 1: " + bad, JSON.stringify(d[f]));
@@ -861,7 +876,7 @@ function analyze(){
   const users = d.users || {};
   for(const [nick, u] of Object.entries(users)){
     if(!NICK_RE.test(nick)){ add("bad_user", `users/${nick}`, "ник не проходит правила A-Za-z0-9_ (1-16)"); continue; }
-    if(typeof u !== "object" || u === null){ add("bad_user", `users/${nick}`, "не объект — мусорная запись", String(u).slice(0,80)); continue; }
+    if(typeof u !== "object" || u === null){ add("bad_user", `users/${nick}`, "не объект - мусорная запись", String(u).slice(0,80)); continue; }
     const miss = USER_REQ.filter(f => !(f in u));
     if(miss.length === USER_REQ.length){ add("bad_user", `users/${nick}`, "нет ни одного игрового поля"); continue; }
     if(miss.length) add("bad_user", `users/${nick}`, "нет обязательных полей: " + miss.join(", "));
@@ -901,7 +916,7 @@ function analyze(){
   const rooms = d.rooms || {};
   for(const [rn, room] of Object.entries(rooms)){
     if(typeof room !== "object" || room === null){
-      add("unknown_root", `rooms/${rn}`, "комната — не объект", String(room).slice(0,80)); continue;
+      add("unknown_root", `rooms/${rn}`, "комната - не объект", String(room).slice(0,80)); continue;
     }
     for(const k of Object.keys(room))
       if(!ROOM_OK.includes(k))
@@ -912,7 +927,7 @@ function analyze(){
     if("meta" in room){
       const m = room.meta;
       if(typeof m !== "object" || m === null)
-        add("meta", `rooms/${rn}/meta`, "meta — не объект", String(m).slice(0,60));
+        add("meta", `rooms/${rn}/meta`, "meta - не объект", String(m).slice(0,60));
       else{
         for(const k of Object.keys(m))
           if(!META_FIELDS[k])
@@ -931,11 +946,11 @@ function analyze(){
     for(const [slot, p] of Object.entries(room.players || {})){
       const base = `rooms/${rn}/players/${slot}`;
       if(!/^[0-3]$/.test(slot)){ add("slot", base, "слота с таким номером не бывает (0-3)"); continue; }
-      if(typeof p !== "object" || p === null){ add("slot", base, "слот — не объект"); continue; }
+      if(typeof p !== "object" || p === null){ add("slot", base, "слот - не объект"); continue; }
       const miss = SLOT_REQ.filter(f => !(f in p));
       if(miss.length){ add("slot", base, "битый слот, нет полей: " + miss.join(", ")); continue; }
       if(typeof p.nick === "string" && spamHit(p.nick))
-        add("slot", base, "ник в слоте — спам/взлом: " + spamHit(p.nick), p.nick);
+        add("slot", base, "ник в слоте - спам/взлом: " + spamHit(p.nick), p.nick);
       for(const [f, v] of Object.entries(p)){
         const spec = SLOT_FIELDS[f];
         if(!spec){ add("unknown_field", `${base}/${f}`, "поле слота не используется игрой", JSON.stringify(v).slice(0,60)); continue; }
@@ -943,16 +958,16 @@ function analyze(){
         if(bad) add("unknown_field", `${base}/${f}`, bad, JSON.stringify(v).slice(0,60));
       }
       /* Заявка на слот без движения: игра пишет нули при захвате слота
-       * (room_sync.inc). seq — это счётчик, а не время, поэтому «старость»
+       * (room_sync.inc). seq - это счётчик, а не время, поэтому «старость»
        * по нему не определить: такие слоты показываются отдельно и по
-       * умолчанию НЕ выделены — вдруг бой прямо сейчас начинается. */
+       * умолчанию НЕ выделены - вдруг бой прямо сейчас начинается. */
       if(p.seq === 0 && p.hp === 0 && p.alive === 0 && p.x === 0 && p.y === 0)
         add("stale", base, "нулевой слот-заглушка (заявка без движения)", p.nick || "");
     }
 
     for(const [id, m] of Object.entries(room.chat || {})){
       const base = `rooms/${rn}/chat/${id}`;
-      if(typeof m !== "object" || m === null){ add("chat", base, "сообщение — не объект"); continue; }
+      if(typeof m !== "object" || m === null){ add("chat", base, "сообщение - не объект"); continue; }
       const bad = CHAT_REQ.filter(f => !(f in m));
       const extra = Object.keys(m).filter(f => !CHAT_FIELDS[f]);
       const hit = typeof m.text === "string" ? spamHit(m.text) : "нет текста";
@@ -977,7 +992,7 @@ function analyze(){
     if(!NICK_RE.test(n) || typeof v !== "boolean")
       add("unknown_field", `bans/${n}`, "битая запись бана", JSON.stringify(v));
     else if(v === false)
-      add("unknown_field", `bans/${n}`, "бан снят (false) — запись лишняя");
+      add("unknown_field", `bans/${n}`, "бан снят (false) - запись лишняя");
     else
       add("bans", `bans/${n}`, "активный бан");
   }
@@ -1004,6 +1019,7 @@ function stats(){
     ["Банов", Object.keys(d.bans||{}).length],
     ["Ивент", (d.event ?? 0) + " · " + (EVENT_NAMES[d.event] || "?")],
     ["AzumBuff / FlashSale", (d.AzumBuff ?? 0) + " / " + (d.FlashSale ?? 0)],
+    ["Шедевро-хитбоксы", (d.HitboxChaos ?? 0)],
     ["Мусора найдено", junk]
   ];
   $("#stats").innerHTML = c.map(([k,v]) =>
@@ -1011,7 +1027,8 @@ function stats(){
   const ev = $("#evNow");
   if(ev) ev.textContent = "сейчас в базе: " + (d.event ?? "?");
   const fl = $("#flagNow");
-  if(fl) fl.textContent = "в базе: AzumBuff=" + (d.AzumBuff ?? "—") + ", FlashSale=" + (d.FlashSale ?? "—");
+  if(fl) fl.textContent = "в базе: AzumBuff=" + (d.AzumBuff ?? "-") + ", FlashSale=" + (d.FlashSale ?? "-") +
+    ", HitboxChaos=" + (d.HitboxChaos ?? "-");
   const bt = $("#bannerText");
   if(bt && d.banner && typeof d.banner === "object" && typeof d.banner.text === "string" && !bt.value)
     bt.value = d.banner.text;
@@ -1024,7 +1041,7 @@ function render(){
     const i = FOUND.indexOf(f);
     return `<label class="item"><input type="checkbox" data-i="${i}" ${f.sel?"checked":""}>
       <span><code>${esc(f.path)}</code><br>
-      <span class="why">${esc(f.why)}${f.extra ? " — " + esc(f.extra) : ""}</span></span></label>`;
+      <span class="why">${esc(f.why)}${f.extra ? " - " + esc(f.extra) : ""}</span></span></label>`;
   }).join("") : '<div class="item good">Ничего лишнего по выбранным фильтрам 🎉</div>';
   $("#found").querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
     FOUND[+cb.dataset.i].sel = cb.checked; selInfo();
@@ -1044,7 +1061,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
  * батч-удаление, поэтому схлопываем: если ВСЕ дети узла (по снимку SNAP)
  * выбраны, вылетает целиком родителем одним запросом. Считаем именно по
  * снимку, поэтому лишнего задеть невозможно. Корень целиком удалить нельзя
- * (RTDB это запрещает) — его расширяем до детей. */
+ * (RTDB это запрещает) - его расширяем до детей. */
 function wipePlan(paths){
   if(!SNAP) return [...new Set(paths)];
   const sel = new Set(paths);
@@ -1081,7 +1098,7 @@ function wipePlan(paths){
 
 /* Удаление узла с запасным путём: если правила не пускают удалить контейнер
  * целиком (rooms/<комната>/chat, rooms/<комната>/players и т.п.), удаляем по
- * одному ребёнку — каждый ребёнок правилами пишется, и эффект тот же. */
+ * одному ребёнку - каждый ребёнок правилами пишется, и эффект тот же. */
 async function wipeNode(p){
   try{ await rtdb(p, "DELETE"); return; }
   catch(e){
@@ -1098,8 +1115,8 @@ async function wipeNode(p){
   }
 }
 
-/* Firebase REST не умеет батч-удаление — поэтому ускоряем двумя приёмами:
- * схлопыванием (wipePlan) и параллельным пулом запросов. 10 одновременно —
+/* Firebase REST не умеет батч-удаление - поэтому ускоряем двумя приёмами:
+ * схлопыванием (wipePlan) и параллельным пулом запросов. 10 одновременно -
  * компромисс между скоростью и лимитами Firebase. */
 const WIPE_CONC = 10;
 async function wipe(){
@@ -1110,7 +1127,7 @@ async function wipe(){
   if(!plan.length) return;
   if(!confirm(`Удалить ${selected.length} узлов?\nПакетом: ${plan.length} запрос(ов) к базе.\n\nПервые:\n` +
               plan.slice(0,12).join("\n") + (plan.length>12?"\n…":"") +
-              (isTest() ? "" : "\n\nБаза БОЕВАЯ — отменить удаление будет нельзя."))) return;
+              (isTest() ? "" : "\n\nБаза БОЕВАЯ - отменить удаление будет нельзя."))) return;
   const btn = $("#wipe"); btn.disabled = true;
   let ok = 0, fail = 0, done = 0;
   const total = plan.length, queue = [...plan];
@@ -1119,7 +1136,7 @@ async function wipe(){
     while(queue.length){
       const p = queue.shift();
       try{ await wipeNode(p); ok++; log("удалено: " + p); }
-      catch(e){ fail++; log("НЕ удалено " + p + " — " + e.message, "err"); }
+      catch(e){ fail++; log("НЕ удалено " + p + " - " + e.message, "err"); }
       done++; tick();
     }
   };
@@ -1134,7 +1151,7 @@ async function wipe(){
 /* ---------- точечное ---------- */
 async function safe(fn, name){
   if(window.cb4FatalClear) window.cb4FatalClear();
-  try{ await fn(); log(name + " — ок", "good"); await scan(); }
+  try{ await fn(); log(name + " - ок", "good"); await scan(); }
   catch(e){
     log(name + ": " + e.message, "err");
     alert(name + " не вышло:\n" + e.message + "\n\n" + explain(e.message));
@@ -1159,7 +1176,7 @@ function selfTest(){
     "кнопок на странице: " + buttons.length,
     "привязано обработчиков: " + BOUND.length,
     "полей ввода: " + inputs.length,
-    "не найдено элементов: " + (MISSING.length ? MISSING.join(", ") : "нет — всё на месте"),
+    "не найдено элементов: " + (MISSING.length ? MISSING.join(", ") : "нет - всё на месте"),
     "адрес базы: " + (dbUrl() || "(пусто)") + (isTest() ? " · тестовый режим" : " · боевая база"),
     "вход: " + (TOKEN ? EMAIL : "не выполнен"),
     "снимок: " + (SNAP ? Object.keys(SNAP).length + " корневых узлов" : "не получен")
@@ -1167,7 +1184,7 @@ function selfTest(){
   buttons.forEach(b => { if(b.disabled) lines.push("кнопка отключена: " + (b.id || b.textContent.trim())); });
   log("самопроверка:\n  " + lines.join("\n  "), MISSING.length ? "warn" : "good");
   alert("Самопроверка\n\n" + lines.join("\n") +
-        (MISSING.length ? "\n\nСтраница собрана не полностью — эти элементы не найдены:\n" + MISSING.join("\n")
+        (MISSING.length ? "\n\nСтраница собрана не полностью - эти элементы не найдены:\n" + MISSING.join("\n")
                         : "\n\nВсе кнопки привязаны к обработчикам."));
 }
 
@@ -1195,25 +1212,25 @@ function boot(){
     try{
       await idp("signInWithPassword",
                 {email: "cb4-probe-" + Date.now() + "@cb4.game", password: "probe-probe-1"});
-      log("проверка ключа: ответ без ошибки — странно, но ключ точно живой", "warn");
+      log("проверка ключа: ответ без ошибки - странно, но ключ точно живой", "warn");
     }catch(e){
       if(RETRYABLE.test(e.message))
-        log("проверка ключа: ключ работает — сервер ответил " + e.message +
+        log("проверка ключа: ключ работает - сервер ответил " + e.message +
             " (значит запрос дошёл и не заблокирован); дело в паре «ник + пароль + суффикс»", "good");
       else
-        log("проверка ключа: " + e.message + " — " + explain(e.message), "err");
+        log("проверка ключа: " + e.message + " - " + explain(e.message), "err");
       alert("Проверка ключа\n\n" + e.message + "\n\n" + explain(e.message));
     }finally{ b.disabled = false; }
   }, "Проверить ключ");
   on("#suffixHelp", () => {
     alert("Хвост пароля аккаунта\n\n" +
       "Пароль в Firebase = игровой пароль + «хвост». Хвост ротирован: раньше это был\n" +
-      "«|cb4v1», теперь — 32 случайных символа из NET_PASS_SECRET_* (src/engine/network.h).\n\n" +
+      "«|cb4v1», теперь - 32 случайных символа из NET_PASS_SECRET_* (src/engine/network.h).\n\n" +
       "Как получить текущий:\n" +
       "    python3 tools/rotate_db_secret.py --show\n" +
-      "строка «хвост пароля аккаунта» — скопируй её в поле «суффикс» выше.\n\n" +
+      "строка «хвост пароля аккаунта» - скопируй её в поле «суффикс» выше.\n\n" +
       "Почему хвоста нет в этой странице: index.html лежит в открытом репозитории,\n" +
-      "а хвост — половина секрета аккаунтов (вторая половина — знание пароля).\n\n" +
+      "а хвост - половина секрета аккаунтов (вторая половина - знание пароля).\n\n" +
       "Старый «|cb4v1» тоже пробуется автоматически: по нему пустит аккаунт,\n" +
       "который ни разу не входил в игру после ротации (игра пускает по нему один\n" +
       "раз и сразу переписывает пароль на новый хвост).");
@@ -1222,7 +1239,7 @@ function boot(){
     if(location.protocol === "file:"){
       alert("Тестовый режим работает, когда страница открыта по http.\n\n" +
             "Запусти:\n    python3 test/fake_firebase.py 8080\n" +
-            "и открой http://localhost:8080/ — этот сервер раздаёт и панель, и подставную базу\n" +
+            "и открой http://localhost:8080/ - этот сервер раздаёт и панель, и подставную базу\n" +
             "одним портом, поэтому ни CORS, ни смешанный контент не мешают.");
       return;
     }
@@ -1232,7 +1249,7 @@ function boot(){
     log("тестовый режим: база = " + location.origin + " (нужен запущенный test/fake_firebase.py, который и раздаёт эту страницу)", "warn");
     alert("Тестовый режим включён.\n\nБаза: " + location.origin +
           "\nВход: любой ник и любой пароль (аккаунт создастся сам).\n" +
-          "Админские права в тестовой базе — у ника Dimasi4ek229.\n\nНичего боевого не трогается.");
+          "Админские права в тестовой базе - у ника Dimasi4ek229.\n\nНичего боевого не трогается.");
   }, "Тестовый режим");
   on("#prodMode", () => {
     $("#dbUrl").value = "https://cubicbattleserver-19ae2-default-rtdb.firebaseio.com";
@@ -1271,7 +1288,7 @@ function boot(){
     const text = $("#bannerText").value.trim();
     const color = $("#bannerColor").value || "white";
     if(!text){ alert("Введи текст баннера"); return; }
-    if(text.length > 96){ alert("Текст баннера длиннее 96 символов — правила не пустят"); return; }
+    if(text.length > 96){ alert("Текст баннера длиннее 96 символов - правила не пустят"); return; }
     return safe(() => rtdb("banner", "PUT", {ts: Date.now(), text, color}), "баннер");
   }, "Показать баннер");
   on("#clearBanner", () => {
@@ -1290,7 +1307,7 @@ function boot(){
     const n = nickOf("#hueNick");
     if(!n) return;
     const v = parseInt($("#hueVal").value, 10);
-    if(!isFinite(v) || v < 0 || v > 7){ alert("Оттенок изумруда — целое 0..7"); return; }
+    if(!isFinite(v) || v < 0 || v > 7){ alert("Оттенок изумруда - целое 0..7"); return; }
     return safe(() => rtdb(`users/${n}/gifts/emerald_hue`, "PUT", v), "оттенок изумруда " + n + " = " + v);
   }, "Оттенок изумруда");
 
@@ -1332,7 +1349,7 @@ function boot(){
       let ok = 0, fail = 0;
       for(const k of keys){
         try{ await rtdb(k, "PUT", data[k]); ok++; log("восстановлено: " + k, "good"); }
-        catch(e){ fail++; log("НЕ восстановлено " + k + " — " + e.message, "err"); }
+        catch(e){ fail++; log("НЕ восстановлено " + k + " - " + e.message, "err"); }
       }
       alert("Восстановлено: " + ok + "\nОшибок: " + fail);
       $("#restoreFile").value = "";
@@ -1345,12 +1362,12 @@ function boot(){
   /* стартовая диагностика: всё ли на странице нашлось */
   if(MISSING.length){
     log("ВНИМАНИЕ: на странице не найдены элементы " + MISSING.join(", ") +
-        " — соответствующие кнопки работать не будут", "err");
+        " - соответствующие кнопки работать не будут", "err");
     if(window.cb4Fatal)
       window.cb4Fatal("Страница собрана не полностью: не найдены " + MISSING.join(", ") +
-                      ". Часть кнопок не работает — нажми «Самопроверка».");
+                      ". Часть кнопок не работает - нажми «Самопроверка».");
   }else{
-    log("панель загружена: " + BOUND.length + " обработчиков на " + $$("button").length + " кнопках — всё нажимается", "good");
+    log("панель загружена: " + BOUND.length + " обработчиков на " + $$("button").length + " кнопках - всё нажимается", "good");
     log("база по умолчанию: " + dbUrl() + (isTest() ? " (тестовый режим)" : " (боевая)"), "");
     log("чтобы потренироваться без риска: запусти test/fake_firebase.py и нажми «Тестовый режим»", "");
   }

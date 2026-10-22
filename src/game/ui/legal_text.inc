@@ -1,27 +1,27 @@
-/* Тексты «Правовой информации». Полные редакции документов лежат в
- * docs/legal/; здесь - их краткое изложение, которое игрок видит в игре
- * до входа в аккаунт и в любой момент из настроек.
+/* Texts of the legal information. The full documents live in docs/legal/; here
+ * is the short version the player sees in the game before signing in and at any
+ * time from the settings.
  *
- * По 168-ФЗ русская версия основная и показывается по умолчанию; английская
- * - её перевод для тех, кто сам выбрал English в настройках.
+  * By 168-FZ the Russian version is the primary one and is shown by default; the
+  * English one is its translation for those who picked English in the settings.
  *
- * LEGAL_DOCS_VERSION поднимается при каждой существенной правке документов:
- * у игроков, давших согласие на старую редакцию, его спросят заново. */
+  * LEGAL_DOCS_VERSION goes up with every meaningful edit of the documents: a
+  * player who consented to the old version is asked again. */
 
 #define LEGAL_DOCS_VERSION 1
 #define LEGAL_OPERATOR_RU "Дима Густенёв"
 #define LEGAL_OPERATOR_EN "Dima Gustenyov"
-/* Адрес для обращений по персональным данным. Владелец проекта заменяет его
- * на свою почту (см. docs/legal/README.md). */
+/* Contact address for personal data requests. The project owner replaces it with
+ * their own mail (see docs/legal/README.md). */
 #define LEGAL_CONTACT "github.com/andreibioazum-cell/C-Larp/issues"
 #define LEGAL_PAGES 7
 #define LEGAL_LINES 10
 #define LEGAL_PAGE_CONSENT 5
 #define LEGAL_PAGE_RIGHTS 6
 
-/* 1 - открыто окно документов (оно поверх всего, см. legal.inc). */
+/* 1 - the documents window is open (it sits over everything, see legal.inc). */
 static double docs_open;
-/* Режим экрана аккаунта (account.inc), 0 - закрыт; он поверх документов. */
+/* Account screen mode (account.inc), 0 - closed; it sits over the documents. */
 static double acct_open;
 
 static const char *const legal_ru[LEGAL_PAGES][LEGAL_LINES + 1] = {

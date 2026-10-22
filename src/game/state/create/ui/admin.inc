@@ -1,6 +1,7 @@
 admin_ball_x = 0;
 admin_ball_y = 0;
 admin_ball_grab = 0;
+admin_ball_id = -1;
 admin_ball_px = 0;
 admin_ball_py = 0;
 admin_ball_grab_dx = 0;
@@ -14,4 +15,5 @@ cheat_speed = 0;
 cheat_nocd = 0;
 cheat_cc = 0;
 cheat_estun = 0;
+cheat_chaos = 0;
 cheat_estun_mark = 0;

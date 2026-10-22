@@ -1,4 +1,4 @@
-/* Главный цикл Android-приложения. */
+/* Main loop of the Android app. */
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -31,7 +31,7 @@ static uint64_t monotonic_ns(void) {
     return (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
 }
 
-/* Настоящая длина кадра: dt обрезан до 0.1 с и для счётчика FPS не годится. */
+/* Real frame length: dt is clamped to 0.1 s and is no good for the FPS counter. */
 double ds_frame_seconds(void) { return frame_seconds; }
 
 static int phys_w = 0, phys_h = 0;
@@ -74,11 +74,11 @@ static void protected_game_bye(void *userdata) {
     (void)userdata;
     game_bye();
 }
-/* Прощание при выходе. Вешаемся только на остановку активности: за один уход в
- * фон Android присылает ровно одну остановку (перед ней - паузу, после неё -
- * уничтожение), поэтому ни одного защитного флага не нужно и прощание не может
- * «залипнуть» и перестать приходить. Свайп снизу вверх, кнопка «назад» и
- * выгрузка из недавних идут через эту же остановку. */
+/* Farewell on exit. Hooked to activity stop only: one trip to the background
+ * gives Android exactly one stop (a pause before it, a destroy after), so no
+ * guard flag is needed and the farewell cannot get stuck and stop coming. The
+ * swipe up, the back button and unloading from recents all go through that same
+ * stop. */
 static void say_goodbye(void) {
     if (!game_active) {
         return;
@@ -184,7 +184,7 @@ static void start_window(struct android_app *app) {
 
     prev_frame_ns = 0;
     prev_loop_ns = 0;
-    /* Кадр до сворачивания ничего не говорит о новом окне. */
+        /* The frame before minimising says nothing about the new window. */
     frame_seconds = 0.0;
     if (game_active) {
 
@@ -389,8 +389,8 @@ void android_main(struct android_app *app) {
             continue;
         restart_game_if_due();
         uint64_t frame_start = monotonic_ns();
-        /* Пул строк живёт один кадр: чистим его до игровых хуков, чтобы за
-         * сеанс он не разрастался до нехватки памяти посреди боя. */
+                /* The string pool lives one frame: clean it before the game hooks so it
+                 * does not grow to an out-of-memory in the middle of a fight. */
         ds_string_pool_tick();
 
         if (prev_loop_ns && frame_start >= prev_loop_ns) {

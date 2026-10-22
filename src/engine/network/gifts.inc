@@ -1,52 +1,51 @@
-/* ---- Подарки без Cloud Functions ----
- * Инвентарь и покупки идут обычными запросами к Realtime Database:
- *   users/<ник>/gifts/<стикер> — счётчик 0..999;
- *   users/<ник>/cups           — кубки.
- * Пять стикеров: poop («какашка»), cake, bear, rocket и самый дорогой —
- * emerald (изумруд, 500 кубков); старые счётчики rose остаются в базе, но
- * больше не показываются.
- * Купить — одна запись users/<ник>.json: кубки минус цена и +1 стикер, так
- * покупка не рассыпается на две.
- * Подарить — сначала -1 у себя, затем +1 получателю; если вторая запись не
- * прошла, свой счётчик возвращается. Продать — одна запись: -1 стикер и
- * +половина цены в кубки.
- * firebase.rules.json разрешает чужому игроку только +1 в gifts (и не даёт
- * трогать остальной профиль или удалять чужие стикеры); владелец может писать
- * свои счётчики свободно, поэтому продажа проходит теми же правилами, что и
- * покупка.
- * Счётчик стикера в этой записи пишется путём ("gifts/poop"), а не вложенным
- * объектом: REST PATCH заменяет названное поддерево целиком, и обычное
- * "gifts":{"poop":0} стирало остальные счётчики — вместе с изумрудом.
- * Статусы: 0 — ничего, 1 — идёт, 2 — готово, 3 — сеть или сервер,
- * 4 — получатель не найден, 5 — не хватает кубков, 6 — нет стикера
- * в инвентаре, 7 — плохой ник или подарок самому себе,
- * 8 — коллекция переполнена (999).
+/* ---- Gifts without Cloud Functions ----
+ * Inventory and purchases are plain Realtime Database requests:
+ *   users/<nick>/gifts/<sticker> - counter 0..999;
+ *   users/<nick>/cups           - cups.
+ * Five stickers: poop, cake, bear, rocket and the most expensive one,
+ * emerald (500 cups); the old rose counters stay in the database but are
+ * no longer shown.
+ * Buying is one write to users/<nick>.json: cups minus the price and +1
+ * sticker, so a purchase never splits in two.
+ * Gifting first takes -1 from you, then +1 to the receiver; if the second
+ * write fails, your counter goes back. Selling is one write: -1 sticker and
+ * +half the price in cups.
+ * firebase.rules.json lets another player only add +1 to gifts (and keeps
+ * them out of the rest of the profile and away from deleting stickers); the
+ * owner may write their own counters freely, so selling passes the same
+ * rules as buying.
+ * A sticker counter is written as a path ("gifts/poop"), not as a nested
+ * object: REST PATCH replaces the named subtree whole, and the plain
+ * "gifts":{"poop":0} form wiped the other counters, the emerald with them.
+ * Statuses: 0 - nothing, 1 - running, 2 - done, 3 - network or server,
+ * 4 - receiver not found, 5 - not enough cups, 6 - no such sticker in the
+ * inventory, 7 - bad nick or gifting yourself, 8 - collection is full (999).
  *
- * Счётчики на экране не обнуляются при обновлении: коллекция остаётся
- * видимой, пока едут свежие числа, а купленный/проданный/отправленный
- * стикер меняет свой счётчик сразу (net_gift_count_add). */
+  * The counters on screen do not reset on refresh: the collection stays
+  * visible while fresh numbers travel, and a bought, sold or sent sticker
+  * changes its own counter right away (net_gift_count_add). */
 
 #define GIFT_N 5
-/* Сколько оттенков изумруда выбирает админ (0 - обычная радуга). */
+/* How many emerald hues the admin can pick (0 is the plain rainbow). */
 #define GIFT_HUE_MAX 7
 
 static volatile int s_gift_status = 0;
 static char s_gift_recipient[24];
 static int s_gift_id = 0, s_gift_grant = 0;
-/* Счётчики коллекции: последние известные числа. Обновление их больше не
- * обнуляет - коллекция остаётся на экране, пока едут свежие данные. Раньше
- * refresh стирал все счётчики, и после продажи одного стикера коллекция на миг
- * выглядела пустой: казалось, что вместе с какашкой продали и изумруд. */
+/* Collection counters: the last known numbers. A refresh no longer zeroes
+ * them - the collection stays on screen while fresh data travels. It used to
+ * wipe every counter, so right after selling one sticker the collection looked
+ * empty for a moment, as if the emerald went with the poop. */
 static volatile int s_gift_counts[GIFT_N] = {0, 0, 0, 0, 0};
-/* Ник, чьи счётчики сейчас на экране: у другого аккаунта коллекция своя. */
+/* Nick whose counters are on screen right now: another account has its own. */
 static char s_gift_nick[24];
-/* Поколение данных: ответ загрузки, пришедший после обновления, не подходит
- * и не должен затирать более новые числа. */
+/* Data generation: a load answer that arrives after a newer edit is stale and
+ * must not overwrite the fresher numbers. */
 static volatile int s_gift_gen = 0;
 static volatile int s_gift_load_gen = -1; /* поколение последней загрузки, -1 - её не было */
 static volatile int s_gift_cups = -1; /* balance the last buy/sell left in the DB */
-/* Оттенок изумруда игрока: 0 - обычная радуга, 1..7 - свой оттенок, который
- * выбрал админ. Лежит рядом со счётчиками, в узле gifts. */
+/* The player's emerald hue: 0 is the plain rainbow, 1..7 a custom one picked
+ * by the admin. It lives next to the counters, in the gifts node. */
 static volatile int s_gift_hue = 0;
 
 static const char *gift_id(double gift) {
@@ -92,14 +91,15 @@ static int gift_nick_same(const char *a, const char *b) {
     return a[i] == 0 && b[i] == 0;
 }
 
-/* Админы (список тот же, что в game/core/config.inc, но движок не видит её
- * статиков): покупка стикера им бесплатна, кубки в базе не трогаем вовсе -
- * «у админов кубки не снимаются». */
+/* Admins (same list as game/core/config.inc, but the engine cannot see its
+ * statics): their sticker purchase is free and the cups in the database are
+ * left alone - "admins never lose cups". */
 static int gift_nick_is_admin(const char *nick) {
     return gift_nick_same(nick, "Dimasi4ek229") == 1 || gift_nick_same(nick, "qwertyuiopaj1234") == 1;
 }
 
-/* Счётчики из users/<ник>/gifts.json; отсутствующий узел ("null") — нули. */
+/* Counters from users/<nick>/gifts.json; a missing node ("null") means all
+ * zeroes. */
 static int gift_get_counts(const char *nick, int out[GIFT_N]) {
     char url[URL], resp[2048];
     int i;
@@ -122,8 +122,8 @@ static int gift_get_counts(const char *nick, int out[GIFT_N]) {
     return 1;
 }
 
-/* Один стикер — одна запись: чужие счётчики не перезаписываются и старые
- * ключи (например, rose) в профиле не мешают. */
+/* One sticker is one write: other counters are not overwritten and old keys
+ * (rose, for one) do not get in the way. */
 static int gift_put_one(const char *nick, int id, int value) {
     char url[URL], body[32];
     snprintf(url, sizeof(url), "%s/users/%s/gifts/%s.json", net.base, nick, gift_id(id));
@@ -131,8 +131,8 @@ static int gift_put_one(const char *nick, int id, int value) {
     return fb_http("PUT", url, body, NULL, 0);
 }
 
-/* Записать оттенок изумруда игроку. Пишем путём ("gifts/emerald_hue"),
- * чтобы не затереть остальные счётчики. */
+/* Write the emerald hue for a player. Written as a path
+ * ("gifts/emerald_hue") so the other counters are not wiped. */
 static int gift_put_hue(const char *nick, int hue) {
     char url[URL], body[32];
     if (hue < 0)
@@ -152,12 +152,12 @@ static int gift_recipient_exists(const char *nick) {
     return resp[0] == '{';
 }
 
-/* Тело записи купки/продажи: баланс и счётчик одного стикера меняются одной
- * записью. Ключ счётчика - путь (через косую черту): REST PATCH заменяет
- * названное поддерево целиком, поэтому обычное "gifts":{"poop":0} стирало
- * остальные счётчики вместе с изумрудом. С путём "gifts/poop" пишется только
- * этот счётчик, а кубки и стикер меняются всё равно одной записью.
- * cubes < 0 означает «кубки не трогать» - так админ покупает бесплатно. */
+/* Body of a buy or sell write: the balance and one sticker counter change in
+ * one request. The counter key is a path (with a slash): REST PATCH replaces
+ * the named subtree whole, so the plain "gifts":{"poop":0} form used to wipe
+ * the other counters together with the emerald. With "gifts/poop" only that
+ * counter is written, and cups and the sticker still change in one request.
+ * cubes < 0 means "leave the cups alone" - that is how the admin buys free. */
 static void gift_body(char *body, size_t cap, int cups, int id, int count) {
     if (cups < 0)
         snprintf(body, cap, "{\"gifts/%s\":%d}", gift_id(id), count);
@@ -242,7 +242,7 @@ static int gift_send(const char *sender, const char *recipient, int id) {
     }
     theirs[id]++;
     if (gift_put_one(recipient, id, theirs[id]) != 200) {
-        /* Не смогли положить получателю — возвращаем стикер себе. */
+                /* Could not write to the receiver - give the sticker back to us. */
         mine[id]++;
         gift_put_one(sender, id, mine[id]);
         if (net_log_ok())
@@ -268,7 +268,7 @@ static int gift_grant(const char *recipient, int id, int hue) {
             LOGERR("gift grant for '%s': write failed", recipient);
         return 3;
     }
-    /* Изумруд приходит с оттенком, который выбрал админ. */
+        /* The emerald arrives with the hue the admin picked. */
     if (id == 4) {
         gift_put_hue(recipient, hue);
         s_gift_hue = hue;
@@ -305,9 +305,9 @@ gift_done:
     return NULL;
 }
 
-/* Запустить действие с подарком: 1 - пошло, 0 - отказали (уже идёт другое
- * действие или запрос не проходит проверки). Отказ нужен вызывающему: иначе
- * кнопка «Продать» навсегда осталась бы в состоянии «Продаём...». */
+/* Start a gift action: 1 - started, 0 - refused (another action is running or
+ * a check failed). The caller needs the refusal: otherwise the Sell button
+ * would sit on "Selling..." forever. */
 double net_gift_action(double gift, const char *recipient, double grant, double hue) {
     DSThread t;
     int mode = (int)grant;
@@ -348,7 +348,7 @@ double net_gift_cups(void) {
     return v;
 }
 
-/* Оттенок изумруда текущего игрока: 0 - обычная радуга, 1..7 - свой. */
+/* The current player's emerald hue: 0 is the plain rainbow, 1..7 a custom one. */
 double net_gift_hue(void) { return (double)s_gift_hue; }
 
 /* How many sticker kinds the catalogue has (poop, cake, bear, rocket,
@@ -383,8 +383,8 @@ static void *gift_counts_job(void *arg) {
         }
     }
     if (gen != s_gift_gen) {
-        /* Пока ехали числа, коллекцию поменяли (продали или купили стикер):
-         * этот ответ уже не подходит, придёт следующий, свежий. */
+                /* The collection changed while the numbers were in flight (a sticker
+                 * was sold or bought): this answer is stale, a fresh one is coming. */
         return NULL;
     }
     if (ok) {
@@ -404,24 +404,24 @@ static void *gift_counts_job(void *arg) {
     return NULL;
 }
 
-/* Обновить счётчики из базы. Старые числа остаются на экране, пока не
- * придут новые: коллекция не должна исчезать на миг (иначе после продажи
- * какашки пустой список выглядит так, будто продали ещё и изумруд). */
+/* Reload the counters from the database. Old numbers stay on screen until new
+ * ones arrive: the collection must not vanish for a moment (after selling a
+ * poop an empty list looks like the emerald went too). */
 void net_gift_refresh(void) {
     char nick[24];
     lg_lock();
     snprintf(nick, sizeof(nick), "%s", lg.session_nick);
     lg_unlock();
     if (strcmp(nick, s_gift_nick) != 0) {
-        /* Другой аккаунт: коллекция прежнего игрока не его. */
+                /* Another account: the previous player's collection is not theirs. */
         memset((void *)s_gift_counts, 0, sizeof(s_gift_counts));
         snprintf(s_gift_nick, sizeof(s_gift_nick), "%s", nick);
     }
     s_gift_gen = s_gift_gen + 1; /* ответ прежней загрузки больше не подходит */
 }
 
-/* Локальная правка счётчика: купили, продали или отправили стикер. Числа на
- * экране меняются сразу, остальные счётчики не трогаем. */
+/* Local counter edit: a sticker was bought, sold or sent. The numbers on
+ * screen change at once, the other counters stay as they are. */
 void net_gift_count_add(double gift, double delta) {
     int i = (int)gift;
     if (i < 0 || i >= GIFT_N)
@@ -431,8 +431,8 @@ void net_gift_count_add(double gift, double delta) {
         s_gift_counts[i] = 0;
     if (s_gift_counts[i] > 999)
         s_gift_counts[i] = 999;
-    /* Числа на экране изменились: ответ прежней загрузки их уже не описывает,
-     * а следующая загрузка принесёт их из базы. */
+        /* The numbers on screen changed: the answer of the old load no longer
+         * describes them, and the next load brings them from the database. */
     s_gift_gen = s_gift_gen + 1;
 }
 

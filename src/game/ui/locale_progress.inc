@@ -12,7 +12,7 @@ static const char *tr_super(void) {
     return "Snowflake";
 }
 
-static const char *tr_super_buk(void) {
+static const char *tr_super_ebuc(void) {
     if (language == 1) {
         return "Ульта";
     }
@@ -281,7 +281,7 @@ static const char *tr_skin_elf_hint(void) {
     if (language == 1) {
         return "Подарок буКа";
     }
-    return "буК's gift";
+    return "a gift from буК";
 }
 
 static const char *tr_skin_legends_hint(void) {

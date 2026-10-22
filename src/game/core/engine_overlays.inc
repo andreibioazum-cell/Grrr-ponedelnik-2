@@ -103,14 +103,14 @@ static void draw_achievement_toast(void) {
 }
 
 
-/* Счётчик FPS в бою, внизу справа. Считается по настоящим меткам кадров
- * (ds_frame_seconds), а не по игровому dt: dt обрезан до 0.1 с, поэтому при
- * просадке ниже десяти кадров счётчик по нему замирал бы на «10» и врал ровно
- * тогда, когда нужен. Кадры копятся полсекунды, и только потом число
- * обновляется: так оно читается, а не мельтешит каждый кадр. Разрыв длиннее
- * полсекунды - это пауза, а не медленный кадр: окно начинается заново, иначе
- * свернутое приложение оставляло бы на экране «0 FPS». Ниже кнопки удара
- * (её нижний край на 78 px выше края экрана), поэтому ничего не перекрывает. */
+/* Battle FPS counter, bottom right. It counts real frame stamps
+ * (ds_frame_seconds), not the game dt: dt is clamped to 0.1 s, so below ten
+ * frames the counter would freeze at "10" and lie exactly when it matters. Frames
+ * pile up for half a second and only then the number updates: that reads well
+ * instead of flickering every frame. A gap longer than half a second is a pause,
+ * not a slow frame: the window starts over, otherwise a minimised app would leave
+ * "0 FPS" on screen. It sits below the punch button (whose bottom edge is 78 px
+ * above the screen edge), so nothing is covered. */
 #define FPS_WINDOW 0.5
 #define FPS_GAP_MAX 0.5
 #define FPS_SCALE 0.45
@@ -147,7 +147,7 @@ static void draw_fps_meter(void) {
     double tt = text_ink_top(label) * FPS_SCALE;
     double x = screen_w - FPS_MARGIN - tw;
     double y = screen_h - FPS_MARGIN - th - tt;
-    /* Тёмная подложка в 1 px - число видно и на снегу, и на траве. */
+        /* A 1 px dark backing - the number shows on snow and on grass alike. */
     text_scaled(label, x + 1, y + 1, 0xB0000000, FPS_SCALE);
     text_scaled(label, x, y, 0xFFFFFFFF, FPS_SCALE);
 }

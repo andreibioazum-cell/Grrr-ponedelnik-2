@@ -1,7 +1,7 @@
 /* Admin panel input and chrome: hit-testing, the touch handler, the "CCP" orb,
  * the panel frame and the cheats grid. Every button here is drawn by
  * admin_btn() from admin.inc, so they all share one flat black-and-white look.
- * Вкладок в панели больше нет - только сетка читов. */
+  * The panel has no tabs any more - only the cheat grid. */
 
 static double admin_handle(const char *msg) {
     if (is_admin() == 0) {
@@ -90,7 +90,7 @@ static double admin_handle(const char *msg) {
         const char *btxt = net_chat_text_cmd_text(msg);
         const char *bcol = net_chat_text_cmd_color(msg);
         if (str_len(btxt) > 0) {
-            /* Every banner carries its author's nick: "Dimasi4ek229: текст". */
+                        /* Every banner carries its author's nick: "Dimasi4ek229: text". */
             net_banner_send(ds_concat(ds_concat(by, ": "), btxt), bcol);
             ds_log("admin text: %s (%s)", ds_concat(ds_concat(by, ": "), btxt), bcol);
             return 1;
@@ -172,14 +172,19 @@ static void admin_panel_press(double x, double y) {
     double bw = (pw - 2 * admin_pad() - admin_gap()) / 2;
     double rh = admin_cheat_row_h();
     double row = floor((y - admin_grid_top()) / (rh + admin_gap()));
-    if (row < 0 || row > 2 || x < px + admin_pad() || x > px + pw - admin_pad()) {
+    if (row < 0 || row > floor((ADMIN_CHEATS - 1) / 2) || x < px + admin_pad() || x > px + pw - admin_pad()) {
         return;
     }
     double col = 0;
     if (x >= px + admin_pad() + bw + admin_gap()) {
         col = 1;
     }
-    admin_press(row * 2 + col);
+    double idx = row * 2 + col;
+    if (idx >= ADMIN_CHEATS) {
+        /* The last row holds a single button: the empty half is not a button. */
+        return;
+    }
+    admin_press(idx);
 }
 
 static double admin_ball_hit(double x, double y) {
@@ -189,7 +194,6 @@ static double admin_ball_hit(double x, double y) {
 }
 
 static double admin_touch(double x, double y, double action, double id) {
-    (void)id;
     if (is_admin() == 0) {
         return 0;
     }
@@ -201,6 +205,11 @@ static double admin_touch(double x, double y, double action, double id) {
         }
         return 1;
     }
+    /* The ball belongs to the finger that grabbed it: a second finger can
+     * tap the panel while the first one drags. */
+    if (admin_ball_grab == 1 && id != admin_ball_id) {
+        return 1;
+    }
     if (admin_ball_grab == 1) {
         if (action == 2 || action == 1) {
             double br = admin_ball_r();
@@ -209,6 +218,7 @@ static double admin_touch(double x, double y, double action, double id) {
         }
         if (action == 1 || action == 3) {
             admin_ball_grab = 0;
+            admin_ball_id = -1;
             double dx = x - admin_ball_px;
             double dy = y - admin_ball_py;
             if (action == 1 && sqrt(dx * dx + dy * dy) <= 13) {
@@ -220,6 +230,7 @@ static double admin_touch(double x, double y, double action, double id) {
     }
     if (action == 0 && admin_ball_hit(x, y) == 1) {
         admin_ball_grab = 1;
+        admin_ball_id = id;
         admin_ball_px = x;
         admin_ball_py = y;
         admin_ball_grab_dx = x - admin_ball_x;
@@ -260,7 +271,7 @@ static void admin_draw_cheats(void) {
     double bw = (pw - admin_gap()) / 2;
     double rh = admin_cheat_row_h();
     double idx = 0;
-    while (idx < 6) {
+    while (idx < ADMIN_CHEATS) {
         double row = floor(idx / 2);
         double col = idx - row * 2;
         double bx = px + col * (bw + admin_gap());
@@ -279,7 +290,7 @@ static void admin_draw_tabs(void) {
     admin_btn(language == 1 ? "Читы" : "Cheats", px, y, w, h, admin_tab == 0, 0.55);
     admin_btn(language == 1 ? "Подарки" : "Gifts", px + w + admin_gap(), y, w, h, admin_tab == 1, 0.55);
 }
-/* Ряд оттенков изумруда: восемь плиток, текущая обведена. */
+/* Emerald hue row: eight tiles, the current one is outlined. */
 #define ADMIN_HUE_GAP 6
 #define ADMIN_HUE_N 8
 
@@ -293,7 +304,7 @@ static double admin_hue_swatch_w(void) {
     return (w - (ADMIN_HUE_N - 1) * ADMIN_HUE_GAP) / ADMIN_HUE_N;
 }
 
-/* Какой оттенок под пальцем, -1 если палец не на плитке. */
+/* Which hue is under the finger, -1 if the finger is not on a tile. */
 static double admin_hue_at(double x, double y) {
     if (admin_gift_choice != 4) {
         return -1;
@@ -330,7 +341,7 @@ static void admin_draw_gifts(void) {
         const char *label = ds_concat(admin_gift_choice == i ? "> " : "", name);
         admin_btn(label, px, y + i * (rh + admin_gap()), w, rh, admin_gift_choice == i, 0.55);
     }
-    /* Оттенок изумруда - только когда выбран изумруд. */
+        /* The emerald hue only applies when the emerald is selected. */
     if (admin_gift_choice == 4) {
         double hy = admin_hue_row_y();
         double sw = admin_hue_swatch_w();
@@ -347,7 +358,7 @@ static void admin_draw_gifts(void) {
     roundrect_outline(px, target_y, w, rh, 8, 2, admin_frame());
     const char *target_label = admin_gift_target[0] ? admin_gift_target : (language == 1 ? "Ник получателя" : "Recipient nickname");
     text_in_box(target_label, px + 8, target_y, w - 16, rh, admin_frame(), 0.55);
-    const char *grant = admin_gift_busy == 1 ? (language == 1 ? "Выдаём..." : "Granting...") : admin_gift_busy == 2 ? (language == 1 ? "Подарок выдан!" : "Gift granted!") : admin_gift_busy == 3 ? (language == 1 ? "Ошибка, нажмите для повтора" : "Failed — tap to retry") : (language == 1 ? "Выдать подарок" : "Grant gift");
+    const char *grant = admin_gift_busy == 1 ? (language == 1 ? "Выдаём..." : "Granting...") : admin_gift_busy == 2 ? (language == 1 ? "Подарок выдан!" : "Gift granted!") : admin_gift_busy == 3 ? (language == 1 ? "Ошибка, нажмите для повтора" : "Failed - tap to retry") : (language == 1 ? "Выдать подарок" : "Grant gift");
     admin_btn(grant, px, target_y + rh + admin_gap(), w, rh, 0, 0.55);
 }
 static void admin_draw_panel(void) {
@@ -422,8 +433,8 @@ static void admin_tick(void) {
         if (enemy->stun < 0.25) {
             enemy->stun = 0.25;
         }
-        /* Этот стан приходит из панели, поэтому кружка за ним нет - даже если
-         * чит выключили, а стан от него ещё не истёк. */
+                /* This state comes from the panel, so no ring is drawn for it - even if
+                 * the cheat is off and its state has not expired yet. */
         cheat_estun_mark = 1;
     }
 }

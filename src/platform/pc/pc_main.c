@@ -413,32 +413,13 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show) {
 #else
 int main(int argc, char **argv) {
     PcArgs args;
-    int i;
     char joined[4096];
+    char dump[260];
     pc_args_default(&args);
-    snprintf(joined, sizeof(joined), "cb4_headless ");
-    for (i = 1; i < argc; i++) {
-        strncat(joined, argv[i], sizeof(joined) - strlen(joined) - 2);
-        strncat(joined, " ", 2);
-    }
+    pc_args_join(argc, argv, joined, sizeof(joined));
     pc_args_parse(joined, &args);
     if (strstr(joined, "--gfx-test")) {
-        const char *dump = "gfx_test.bmp";
-        const char *p = strstr(joined, "--dump ");
-        if (p) {
-            const char *colon = strchr(p, ':');
-            if (colon)
-                dump = colon + 1;
-            {
-                char clean[260];
-                size_t n = strcspn(dump, " \t\n");
-                if (n >= sizeof(clean))
-                    n = sizeof(clean) - 1;
-                memcpy(clean, dump, n);
-                clean[n] = '\0';
-                return pc_gfx_test(&args, clean);
-            }
-        }
+        pc_args_dump_path(joined, dump, sizeof(dump));
         return pc_gfx_test(&args, dump);
     }
     return pc_run_headless(&args);

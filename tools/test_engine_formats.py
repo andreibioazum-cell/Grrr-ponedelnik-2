@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Проверяет, что форматы scanf/printf совпадают с числом аргументов.
+"""Checks that scanf/printf formats match the number of arguments.
 
-Движок не собирается в CI (нужны заголовки JNI), поэтому опечатка в формате
-не ловится компилятором: fscanf с 23 %d и 24 аргументами молча не читает
-последнее поле - так потерялась пара уровней CodeCracker. Здесь формат и
-аргументы сверяются текстом, для всех файлов src/.
+The engine is not built in CI (it needs the JNI headers), so a typo in a format
+never meets the compiler: fscanf with 23 %d and 24 arguments silently skips the
+last field - that is how a couple of CodeCracker levels went missing. Here the
+format and the arguments are compared as text, for every file in src/.
 """
 import re
 import sys
@@ -18,7 +18,7 @@ CONV = re.compile(r"%[-+ #0]*[0-9*]*(?:\.[0-9*]+)?(?:hh|h|ll|l|j|z|t|L)?[diouxXe
 
 
 def split_args(text):
-    """Делит список аргументов по запятым верхнего уровня."""
+    """Splits an argument list on top-level commas."""
     args, depth, cur = [], 0, ""
     in_str = False
     escape = False
@@ -51,7 +51,7 @@ def split_args(text):
 
 
 def calls(text):
-    """Все вызовы scanf/printf вместе с их аргументами."""
+    """Every scanf/printf call with its arguments."""
     for name in CALLS:
         for m in re.finditer(r"\b" + name + r"\s*\(", text):
             start = m.end()
@@ -83,7 +83,7 @@ def check(path):
         if not parts:
             continue
         if name in ("fscanf", "sscanf"):
-            # Первый аргумент - файл, второй - формат.
+                        # The first argument is the file, the second is the format.
             if len(parts) < 3:
                 continue
             fm = re.match(r'\s*"((?:[^"\\]|\\.)*)"', parts[1])

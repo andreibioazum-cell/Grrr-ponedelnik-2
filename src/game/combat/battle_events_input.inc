@@ -79,7 +79,7 @@ static void update_banner(void) {
     if (ts <= 0) {
         /* The author's countdown ended and the banner was cleared on the
          * server: drop it here at the same moment, so it disappears for
-         * everyone at once — and late joiners never linger on a dead banner. */
+         * everyone at once - and late joiners never linger on a dead banner. */
         banner_t = 0;
         return;
     }
@@ -190,6 +190,9 @@ static void draw_online(void) {
         }
     }
     draw_ability_hitboxes();
+    chaos_draw();
+    draw_ball();
+    draw_remote_bricks();
     draw_gift();
     draw_boom();
     draw_remote_snow();
@@ -318,6 +321,7 @@ static void touch_game(double x, double y, double action, double id) {
     if (action == 3) {
         blk_id = -1;
         player_block = 0;
+        ball_aim_cancel();
         drop_joy();
         return;
     }
@@ -338,6 +342,29 @@ static void touch_game(double x, double y, double action, double id) {
         start_transition(0);
         return;
     }
+    /* Ebuc keeps two ults and switches between them with his own button: the
+     * letter on it is what the next tap throws. */
+    if (player_class == CLASS_EBUC && (game_state == ST_SOLO || game_state == ST_ONLINE) && action == 0 &&
+        ult_mode_hit(x, y) == 1) {
+        ball_aim_cancel();
+        ult_mode_toggle();
+        return;
+    }
+    /* Aiming the brick: the finger that tapped the pad may drag anywhere on
+     * the arena, and the throw follows it. Lifting the finger keeps the aim,
+     * the countdown runs to zero on its own. */
+    if (ball.aim_on == 1 && id == ball.aim_id) {
+        if (action == 2) {
+            ball_aim_point(x, y);
+            return;
+        }
+        if (action == 1 || action == 3) {
+            if (action == 3) {
+                ball_aim_cancel();
+            }
+            return;
+        }
+    }
     /* The three combat buttons sit close together, so the nearest one wins the
      * press. Punch and super go off the moment the finger lands - a hit that
      * waits for the release is a hit that feels late - while the block pad
@@ -354,6 +381,9 @@ static void touch_game(double x, double y, double action, double id) {
         if (action == 0 && db <= pr && db <= dp && db <= dsu) {
             blk_id = id;
             player_block = 1;
+            /* A guard and a throw do not mix: the aim goes away with no
+             * countdown left behind. */
+            ball_aim_cancel();
             return;
         }
         if (id == blk_id) {
@@ -364,8 +394,20 @@ static void touch_game(double x, double y, double action, double id) {
             return;
         }
         if (class_has_super(player_class) == 1) {
-            if (action == 0 && dsu <= pr && dsu <= dp) {
-                if (game_state == ST_SOLO || online_ready == 1) {
+            /* The ult pad belongs to its own finger and fires on the press:
+             * nothing in the game waits for a hold. In brick mode the press
+             * only starts the countdown, and the throw comes later. */
+            if (action == 0 && dsu <= pr && dsu <= dp && player_block == 0 && ball.aim_on == 0) {
+                if (player_class == CLASS_EBUC && ball_mode == 1 &&
+                    (game_state == ST_SOLO || online_ready == 1)) {
+                    ball_aim_start(id);
+                    return;
+                }
+                if (game_state == ST_ONLINE) {
+                    if (online_ready == 1) {
+                        fire_super();
+                    }
+                } else if (game_state == ST_SOLO) {
                     fire_super();
                 }
                 return;

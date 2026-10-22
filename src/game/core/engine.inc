@@ -163,10 +163,10 @@ static void logic_draw(void) {
     /* Last of all: the admin orb and its panel are never covered, not by the
      * transition curtain, not by the epilepsy warning or the splash. */
     admin_draw();
-    /* The press pulse was offered to every control drawn this frame; a touch
+    /* The press pulses were offered to every control drawn this frame; a touch
      * that landed where there is no control must not wait for a later frame
      * and squeeze something there. */
-    press_new = 0;
+    press_points_clear();
 }
 
 /* Saying goodbye when the game is left: half of the exits stay silent, the rest
@@ -263,45 +263,32 @@ static double logic_back(void) {
 }
 
 static void logic_touch(double x, double y, double action, double id) {
-    /* Track the touching pointer before anything can consume or reject the
-     * event: 0 = down, 1 = up, 2 = move, 3 = cancel. A down also arms the
-     * press pulse (press_new): the next control drawn under it takes the
-     * squeeze, so a button always shows its feedback on the touch itself. */
-    if (action == 0) {
-        press_x = x;
-        press_y = y;
-        press_new = 1;
-        press_id = id;
-    } else if (action == 2) {
-        /* Only the finger that armed the pulse moves it: in a fight the stick
-         * finger keeps sliding and used to drag the press point off the pad
-         * that was just hit, so the punch went off without its squeeze. */
-        if (id == press_id && press_new == 1) {
-            press_x = x;
-            press_y = y;
-        }
-    } else if (action == 1 || action == 3) {
-        if (action == 3) {
-            /* The gesture was taken away: no press feedback for it. */
-            press_new = 0;
-        }
+    /* Track every touching pointer before anything can consume or reject the
+     * event: 0 = down, 1 = up, 2 = move, 3 = cancel. Each finger keeps its own
+     * point in the queue, so the control drawn under it takes the squeeze:
+     * holding the stick and tapping two pads at once squeezes all three. */
+    if (action == 0 || action == 2) {
+        press_points_add(x, y, id);
+    } else if (action == 1) {
+        press_points_drop(id);
+    } else if (action == 3) {
+        /* The gesture was taken away: no press feedback for that finger, the
+         * other fingers keep theirs. */
+        press_points_drop(id);
     }
     /* The admin orb and its panel sit above every screen - including the
      * transition curtain and the epilepsy warning - and consume their own
      * touches before anything else, so they never disappear mid-transition. */
     if (admin_touch(x, y, action, id) == 1) {
         if (action == 0) {
-            press_new = 0;
+            press_points_drop(id);
         }
         return;
     }
     if (t_dir != 0) {
         /* A touch that lands mid-transition is ignored, so it may not squeeze
-         * anything either (a move of the finger that started the transition
-         * keeps its squeeze). */
-        if (action == 0) {
-            press_new = 0;
-        }
+         * anything either, and a finger that lifts there leaves the queue. */
+        press_points_drop(id);
         classes_swipe_reset();
         return;
     }
@@ -321,9 +308,7 @@ static void logic_touch(double x, double y, double action, double id) {
         return;
     }
     if (studio_open == 1) {
-        if (action == 0) {
-            press_new = 0;
-        }
+        press_points_drop(id);
         return;
     }
     /* Battles keep raw touches - the joysticks and the block pad must react
@@ -350,6 +335,10 @@ static void logic_touch(double x, double y, double action, double id) {
     /* An open dialogue consumes the press as its skip action, so the menu
      * rows behind it never fire. */
     double dialog_skip = game_state == ST_LOBBY && new_theme == 1 && cube_npc_dialogue_active == 1;
+    if (dialog_skip == 1) {
+        /* The dialogue took the press: no row behind it may squeeze. */
+        press_points_drop(id);
+    }
     if (menu_button_hit(x, y) == 1 && dialog_skip == 0) {
         play_button_click();
     }

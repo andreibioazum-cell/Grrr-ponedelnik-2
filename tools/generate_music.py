@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Создаёт три оригинальные музыкальные дорожки игры без внешних библиотек."""
+"""Writes the three original game music tracks with no third-party libraries."""
 
 from __future__ import annotations
 

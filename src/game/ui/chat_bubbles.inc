@@ -1,5 +1,6 @@
-/* Пузырь держит свою копию текста: строка из сети или из пула кадра живёт
- * меньше, чем пузырь висит над игроком. Копия сразу чистится фильтром чата. */
+/* A bubble keeps its own copy of the text: a string from the network or from the
+ * frame pool lives shorter than the bubble above the player. The copy is cleaned
+ * by the chat filter right away. */
 static char bubble_buf[4][CF_OUT_MAX];
 
 static void bubble_set(double s, const char *raw) {

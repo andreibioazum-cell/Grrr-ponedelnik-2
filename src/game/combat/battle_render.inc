@@ -1,5 +1,5 @@
-/* Конфета появляется только прозрачностью: она сразу стоит на своём месте в
- * полном размере, меняется лишь альфа - ни роста, ни подлёта к точке. */
+/* A candy appears by alpha only: it stands at its place at full size from the
+ * start, only the alpha changes - no growth and no fly-in. */
 static void draw_candies(void) {
     if (candies_on() == 0) {
         return;
@@ -89,6 +89,9 @@ static void finish_game(double result) {
     enemy_super_windup = 0;
     enemy_super_kind = 0;
     enemy_grab_clear();
+    /* A brick still in the air would freeze on the result screen: the fight is
+     * over, so it bursts where it is and does nothing. */
+    ball_clear_after_finish();
     turret_heal_t = 0;
     universe_active = 0;
     keyboard_hide();
@@ -119,10 +122,10 @@ static void finish_game(double result) {
     }
 }
 
-/* Выплата за бой. Если в этом бою хотя бы раз включался чит из админки, бой
- * ничего не меняет в кошельке: ни победа не даёт кубки (и достижения за
- * победу), ни поражение их не отнимает. Чит мог быть выключен сразу после
- * включения - метка всё равно остаётся до конца боя. */
+/* Battle payout. If the admin cheat was on at least once during this fight, the
+ * fight changes nothing in the wallet: a win pays no cups (and no win
+ * achievements), a loss takes none. The cheat may be off again right away - the
+ * mark stays until the end of the fight. */
 static void award_battle_result(double result) {
     if (result == 1) {
         if (admin_cups_allowed() == 0) {
@@ -137,7 +140,7 @@ static void award_battle_result(double result) {
         save_progress();
         grant_achievement(ACH_FIRST_WIN);
         /* Flawless win: keep full health and take no hits during the battle.
-         * player_was_hit includes damage intercepted by буК's turrets. */
+                  * player_was_hit includes damage intercepted by ebuc's turrets. */
         if (player->hp >= player->max_hp && player_was_hit == 0) {
             grant_achievement(ACH_LAST_HP);
         }
@@ -145,8 +148,8 @@ static void award_battle_result(double result) {
         return;
     }
     if (dev_access() == 1) {
-        /* Админ не теряет кубки за поражение: выигрыш по-прежнему платит,
-         * но проигрыш больше ничего не отнимает. */
+                /* The admin does not lose cups on a loss: a win still pays, a loss
+                 * takes nothing. */
         ds_log("lose: no cups taken away, admin mode");
         return;
     }
@@ -197,7 +200,7 @@ static void draw_guard(double x, double y, double angle, double on, double scale
     if (on <= 0) {
         return;
     }
-    /* Блок - просто голубой кружок на самом игроке, больше ничего. */
+        /* Block is just a blue circle on the player itself, nothing else. */
     double r = 25 * cube_scale * scale * 1.75;
     circle(x, y, r, 0x2E4FC3F7);
     ring(x, y, r, clamp(r * 0.13, 3, 5), 0xCC4FC3F7);
@@ -275,8 +278,8 @@ static void draw_enemy_body(void) {
 /* A combat pad answers a press the way a menu button does: it shrinks a
  * little and darkens, so a punch that goes off on the touch still reads as a
  * press and not as a misfire. */
-/* Радиус боевой кнопки: исходный 55, по просьбе сделан заметно больше - палец
- * должен попадать без промаха. */
+/* Battle button radius: it was 55, made noticeably bigger on request, so a
+ * finger cannot miss. */
 static double battle_pad_r(void) {
     return 60;
 }
@@ -293,18 +296,20 @@ static void draw_pad(double cx, double cy, double r, uint32_t col, const char *l
 
 static void draw_controls(void) {
     ring(joy.x, joy.y, joy.r, 4, 0x000000);
+    /* The brick countdown belongs to the interface, above the fight. */
+    draw_ball_count();
     circle(joy.x + joy.ox, joy.y + joy.oy, 34, 0x000000);
-    /* Все три боевые кнопки одного размера и заметно крупнее прежнего:
-     * блок ничуть не меньше удара и супера. */
+        /* All three battle buttons are the same size and much bigger than before:
+         * block is no smaller than punch and super. */
     draw_pad(atk_x, atk_y, battle_pad_r(), 0xE94560, tr_punch(), 0.55);
     if (game_state == ST_SOLO || game_state == ST_ONLINE) {
-        /* Блок стоит между ударом и супером, левее их обоих. */
+                /* Block sits between punch and super, to the left of both. */
         draw_pad(blk_x, blk_y, battle_pad_r(), player_block == 1 ? 0x2E6FBF : 0x3A5A8C, tr_block(), 0.55);
     }
     if (class_has_super(player_class) == 1 && (game_state == ST_SOLO || game_state == ST_ONLINE)) {
         const char *sl = tr_super();
-        if (player_class == CLASS_BUK) {
-            sl = tr_super_buk();
+        if (player_class == CLASS_EBUC) {
+            sl = tr_super_ebuc();
         } else if (player_class == CLASS_AZUM) {
             sl = tr_super_azum();
         } else if (class_is_astra(player_class) == 1) {
@@ -332,11 +337,11 @@ static void draw_controls(void) {
     draw_battle_back();
 }
 
-/* Экран итога боя: в новой теме фиолетовый, в старой — розовый в стиле её
- * кнопок, и для победы, и для поражения. Заливка подбирается под лицо
- * окна: тёмно-фиолетовая или тёмно-розовая. */
+/* Battle result screen: purple in the new theme, pink in the old one (in its
+ * button style), for a win and for a loss. The fill matches the window face:
+ * dark purple or dark pink. */
 #define RESULT_CURTAIN 0xCC1A1A2E
-/* Тёмно-розовая заливка старой темы под её розовым окном поражения. */
+/* Dark pink fill of the old theme under its pink defeat window. */
 #define RESULT_ROSE_CURTAIN 0xCC3A1530
 
 static void draw_result(const char *title) {
@@ -385,6 +390,8 @@ static void draw_game(void) {
     draw_enemy_boom();
     draw_universe();
     draw_enemy_turrets();
+    chaos_draw();
+    draw_ball();
     draw_codecracker_fx_local();
     draw_player_body_layer();
     draw_status_aura(player->x, player->y, player->size, freeze_rgb, freeze_rim, pfreeze_a);
@@ -396,14 +403,14 @@ static void draw_game(void) {
     draw_status_aura(enemy->x, enemy->y, enemy->size, poison_rgb, poison_rim, poison_a);
     draw_status_aura(enemy->x, enemy->y, enemy->size, stun_rgb, stun_rim, stun_a);
     draw_snow();
-    /* Цветокоррекция и виньетка ложатся на бой, но не на интерфейс: полоски
-     * здоровья и кнопки остаются чистыми. */
+        /* Colour correction and vignette cover the fight, not the interface: the
+         * health bars and buttons stay clean. */
     draw_screen_fx();
     double w = screen_w / 4;
     hud_bar(20, 20, w, 28, player->hp, player->max_hp, 0x7ED321, 0);
     hud_bar(screen_w - w - 20, 20, w, 28, enemy->hp, enemy->max_hp, 0xE94560, 1);
     draw_controls();
-    /* Красный отлив при уроне - поверх всего, но очень слабый. */
+        /* Red tint on damage - over everything, but very weak. */
     draw_hurt_flash();
     draw_fps_meter();
     if (finished == 1) {

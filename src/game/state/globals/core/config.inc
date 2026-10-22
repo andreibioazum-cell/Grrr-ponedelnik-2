@@ -107,7 +107,7 @@ double net_st_playing;
 double CLASS_ORDINARY;
 double CLASS_AZUM;
 double CLASS_SANTA;
-double CLASS_BUK;
+double CLASS_EBUC;
 double CLASS_ASTRA;
 double CLASS_CODECRACKER;
 double player_class;
@@ -117,7 +117,7 @@ double flash_sale_active;
 double revive_prot;
 double azum_cost;
 double santa_candy_cost;
-double buk_cost;
+double ebuc_cost;
 double astra_cost;
 double player_level;
 double levels_unlocked;
@@ -133,32 +133,32 @@ double LOOK_ORDINARY;
 double LOOK_AZUM;
 double LOOK_ZOMBIE;
 double LOOK_SANTA;
-double LOOK_BUK;
+double LOOK_EBUC;
 double LOOK_ELF;
 double azum_tex_ok;
 double azum_zombie_tex_ok;
 double azum_zombie_punch_tex_ok;
 double ordinary_tex_ok;
 double santa_tex_ok;
-double buk_tex_ok;
+double ebuc_tex_ok;
 double ordinary_punch_tex_ok;
 double azum_punch_tex_ok;
 double santa_punch_tex_ok;
-double buk_punch_tex_ok;
-double buk_elf_tex_ok;
-double buk_elf_punch_tex_ok;
+double ebuc_punch_tex_ok;
+double ebuc_elf_tex_ok;
+double ebuc_elf_punch_tex_ok;
 double tex_reload_t;
 double tex_reload_left;
 double tex_reload_slow;
 double azum_skin;
-double buk_skin;
+double ebuc_skin;
 double arena_tile_size;
 double grass_tex_ok;
 double snow_tex_ok;
 double snow_t;
 double candy_tex_ok;
 double winter_theme;
-/* Графика: 0 - низкая, 1 - ультра (тени, цветокоррекция, виньетка). */
+/* Graphics: 0 - low, 1 - ultra (shadows, colour correction, vignette). */
 double show_hitboxes;
 double hitbox_rgb;
 double hitbox_zone_alpha;
@@ -223,7 +223,7 @@ double enemy_human_react_max;
 double enemy_human_speed_var;
 double enemy_human_dodge_fail;
 double enemy_class_azum_chance;
-double enemy_class_buk_chance;
+double enemy_class_ebuc_chance;
 double enemy_class_santa_chance;
 double enemy_class_astra_chance;
 double enemy_santa_cd_time;
@@ -268,16 +268,16 @@ double stun_rim;
 double hurt_rgb;
 double hurt_alpha;
 double hurt_fade;
-double buk_hp;
-double buk_station_hp;
-double buk_station_hp_bonus;
-double buk_damage;
-double buk_universe_collapse_time;
-double buk_universe_damage;
-double buk_universe_damage_bonus;
-double buk_universe_particles;
-double buk_place_heal;
-double buk_beam_heal;
+double ebuc_hp;
+double ebuc_station_hp;
+double ebuc_station_hp_bonus;
+double ebuc_damage;
+double ebuc_universe_collapse_time;
+double ebuc_universe_damage;
+double ebuc_universe_damage_bonus;
+double ebuc_universe_particles;
+double ebuc_place_heal;
+double ebuc_beam_heal;
 double universe_fade_in;
 double universe_fade_out;
 double station_boom_time;
@@ -292,7 +292,7 @@ double station_beam_alpha;
 double station_beam_core_alpha;
 double station_beam_rgb;
 double station_beam_core_rgb;
-double buk_station_cd;
+double ebuc_station_cd;
 double turret_counter_damage;
 double azum_dash_cd;
 double azum_dash_time;
@@ -413,20 +413,13 @@ char login_pass_buf[128];
 const char *LOBBY_MUSIC;
 const char *BUTTON_CLICK_SOUND;
 double button_click_ok;
-double press_x;
-double press_y;
-double press_k;
-double press_phase;
-double press_new;
-double press_id;
 /* 1 = the new look (purple, gradients, centred menu, NPC cube),
  * 0 = the old one (rose, flat, left-aligned, no NPC). */
 double new_theme;
-/* Счётчик переходов: растёт при каждой смене экрана (запуск перехода,
- * сама подмена состояния, принудительное возвращение) и при смене
- * страницы в списке. Нажатие запоминает его, поэтому пульс нажатия не
- * перескакивает на другой экран, где кнопка оказалась в тех же
- * координатах. */
+/* Transition counter: grows on every screen change (transition start, the state
+ * swap itself, a forced return) and on a page change in a list. A press remembers
+ * it, so a press pulse never jumps to another screen where a button happens to
+ * sit at the same coordinates. */
 double ui_nav_gen;
 const char *CUBE_NPC_TEX;
 double cube_npc_tex_ok;

@@ -63,7 +63,7 @@ double poison_a;
 double player_stun;
 double pstun_a;
 double player_hurt_a;
-/* Смаз движения: насколько боец сместился за прошлый кадр. */
+/* Motion blur: how far the fighter moved during the last frame. */
 double mb_px;
 double mb_py;
 double mb_ex;
@@ -75,6 +75,16 @@ double mb_edy;
 double mb_ok;
 double player_was_hit;
 double player_block;
+/* Cube speed in px/s: the stick sets the target and this pair chases it with a
+ * ramp; player_stop_from is the speed the braking started at, so stopping takes
+ * exactly walk_stop_time. */
+double player_vx;
+double player_vy;
+double player_stop_from;
+/* Where the cube faces while moving: the stick changes it in the same frame, so
+ * turning never drifts sideways. */
+double player_dir_x;
+double player_dir_y;
 double dmg_from_x;
 double dmg_from_y;
 double dmg_from_k;

@@ -27,22 +27,22 @@
 #endif
 #define NET_DEFAULT_ROOM "main"
 
-/* Два секрета. Оба — 32 случайных символа [A-Za-z0-9]; в открытом виде их в
- * исходниках нет: куски закодированы (каждый байт xor 0x5a) и собираются в
- * рантайме функциями net_write_secret() и net_pass_suffix().
+/* Two secrets. Both are 32 random [A-Za-z0-9] chars and never appear in the
+ * sources in the clear: the pieces are encoded (every byte xored with 0x5a)
+ * and rebuilt at runtime by net_write_secret() and net_pass_suffix().
  *
- * NET_WRITE_SECRET — «пароль на запись». Правила firebase.rules.json принимают
- * запись только если в теле лежит поле "w" с этим же значением, поэтому скрипт,
- * у которого есть только ключ API и аккаунт, ничего не изменит. Значение лежит
- * в базе открыто, поэтому оно НЕ должно совпадать со вторым секретом.
+  * NET_WRITE_SECRET is the "write password". firebase.rules.json accepts a
+  * write only when the body carries a "w" field with this value, so a script
+  * that has just the API key and an account changes nothing. The value sits in
+  * the database in the open, so it must NOT equal the second secret.
  *
- * NET_PASS_SECRET — хвост пароля аккаунта (пароль игрока + этот хвост). Раньше
- * вместо него была строка "|cb4v1", которую легко угадать: зная её, любой мог
- * подобрать пароль к чужому нику. В базу он не попадает никогда.
+  * NET_PASS_SECRET is the account password suffix (player password + this
+  * suffix). It used to be "|cb4v1", easy to guess: with it anyone could brute
+  * force another nick's password. It never reaches the database.
  *
- * Менять оба сразу утилитой tools/rotate_db_secret.py: она генерирует новые
- * значения, переписывает эти макросы и firebase.rules.json. Вручную не править:
- * база и клиент должны оставаться одинаковыми. */
+  * Change both at once with tools/rotate_db_secret.py: it generates new values,
+  * rewrites these macros and firebase.rules.json. Do not edit by hand: the
+  * database and the client must stay in sync. */
 #define NET_SECRET_XOR 0x5a
 
 #define NET_WRITE_SECRET_LEN 32
@@ -62,7 +62,7 @@ void net_set_java_vm(JavaVM *vm);
 void net_connect(const char *url, const char *room);
 void net_disconnect(void);
 void net_set_data_path(const char *path);
-/* Язык телефона (ISO 639-1, например "ru"): по нему выбирается язык новой установки. */
+/* Phone language (ISO 639-1, e.g. "ru"): it picks the language of a fresh install. */
 void net_set_system_language(const char *code);
 
 void net_set_firebase_key(const char *key);
@@ -88,6 +88,8 @@ void net_publish_universe(double x, double y, double counter);
 
 void net_publish_thud(double counter);
 void net_publish_block(double on);
+/* The buK brick: origin, direction and the shot number of the throw. */
+void net_publish_brick(double x, double y, double dx, double dy, double shot);
 void net_publish_codecracker_super(double on);
 void net_set_class(double cls);
 double net_status(void);
@@ -96,6 +98,7 @@ double net_slot(void);
  * fresh successful read of its own Firebase node. */
 double net_azum_buff(void);
 double net_flash_sale(void);
+double net_hitbox_chaos(void);
 /* Force an immediate re-read of both live flags (entering the shop). */
 void net_live_flags_refresh(void);
 double net_event(void);
@@ -138,6 +141,11 @@ double net_player_universe(double slot);
 
 double net_player_thud(double slot);
 double net_player_block(double slot);
+double net_player_brick_x(double slot);
+double net_player_brick_y(double slot);
+double net_player_brick_dx(double slot);
+double net_player_brick_dy(double slot);
+double net_player_brick(double slot);
 double net_player_codecracker_super(double slot);
 double net_player_dash(double slot);
 double net_player_dash_x(double slot);
@@ -154,7 +162,7 @@ double net_load_candies(void);
 double net_load_class(void);
 double net_load_azum(void);
 double net_load_santa(void);
-double net_load_buk(void);
+double net_load_ebuc(void);
 double net_load_level(void);
 double net_load_levels_unlocked(void);
 double net_load_ordinary_level(void);
@@ -163,8 +171,8 @@ double net_load_azum_level(void);
 double net_load_azum_levels_unlocked(void);
 double net_load_santa_level(void);
 double net_load_santa_levels_unlocked(void);
-double net_load_buk_level(void);
-double net_load_buk_levels_unlocked(void);
+double net_load_ebuc_level(void);
+double net_load_ebuc_levels_unlocked(void);
 
 double net_load_bp_level(void);
 void net_set_bp_xp(double v);
@@ -176,16 +184,16 @@ double net_load_astra_level(void);
 double net_load_astra_levels_unlocked(void);
 void net_save_astra(double owned, double level, double levels_unlocked);
 
-/* Ветка уровней CodeCracker: своя, не общая с обычным кубом. */
+/* CodeCracker level branch: its own, not shared with the ordinary cube. */
 double net_load_codecracker_level(void);
 double net_load_codecracker_levels_unlocked(void);
 void net_save_codecracker(double level, double levels_unlocked);
 /* Forget a pending cloud save: the device holds nothing worth pushing. */
 void net_mark_progress_synced(void);
-void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double buk,
+void net_save_progress_all(double cups, double candies, double cls, double azum, double santa, double ebuc,
                            double level, double levels_unlocked, double ordinary_level, double ordinary_levels_unlocked,
                            double azum_level, double azum_levels_unlocked, double santa_level,
-                           double santa_levels_unlocked, double buk_level, double buk_levels_unlocked,
+                           double santa_levels_unlocked, double ebuc_level, double ebuc_levels_unlocked,
                            double bp_level, double azum_skin);
 
 #define ACH_FLAG_ALL_CHARACTERS (1u << 3)
@@ -230,18 +238,18 @@ void net_save_new_theme(double on);
 
 void settings_mark_legal(void);
 double settings_legal_ts(void);
-/* Согласие на обработку персональных данных (152-ФЗ): version 0 — отзыв. */
+/* Personal data consent (152-FZ): version 0 means withdrawn. */
 void settings_set_pd_consent(double version);
 double settings_pd_consent_version(void);
 void net_pd_consent_upload(void);
-/* Удалить аккаунт, облачный профиль и данные на устройстве; нужен пароль
- * аккаунта. Статус: 0 — ничего, 1 — идёт, 2 — удалено, 3 — ошибка сети,
- * 4 — неверный пароль (результат отдаётся один раз). */
+/* Delete the account, the cloud profile and the data on the device; the account
+ * password is required. Status: 0 - nothing, 1 - running, 2 - deleted, 3 -
+ * network error, 4 - wrong password (the result is returned once). */
 void net_delete_account(const char *password);
 double net_delete_account_status(void);
-/* Сменить пароль аккаунта. Статус: 0 — ничего, 1 — идёт, 2 — изменён,
- * 3 — ошибка сети, 4 — неверный текущий пароль, 5 — новый пароль не подходит,
- * 6 — не выполнен вход (результат отдаётся один раз). */
+/* Change the account password. Status: 0 - nothing, 1 - running, 2 - changed,
+ * 3 - network error, 4 - wrong current password, 5 - the new password is not
+ * accepted, 6 - not signed in (the result is returned once). */
 void net_change_password(const char *old_pass, const char *new_pass);
 double net_change_password_status(void);
 /* Admin reset of ANOTHER player's account password. A game client cannot

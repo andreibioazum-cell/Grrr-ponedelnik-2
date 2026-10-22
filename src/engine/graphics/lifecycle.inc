@@ -362,8 +362,8 @@ void text_scaled(const char *s, float x, float y, uint32_t c, float sc) {
 
     p->v.tt.s = strdup_safe(s);
     if (!p->v.tt.s) {
-        /* Недописная надпись не стоит перезапуска игры: забираем команду
-         * обратно и рисуем кадр без неё. */
+                /* A half-written label is not worth restarting the game: take the command
+                 * back and draw the frame without it. */
         ds_log_err("renderer: no memory to copy text");
         cmd_n = cmd_n - 1;
         return;

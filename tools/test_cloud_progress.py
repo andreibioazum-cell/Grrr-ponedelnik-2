@@ -62,7 +62,7 @@ static int run_first_save(const char *dir) {
     net_set_data_path(dir);
 
     net_save_progress_all(7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    assert(net_load_buk() == 1);
+    assert(net_load_ebuc() == 1);
     assert(net_load_azum() == 1);
     assert(net_load_cups() == 7);
     puts("first save: classes bought earlier survive a save issued before any read");
@@ -71,13 +71,13 @@ static int run_first_save(const char *dir) {
 
 static int run_offline_buy(const char *dir) {
     net_set_data_path(dir);
-    assert(net_load_buk() == 0);
+    assert(net_load_ebuc() == 0);
     net_save_progress_all(100, 50, 3, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     /* A save made while logged in could not reach the cloud. */
     cloud_dirty_set(1);
     int push = apply_user_json_keep_local(CLOUD_NO_EBUC);
     assert(push == 1);
-    assert(net_load_buk() == 1);
+    assert(net_load_ebuc() == 1);
     assert(net_load_class() == 3);
     assert(net_load_candies() == 50);
     assert(net_load_cups() == 100);
@@ -137,7 +137,7 @@ static int run_clean(const char *dir) {
     assert(push == 0);
     assert(net_load_class() == 1);
     assert(net_load_cups() == 120);
-    assert(net_load_buk() == 1);
+    assert(net_load_ebuc() == 1);
     puts("clean: with no dirty mark a fresher cloud record wins, ownership intact");
     return 0;
 }

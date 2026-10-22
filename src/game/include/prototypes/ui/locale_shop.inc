@@ -10,5 +10,5 @@ static const char *tr_class_astra(void);
 static const char *tr_class_astra_desc(void);
 static const char *tr_class_codecracker(void);
 static const char *tr_class_codecracker_desc(void);
-static const char *tr_class_buk(void);
-static const char *tr_class_buk_desc(void);
+static const char *tr_class_ebuc(void);
+static const char *tr_class_ebuc_desc(void);

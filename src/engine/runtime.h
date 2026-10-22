@@ -126,10 +126,10 @@ int text_ink_height(const char *string);
 int text_ink_top(const char *string);
 
 void ds_graphics_report_frame_interval(double seconds);
-/* Сколько длился последний настоящий кадр, в секундах: от начала прошлой
- * итерации цикла до начала этой, вместе с ожиданием презентации. Ничего не
- * обрезает, в отличие от игрового dt (тот ограничен 0.1 с). 0 - кадр ещё не
- * измерен, окно только что восстановлено или часы не ответили. */
+/* How long the last real frame took, in seconds: from the start of the previous
+ * loop iteration to the start of this one, including the present wait. Nothing is
+ * clamped, unlike the game dt (which is capped at 0.1 s). 0 means the frame is not
+ * measured yet, the window was just restored or the clock did not answer. */
 double ds_frame_seconds(void);
 int ds_graphics_pixel_scale(void);
 

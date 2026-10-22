@@ -185,11 +185,10 @@ static void ds_vk_record_present_blit(VkCommandBuffer cmd) {
         bl.dstOffsets[1].y = (int32_t)vk_sw_extent.height;
         bl.dstOffsets[1].z = 1;
 
-        VkFilter filter = VK_FILTER_NEAREST;
-        if (vk_blit_linear && (vk_off_w != vk_sw_extent.width || vk_off_h != vk_sw_extent.height))
-            filter = VK_FILTER_LINEAR;
+        /* Nearest everywhere: a scaled up frame must stay crisp pixels, the
+         * linear filter turned every edge and letter into a smear. */
         vkCmdBlitImage(cmd, vk_off_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, sw_image,
-                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bl, filter);
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bl, VK_FILTER_NEAREST);
     } else {
 
         VkImageCopy cp;

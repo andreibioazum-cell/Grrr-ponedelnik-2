@@ -141,8 +141,8 @@ static double snowflake_centres[64];
 static int snowflake_centre_n;
 static int star_line_count;
 static double star_max_y;
-/* Обводка, у которой оба конца лежат на одной окружности вокруг центра FX, -
- * это кусок кольца. У ульты CodeCracker таких быть не должно. */
+/* A stroke whose both ends sit on one circle around the FX centre is a piece
+ * of a ring. The CodeCracker ult must not draw any of those. */
 static int fx_orbit_lines;
 static double fx_center_x = 200;
 static double fx_center_y = 200;
@@ -223,7 +223,7 @@ double dist(double x, double y, double a, double b) {
 double ds_mod(double value, double divisor) {
     return (double)((int)value % (int)divisor);
 }
-/* Длина настоящего кадра, которую счётчик FPS берёт у движка. */
+/* Real frame length, the number the FPS counter reads from the engine. */
 static double stub_frame_seconds;
 double ds_frame_seconds(void) { return stub_frame_seconds; }
 int str_eq(const char *a, const char *b) {
@@ -232,8 +232,8 @@ int str_eq(const char *a, const char *b) {
 double str_len(const char *s) {
     return s ? (double)strlen(s) : 0;
 }
-/* Склейка строк, как в рантайме: два чередующихся буфера, чтобы вызов
- * ds_concat(ds_concat(a, b), c) не затирал сам себя. */
+/* String join as in the runtime: two alternating buffers, so that
+ * ds_concat(ds_concat(a, b), c) does not overwrite itself. */
 char *ds_concat(const char *left, const char *right) {
     static char buffers[4][512];
     static int turn = 0;
@@ -597,7 +597,7 @@ void tex_alpha(float x, float y, const char *name, float angle, float scale, dou
         candy_draws++;
         candy_scale_drawn = scale;
         candy_alpha_drawn = alpha;
-        /* tex_alpha() получает левый верхний угол, центр на 25*scale правее и ниже. */
+                /* tex_alpha() wants the top left corner, the centre is 25*scale right and down. */
         candy_x_drawn = x + 25.0 * scale;
         candy_y_drawn = y + 25.0 * scale;
     }
@@ -649,7 +649,7 @@ double net_load_candies(void) { return 0; }
 double net_load_class(void) { return 0; }
 double net_load_azum(void) { return 0; }
 double net_load_santa(void) { return 0; }
-double net_load_buk(void) { return 0; }
+double net_load_ebuc(void) { return 0; }
 double net_load_level(void) { return 0; }
 double net_load_levels_unlocked(void) { return 0; }
 double net_load_ordinary_level(void) { return 0; }
@@ -658,8 +658,8 @@ double net_load_azum_level(void) { return 0; }
 double net_load_azum_levels_unlocked(void) { return 0; }
 double net_load_santa_level(void) { return 0; }
 double net_load_santa_levels_unlocked(void) { return 0; }
-double net_load_buk_level(void) { return 0; }
-double net_load_buk_levels_unlocked(void) { return 0; }
+double net_load_ebuc_level(void) { return 0; }
+double net_load_ebuc_levels_unlocked(void) { return 0; }
 double net_load_azum_skin(void) { return 0; }
 double net_load_astra(void) { return 0; }
 double net_load_astra_level(void) { return 0; }
@@ -697,8 +697,8 @@ void settings_mark_legal(void) {}
 void ds_string_pool_tick(void) {}
 static double stub_legal_ts;
 double settings_legal_ts(void) { return stub_legal_ts; }
-/* Согласие на обработку ПД и удаление аккаунта: по умолчанию согласие дано,
- * чтобы старые проверки лобби не упирались в окно вопроса. */
+/* Personal data consent and account deletion: consent starts granted, so old
+ * lobby checks do not run into the question window. */
 static double stub_pd_ver = LEGAL_DOCS_VERSION;
 static int stub_pd_uploads;
 static int stub_delete_calls;
@@ -917,27 +917,27 @@ static void assert_clean(const char *in, const char *want) {
     }
 }
 
-/* Свайп ползунка удаления пальцем id: от ползунка на долю frac дорожки. */
+/* Drag the delete knob with finger id: from the knob by a fraction of the track. */
 static void swipe_delete_knob(double frac, double id) {
     double kx = acct_knob_x() + acct_knob_w() / 2;
     double ky = acct_slider_y() + acct_slider_h() / 2;
     double span = acct_w() - acct_knob_w() - 8;
     logic_touch(kx, ky, 0, id);
-    press_new = 0;
+    press_points_clear();
     logic_touch(kx + span * frac * 0.5, ky, 2, id);
     logic_touch(kx + span * frac, ky, 2, id);
     logic_touch(kx + span * frac, ky, 1, id);
 }
 
-/* Удаление: без пароля и без свайпа до конца ничего не уходит на сервер. */
+/* Deleting: with no password and no full swipe nothing goes to the server. */
 static void test_account_delete(void) {
     int calls = stub_delete_calls;
-    /* Свайп без пароля: просьба ввести пароль, ползунок уезжает назад. */
+        /* Swipe without a password: ask for the password, the knob slides back. */
     swipe_delete_knob(1.2, 60);
     assert(stub_delete_calls == calls && str_eq(acct_msg, tr_acct_need_pass()) == 1);
-    /* Пароль введён, но ползунок отпущен на полпути - не удаляем. */
+        /* The password is there but the knob was let go halfway - no deletion. */
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(0) + login_fh / 2, 0, 61);
-    press_new = 0;
+    press_points_clear();
     assert(keyboard_visible() == 1 && acct_field == 0);
     keyboard_type("secret1");
     acct_tick();
@@ -950,16 +950,16 @@ static void test_account_delete(void) {
     acct_tick();
     assert(acct_knob < k); /* springs back */
     acct_knob = 0;
-    /* Обычное касание (без свайпа) по ползунку тоже ничего не делает. */
+        /* A plain tap on the knob does nothing either. */
     logic_touch(acct_knob_x() + acct_knob_w() / 2, acct_slider_y() + acct_slider_h() / 2, 0, 63);
-    press_new = 0;
+    press_points_clear();
     logic_touch(acct_knob_x() + acct_knob_w() / 2, acct_slider_y() + acct_slider_h() / 2, 1, 63);
     assert(stub_delete_calls == calls);
-    /* Свайп до конца с паролем: удаление с этим паролем, поле очищено. */
+        /* Full swipe with a password: delete with that password, the field is cleared. */
     swipe_delete_knob(1.2, 64);
     assert(stub_delete_calls == calls + 1 && strcmp(stub_delete_pass, "secret1") == 0);
     assert(acct_busy == 1 && acct_buf[0][0] == 0);
-    /* Неверный пароль: сообщение, можно повторить. */
+        /* Wrong password: a message, the player can try again. */
     stub_delete_status = 4;
     acct_tick();
     assert(acct_busy == 0 && acct_done == 0 && str_eq(acct_msg, tr_acct_wrong()) == 1);
@@ -982,7 +982,7 @@ static void finish_transition(void) {
     assert(t_dir == 0 && t_fade == 0 && t_action == NULL);
 }
 
-/* Экран аккаунта из лобби: меню, смена пароля, выход. */
+/* Account screen from the lobby: menu, password change, sign out. */
 static void test_account_screen(void) {
     char saved_nick[24];
     snprintf(saved_nick, sizeof(saved_nick), "%s", stub_login_nick);
@@ -993,7 +993,7 @@ static void test_account_screen(void) {
     docs_open = 0;
     acct_open = 0;
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(3) + btn_h / 2, 0, 70);
-    press_new = 0;
+    press_points_clear();
     /* The account opens through the screen transition, like every other
      * screen: nothing yet, the account at the end of the fade. */
     assert(acct_open == 0 && t_dir == 1 && acct_pending == 1);
@@ -1006,13 +1006,13 @@ static void test_account_screen(void) {
     assert(acct_open == ACCT_MENU);
     t_dir = 0;
     logic_touch(acct_x() + acct_w() / 2, acct_menu_y(0) + btn_h / 2, 0, 71);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == ACCT_MENU && t_dir == 1);
     finish_transition();
     assert(acct_open == ACCT_PASS);
-    /* Проверки до сервера: пустые поля, несовпадение, тот же пароль. */
+        /* Checks before the server: empty fields, mismatch, same password. */
     logic_touch(acct_x() + acct_w() / 2, acct_below_fields() + btn_h / 2, 0, 72);
-    press_new = 0;
+    press_points_clear();
     assert(str_eq(acct_msg, tr_acct_need_pass()) == 1 && stub_pass_calls == 0);
     snprintf(acct_buf[0], ACCT_BUF, "%s", "old1");
     snprintf(acct_buf[1], ACCT_BUF, "%s", "new1");
@@ -1023,26 +1023,26 @@ static void test_account_screen(void) {
     snprintf(acct_buf[2], ACCT_BUF, "%s", "old1");
     acct_pass_try();
     assert(str_eq(acct_msg, tr_acct_same()) == 1 && stub_pass_calls == 0);
-    /* Пароль админа задан в коде: его смена отняла бы права админа. */
+        /* The admin password is set in the code: changing it would cost admin rights. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
     snprintf(acct_buf[1], ACCT_BUF, "%s", "new1");
     snprintf(acct_buf[2], ACCT_BUF, "%s", "new1");
     acct_pass_try();
     assert(str_eq(acct_msg, tr_acct_admin()) == 1 && stub_pass_calls == 0);
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
-    /* Ввод через клавиатуру: Enter переходит к следующему полю. */
+        /* Keyboard input: Enter moves to the next field. */
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(1) + login_fh / 2, 0, 73);
-    press_new = 0;
+    press_points_clear();
     assert(acct_field == 1 && keyboard_visible() == 1);
     keyboard_type("new1");
     acct_tick();
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(2) + login_fh / 2, 0, 74);
-    press_new = 0;
+    press_points_clear();
     keyboard_type("new1");
     acct_tick();
     assert(strcmp(acct_buf[1], "new1") == 0 && strcmp(acct_buf[2], "new1") == 0);
     logic_touch(acct_x() + acct_w() / 2, acct_below_fields() + btn_h / 2, 0, 75);
-    press_new = 0;
+    press_points_clear();
     assert(stub_pass_calls == 1 && strcmp(stub_pass_old, "old1") == 0 && strcmp(stub_pass_new, "new1") == 0);
     assert(acct_busy == 2 && acct_buf[0][0] == 0 && acct_buf[1][0] == 0);
     stub_pass_status = 4;
@@ -1052,14 +1052,14 @@ static void test_account_screen(void) {
     stub_pass_status = 2;
     acct_tick();
     assert(acct_busy == 0 && str_eq(acct_msg, tr_acct_changed()) == 1);
-    /* «Назад» - в меню аккаунта, ещё раз - закрыть. */
+        /* Back goes to the account menu, once more closes it. */
     assert(logic_back() == 1 && t_dir == 1 && acct_open == ACCT_PASS);
     finish_transition();
     assert(acct_open == ACCT_MENU);
-    /* Выход из аккаунта. */
+        /* Sign out. */
     int logouts = stub_logout_calls;
     logic_touch(acct_x() + acct_w() / 2, acct_menu_y(2) + btn_h / 2, 0, 76);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == ACCT_MENU && stub_logout_calls == logouts && t_dir == 1);
     finish_transition();
     assert(acct_open == 0 && stub_logout_calls == logouts + 1);
@@ -1074,10 +1074,10 @@ static void test_account_screen(void) {
     assert(class_owned_of(CLASS_AZUM) == 0 && player_class == CLASS_ORDINARY);
     assert(class_level_of(CLASS_AZUM) == 0 && class_unlocked_of(CLASS_AZUM) == 0);
     assert(achievement_mask == 0 && azum_revive_count == 0);
-    /* Без входа «Аккаунт» ведёт на экран входа. */
+        /* Without a login the Account row leads to the login screen. */
     stub_login_status = 0;
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(3) + btn_h / 2, 0, 77);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == 0 && t_target == ST_LOGIN);
     t_dir = 0;
     t_target = 0;
@@ -1085,10 +1085,10 @@ static void test_account_screen(void) {
     puts("account: menu, password change checks, sign-out, delete needs password + full swipe right");
 }
 
-/* Подарки: две колонки, магазин слева влезает целиком, коллекция справа
- * прокручивается плавно. Каждая карточка рисуется одной PNG-картинкой и
- * подписью в цвете редкости; кнопок на карточках нет - тап выбирает, а
- * действия стоят внизу страницы. */
+/* Gifts: two columns, the shop on the left fits whole, the collection on the
+ * right scrolls smoothly. A card is one PNG plus a caption in its rarity
+ * colour; cards have no buttons - a tap selects, the actions sit below the
+ * columns. */
 static void test_gifts_page(void) {
     double saved_w = screen_w, saved_h = screen_h;
     double saved_lang = language;
@@ -1102,17 +1102,17 @@ static void test_gifts_page(void) {
     assert(str_eq(acct_gift_name(0), "Какашка") == 1);
     assert(str_eq(acct_gift_name(4), "Изумруд") == 1);
     assert(net_gift_price(0) == 25 && net_gift_price(3) == 400 && net_gift_price(4) == 500);
-    /* Продажа возвращает половину цены, покупка остаётся дороже. */
+        /* Selling pays back half the price, buying always costs more. */
     assert(net_gift_refund(0) == 12 && net_gift_refund(1) == 50);
     assert(net_gift_refund(2) == 125 && net_gift_refund(3) == 200 && net_gift_refund(4) == 250);
-    /* Стикеры - настоящие PNG, по одной картинке на подарок. */
+        /* Stickers are real PNGs, one picture per gift. */
     assert(str_eq(gift_tex(0), "gift_poop.png") == 1);
     assert(str_eq(gift_tex(1), "gift_cake.png") == 1);
     assert(str_eq(gift_tex(2), "gift_bear.png") == 1);
     assert(str_eq(gift_tex(3), "gift_rocket.png") == 1);
     assert(str_eq(gift_tex(4), "gift_emerald.png") == 1);
-    /* Редкость: обычная белая, редкая голубая, эпическая фиолетовая,
-     * эксклюзивная радужная (её подпись рисуется text_rainbow). */
+        /* Rarity: common white, rare blue, epic purple, exclusive rainbow (its
+         * caption is drawn with text_rainbow). */
     assert(gift_rarity(0) == 0 && gift_rarity(1) == 1 && gift_rarity(2) == 2);
     assert(gift_rarity(3) == 2 && gift_rarity(4) == 3);
     assert(str_eq(gift_rarity_name(0), "ОБЫЧНЫЙ") == 1);
@@ -1122,26 +1122,26 @@ static void test_gifts_page(void) {
     assert(gift_rarity_color(0) == 0xFFFFFFFF);
     assert(gift_rarity_color(1) == 0xFF5CC8FF);
     assert(gift_rarity_color(2) == 0xFFC08CFF);
-    /* Колонки стоят рядом и не наезжают друг на друга. */
+        /* The columns stand side by side and do not overlap. */
     assert(acct_gift_x(0) + acct_gift_col_w() < acct_gift_x(1));
     assert(acct_gift_x(1) + acct_gift_col_w() <= acct_x() + acct_w() + 1e-9);
-    /* Весь каталог (пять стикеров) влезает в окно без прокрутки. */
+        /* The whole catalogue (five stickers) fits the window without scrolling. */
     for (double i = 0; i < 5; i++) {
         double cy = acct_gift_view_top() + i * acct_gift_step();
         assert(cy >= acct_gift_view_top());
         assert(cy + acct_gift_card_h() <= acct_gift_view_bottom() + 1e-9);
         assert(hit_acct_gift(acct_gift_x(0) + 10, cy + 5, i) == 1);
     }
-    /* Пустая коллекция: ни строк, ни прокрутки. */
+        /* Empty collection: no rows and no scrolling. */
     assert(acct_gift_own_total() == 0 && acct_gift_scroll_max() == 0);
     gift_tex_draws = 0;
     last_gift_tex = "";
     draw_acct_gifts();
-    /* Пять карточек магазина - пять картинок, без повторов. */
+        /* Five shop cards are five pictures, no repeats. */
     assert(gift_tex_draws == 5);
     assert(str_eq(last_gift_tex, "gift_emerald.png") == 1);
-    /* Пустая коллекция пишет «Пока нет подарков» под заголовком
-     * «МОИ ПОДАРКИ», в правой колонке, а не посередине экрана. */
+        /* An empty collection says "no gifts yet" under the MY GIFTS header, in
+         * the right column, not in the middle of the screen. */
     text_watch("Пока нет подарков");
     draw_acct_gifts();
     assert(stub_watch_hit == 1);
@@ -1150,7 +1150,7 @@ static void test_gifts_page(void) {
     assert(stub_watch_y < acct_gift_view_top() + 30);
     text_watch("");
 
-    /* Две какашки - две отдельные карточки, изумруд - третья. */
+        /* Two poops are two separate cards, the emerald is the third. */
     stub_gift_counts[0] = 2;
     stub_gift_counts[4] = 1;
     assert(acct_gift_own_total() == 3);
@@ -1159,16 +1159,16 @@ static void test_gifts_page(void) {
     gift_tex_draws = 0;
     rainbow_text_n = 0;
     draw_acct_gifts();
-    /* Пять магазинных и три своих карточки, каждая со своей картинкой. */
+        /* Five shop cards and three owned ones, each with its own picture. */
     assert(gift_tex_draws == 8);
-    /* Изумруд подписан белым: цвет живёт на самом камне, радуга ушла. */
+        /* The emerald caption is white: the colour lives on the stone itself. */
     int rainbow_emerald = 0;
     for (int i = 0; i < rainbow_text_n; i++)
         if (str_eq(rainbow_text[i], "Изумруд") == 1 || str_eq(rainbow_text[i], "ЭКСКЛЮЗИВНЫЙ") == 1)
             rainbow_emerald = 1;
     assert(rainbow_emerald == 0);
 
-    /* Магазинная карточка: выбор и «Осмотреть | Купить» под колонками. */
+        /* A shop card: selection and "Look | Buy" under the columns. */
     double y = acct_gift_view_top() + 1 * acct_gift_step() + acct_gift_card_h() / 2;
     assert(touch_acct_gift_list(acct_gift_x(0) + 20, y, 0, 11) == 1);
     assert(acct_gift_choice == 1 && acct_gift_is_owned == 0);
@@ -1177,7 +1177,7 @@ static void test_gifts_page(void) {
     assert(hit_acct_gift_send(acct_x() + 10, acct_below_fields() + 5) == 0);
     assert(hit_acct_gift_sell(acct_x() + acct_w() - 10, acct_below_fields() + 5) == 0);
 
-    /* Тап по своей карточке только выбирает: кнопки внизу, в футере. */
+        /* A tap on an owned card only selects it: the buttons live in the footer. */
     double oy = acct_gift_view_top() + 6;
     assert(touch_acct_gift_list(acct_gift_x(1) + 20, oy, 0, 12) == 1);
     assert(touch_acct_gift_list(acct_gift_x(1) + 20, oy + 2, 1, 12) == 1);
@@ -1188,15 +1188,16 @@ static void test_gifts_page(void) {
     assert(hit_acct_gift_send(acct_x() + acct_gift_inspect_w() + ACCT_GIFT_COL_GAP + 10, acct_below_fields() + 5) == 1);
     assert(hit_acct_gift_sell(acct_x() + 2 * (acct_gift_inspect_w() + ACCT_GIFT_COL_GAP) + 10, acct_below_fields() + 5) == 1);
     assert(acct_x() + 3 * acct_gift_inspect_w() + 2 * ACCT_GIFT_COL_GAP <= acct_x() + acct_w() + 1e-9);
-    /* «Продать» из футера продаёт именно выбранную карточку. */
+        /* Sell in the footer sells the selected card. */
     acct_gift_sell();
     assert(acct_gift_busy == 1 && acct_gift_busy_mode == 3);
     acct_gift_busy = 0;
     acct_gift_busy_mode = 0;
     acct_msg = "";
 
-    /* Покупка и продажа берут баланс из базы: даже если локальные кубки
-     * почему-то обнулились, серверное число не затирается нулём. */
+        /* Buying and selling take the balance from the database: even if the
+         * local cups somehow got zeroed, the server number is not overwritten
+         * with a zero. */
     cups = 0;
     acct_gift_choice = 4;
     acct_gift_is_owned = 0;
@@ -1218,8 +1219,8 @@ static void test_gifts_page(void) {
     assert(acct_gift_busy == 0 && cups == 137 && acct_gift_is_owned == 0);
     acct_msg = "";
 
-    /* Админ покупает бесплатно: с нулём кубков покупка стартует, а баланс
-     * после покупки - нетронутый серверный, без вычета цены. */
+        /* The admin buys for free: buying starts with zero cups, and the balance
+         * after the purchase is the untouched server one, no price deducted. */
     {
         char saved_nick[24];
         snprintf(saved_nick, sizeof(saved_nick), "%s", stub_login_nick);
@@ -1239,9 +1240,9 @@ static void test_gifts_page(void) {
         snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", saved_nick);
     }
 
-    /* Продажа убирает из коллекции только проданный стикер: вторая какашка
-     * и изумруд остаются на месте. Раньше список обнулялся целиком, и
-     * казалось, что вместе с какашкой продали ещё и изумруд. */
+        /* Selling removes only the sticker that was sold: the second poop and the
+         * emerald stay. The list used to be wiped whole, so it looked like the
+         * emerald went with the poop. */
     stub_gift_counts[0] = 2;
     stub_gift_counts[4] = 1;
     acct_gift_choice = 0;
@@ -1257,8 +1258,8 @@ static void test_gifts_page(void) {
     assert(acct_gift_own_id(0) == 0 && acct_gift_own_id(1) == 4);
     acct_msg = "";
 
-    /* Отказ в действии (уже идёт другая операция) не оставляет страницу
-     * занятой надписью «Продаём...». */
+        /* A refused action (another one is running) must not leave the page stuck
+         * on "Selling...". */
     stub_gift_action_ok = 0;
     stub_gift_counts[0] = 1;
     acct_gift_choice = 0;
@@ -1266,10 +1267,13 @@ static void test_gifts_page(void) {
     acct_gift_own_row = 0;
     acct_gift_sell();
     assert(acct_gift_busy == 0 && acct_gift_busy_mode == 3);
+        /* The sticker of a refused request must not move into the next action:
+         * otherwise selling the wrong sticker would pass silently. */
+    assert(acct_gift_acted == -1);
     stub_gift_action_ok = 1;
     acct_msg = "";
 
-    /* Покупка добавляет ровно один стикер и не трогает остальные. */
+        /* A purchase adds exactly one sticker and leaves the others alone. */
     acct_gift_choice = 4;
     acct_gift_is_owned = 0;
     acct_gift_busy = 1;
@@ -1280,8 +1284,22 @@ static void test_gifts_page(void) {
     assert(stub_gift_counts[4] == 2 && stub_gift_counts[0] == 1);
     acct_msg = "";
 
-    /* Коллекция прокручивается плавно: сдвиг дробный, без снапа, и после
-     * короткого рывка список едет медленно, а не улетает. */
+        /* While a request is in flight the selection can change: the sticker that
+         * was pressed is the one applied. */
+    acct_gift_choice = 3;
+    acct_gift_is_owned = 0;
+    acct_gift_buy();
+    acct_gift_choice = 0; /* игрок успел ткнуть другую карточку */
+    stub_gift_cups = 640;
+    stub_gift_status = 2;
+    acct_poll_gifts();
+    assert(stub_gift_counts[3] == 1);
+    assert(acct_gift_acted == -1);
+    net_gift_count_add(3, -1);
+    acct_msg = "";
+
+        /* The collection scrolls smoothly: fractional offsets, no snapping, and a
+         * short flick glides instead of flying away. */
     stub_gift_counts[0] = 9;
     assert(acct_gift_scroll_max() > 0);
     acct_gift_scroll = 0;
@@ -1297,10 +1315,10 @@ static void test_gifts_page(void) {
     double before = acct_gift_scroll;
     acct_gift_scroll_tick();
     double moved = acct_gift_scroll - before;
-    /* Один тик даёт не больше, чем потолок скорости: рывок не улетает. */
+        /* One tick moves no faster than the speed cap: a flick does not fly away. */
     assert(moved > 0 && moved <= 22 * dt + 1e-9);
     assert(fabs(fmod(acct_gift_scroll, acct_gift_step())) > 1e-6); /* не выровнено по строке */
-    /* Прокрутка не вылезает за пределы списка. */
+        /* Scrolling never leaves the list. */
     acct_gift_scroll = 0;
     acct_gift_vel = -500;
     for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
@@ -1309,7 +1327,7 @@ static void test_gifts_page(void) {
     acct_gift_vel = 500;
     for (int i = 0; i < 200; i++) acct_gift_scroll_tick();
     assert(fabs(acct_gift_scroll - acct_gift_scroll_max()) < 1e-9);
-    /* После прокрутки тап выбирает именно ту строку, что под пальцем. */
+        /* After scrolling a tap picks the row under the finger. */
     acct_gift_scroll = acct_gift_step() * 3;
     double ty = acct_gift_view_top() + acct_gift_step() / 2;
     assert(touch_acct_gift_list(acct_gift_x(1) + 20, ty, 0, 15) == 1);
@@ -1332,8 +1350,8 @@ static void test_gifts_page(void) {
     puts("gifts: PNG stickers, rarity colours, footer actions and a soft scroll");
 }
 
-/* Правовая часть: фильтр чата, согласие при входе, вопрос в лобби, окно
- * документов поверх предупреждения и удаление аккаунта. */
+/* Legal part: chat filter, consent at login, the lobby question, the
+ * documents window over the warning and account deletion. */
 static void test_legal(void) {
     double saved_lang = language;
     double saved_w = screen_w, saved_h = screen_h;
@@ -1341,7 +1359,7 @@ static void test_legal(void) {
     screen_h = 720;
     language = 1;
 
-    /* Мат, его латинские и «зашумлённые» записи и ссылки - звёздочки. */
+        /* Swearing, its latin lookalikes, noisy spellings and links become asterisks. */
     assert_clean("привет хуй", "привет ***");
     assert_clean("Пиздец!", "***");
     assert_clean("cyka blyat", "*** ***");
@@ -1353,7 +1371,7 @@ static void test_legal(void) {
     assert_clean("заходи на site.ru", "заходи на ***");
     assert_clean("https://x.com/a", "***");
     assert_clean("t.me/chan", "***");
-    /* Обычные слова, похожие на запрещённые, не трогаем. */
+        /* Ordinary words that look like banned ones are left alone. */
     assert_clean("себе хлеб небо тебе веб вебинар психуй застрахуй", "себе хлеб небо тебе веб вебинар психуй застрахуй");
     assert_clean("спидран мандарин сукно употреблять упорный оскорблять", "спидран мандарин сукно употреблять упорный оскорблять");
     assert_clean("ebuC web ebay hello pizza 12:00 1.5", "ebuC web ebay hello pizza 12:00 1.5");
@@ -1363,7 +1381,7 @@ static void test_legal(void) {
     assert(nick_blocked("ebuc_fan") == 0);
     assert(nick_blocked("tester") == 0);
 
-    /* Вход: без галочки согласия нельзя, галочка заранее не стоит. */
+        /* Login: the consent box must be ticked, and it starts unticked. */
     stub_pd_ver = 0;
     stub_login_status = 0;
     game_state = ST_LOGIN;
@@ -1382,16 +1400,16 @@ static void test_legal(void) {
     login_nick = "tester";
     login_status = 8;
     logic_touch(login_consent_x() + 10, login_consent_y() + 10, 0, 40);
-    press_new = 0;
+    press_points_clear();
     assert(login_consent == 1 && login_status == 0);
     int uploads = stub_pd_uploads;
     login_do();
     assert(login_status == 0 && stub_pd_ver == LEGAL_DOCS_VERSION && stub_pd_uploads == uploads + 1);
     t_dir = 0;
     t_target = 0;
-    /* Ссылка под галочкой открывает документы, ник при этом не теряется. */
+        /* The link under the box opens the documents and the nick is kept. */
     logic_touch(center_x(login_more_w()) + login_more_w() / 2, login_more_y() + btn_h * 0.4, 0, 41);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 0 && t_dir == 1);
     finish_transition();
     assert(docs_open == 1 && docs_page == LEGAL_PAGE_CONSENT - 2 && str_eq(login_nick, "tester") == 1);
@@ -1400,7 +1418,7 @@ static void test_legal(void) {
     /* The checkbox resets on every entry, even after consent was given. */
     assert(login_consent == 0);
 
-    /* Вошедшего до появления согласия спрашивают в лобби, один раз. */
+        /* A player who signed in before consent existed is asked in the lobby, once. */
     stub_pd_ver = 0;
     stub_login_status = 2;
     game_state = ST_LOBBY;
@@ -1408,20 +1426,20 @@ static void test_legal(void) {
     docs_tick();
     assert(docs_open == 1 && docs_ask == 1 && docs_page == LEGAL_PAGE_CONSENT);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_row_y() + btn_h / 2, 0, 42);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 1 && t_dir == 1);
     finish_transition();
     assert(docs_open == 0 && stub_pd_ver == LEGAL_DOCS_VERSION);
     docs_tick();
     assert(docs_open == 0);
-    /* Отказ: игрок выходит из аккаунта. */
+        /* Refusal: the player signs out. */
     stub_pd_ver = 0;
     docs_show(LEGAL_PAGE_CONSENT, 1);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_refuse_y() + btn_h / 2, 0, 43);
-    press_new = 0;
+    press_points_clear();
     finish_transition();
     assert(docs_open == 0 && stub_logout_calls == 1 && stub_login_status == 0);
-    /* Онлайн без согласия не открывается - вместо него вопрос. */
+        /* Online does not open without consent - the question is shown instead. */
     stub_login_status = 2;
     open_online();
     assert(docs_open == 0 && t_dir == 1);
@@ -1430,37 +1448,37 @@ static void test_legal(void) {
     docs_close();
     stub_pd_ver = LEGAL_DOCS_VERSION;
 
-    /* Листание; кнопка удаления открывает экран аккаунта поверх документов. */
+        /* Paging; the delete button opens the account screen over the documents. */
     docs_show(0, 0);
     assert(hit_docs_prev(docs_prev_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2) == 0);
     logic_touch(docs_next_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2, 0, 44);
-    press_new = 0;
+    press_points_clear();
     assert(docs_page == 0 && t_dir == 1);
     finish_transition();
     assert(docs_page == 1);
     docs_show(LEGAL_PAGE_RIGHTS, 0);
     assert(hit_docs_next(docs_next_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2) == 0);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_row_y() + btn_h / 2, 0, 45);
-    press_new = 0;
+    press_points_clear();
     finish_transition();
     assert(acct_open == ACCT_DELETE && docs_open == 1 && stub_delete_calls == 0);
     test_account_delete();
-    /* «Назад» закрывает экран аккаунта и оставляет документы. */
+        /* Back closes the account screen and leaves the documents open. */
     assert(logic_back() == 1 && t_dir == 1 && acct_open == ACCT_DELETE);
     finish_transition();
     assert(acct_open == 0 && docs_open == 1);
     docs_close();
-    /* Без входа кнопки удаления нет. */
+        /* Without a login there is no delete button. */
     stub_login_status = 0;
     docs_show(LEGAL_PAGE_RIGHTS, 0);
     assert(docs_has_mid() == 0);
     docs_close();
 
-    /* Предупреждение при запуске: «Документы» открывают окно поверх него. */
+        /* Start-up warning: Documents open a window on top of it. */
     warn_open = 1;
     warn_closing = 0;
     logic_touch(warn_docs_x() + warn_docs_w() / 2, warn_btn_y() + btn_h / 2, 0, 47);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 0 && t_dir == 1);
     finish_transition();
     assert(docs_open == 1 && warn_open == 1);
@@ -1472,7 +1490,7 @@ static void test_legal(void) {
     test_account_screen();
     stub_login_status = 2;
 
-    /* Описания персонажей - авторские фразы, не переводятся; HP остаётся. */
+        /* Character descriptions are original phrases and are not translated; HP is kept. */
     language = 1;
     assert(str_eq(tr_class_ordinary_desc(), "I was the first") == 1);
     assert(strstr(tr_achievement_last_hp_desc(), "HP") != NULL);
@@ -1484,23 +1502,22 @@ static void test_legal(void) {
     puts("legal: chat filter, sign-in consent, lobby consent ask, documents window, account deletion");
 }
 
-/* Запуск игры: предупреждение об эпилепсии, затем сразу лобби. Экрана
- * «нажми, чтобы начать» больше нет, поэтому после предупреждения лобби
- * живое с первого касания. */
+/* Game start: the epilepsy warning, then the lobby right away. The old
+ * "tap to start" screen is gone, so the lobby is live from the first touch. */
 static void test_start_gate(void) {
     game_reset();
     game_state = ST_LOBBY;
     dt = 0.1;
 
-    /* Каждый заход начинается с предупреждения и ничем его не накрывает. */
+        /* Every launch starts with the warning and nothing covers it. */
     stub_legal_ts = 0;
     start_gate_init();
     assert(warn_open == 1 && warn_closing == 0 && warn_a == 1);
-    /* Касание по предупреждению не проваливается в лобби. */
+        /* A touch on the warning does not fall through to the lobby. */
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(1) + btn_h / 2, 0, 71);
     assert(t_dir == 0);
-    /* Кнопка «принять» ждёт, пока предупреждение дочитано, затем плавно
-     * уводит его и лобби открывается без всякой занавески. */
+        /* The accept button waits until the warning is read, then slides it away
+         * and the lobby opens without a curtain. */
     int i = 0;
     while (i < 40 && warn_ready < 1) {
         update_warning();
@@ -1518,13 +1535,13 @@ static void test_start_gate(void) {
     t_dir = 0;
     t_target = 0;
     t_fade = 0;
-    press_new = 0;
+    press_points_clear();
     stub_legal_ts = 0;
     puts("start gate: epilepsy warning only, the lobby is live right after it");
 }
 
-/* Админка: закрытие любой дорогой гасит клавиатуру. Раньше она оставалась
- * висеть поверх лобби и съедала касания после закрытия панели. */
+/* Admin panel: closing it any way also hides the keyboard. It used to stay
+ * on top of the lobby and eat touches after the panel closed. */
 static void test_admin_keyboard(void) {
     double saved_stat = game_state;
     double saved_open = admin_panel_open;
@@ -1532,7 +1549,7 @@ static void test_admin_keyboard(void) {
     t_dir = 0;
     game_state = ST_LOBBY;
 
-    /* Кнопка «назад» на Android. */
+        /* The Android back button. */
     admin_panel_open = 1;
     admin_tab = 1;
     keyboard_show();
@@ -1540,14 +1557,13 @@ static void test_admin_keyboard(void) {
     logic_back();
     assert(admin_panel_open == 0 && keyboard_visible() == 0);
 
-    /* Крестик в шапке панели. */
+        /* The cross in the panel header. */
     admin_panel_open = 1;
     keyboard_show();
     admin_panel_close();
     assert(admin_panel_open == 0 && keyboard_visible() == 0);
 
-    /* Переключение на вкладку Players тоже не должно оставлять клавиатуру
-     * от поля подарков. */
+        /* Switching to the Players tab must not leave the gift field keyboard up. */
     admin_panel_open = 1;
     admin_tab = 1;
     keyboard_show();
@@ -1561,9 +1577,8 @@ static void test_admin_keyboard(void) {
     puts("admin panel: every way of closing it also hides the keyboard");
 }
 
-/* Промокод 2027: сообщение об успехе - собственная копия текста, а не
- * указатель в строковый пул, поэтому после тиков пула оно не превращается
- * в мусор и знак «?». */
+/* Promo 2027: the success text is a private copy, not a pointer into the
+ * string pool, so after a few pool ticks it does not turn into garbage. */
 static void test_promo_message(void) {
     game_state = ST_PROMO;
     language = 0;
@@ -1662,13 +1677,13 @@ static void test_azum_buff(void) {
     assert(class_owned_of(CLASS_AZUM) == 1 && cups == 0);
     stub_flash_sale = 0;
     update_flash_sale();
-    assert(flash_sale_active == 0 && class_cost_of(CLASS_BUK) == buk_cost);
+    assert(flash_sale_active == 0 && class_cost_of(CLASS_EBUC) == ebuc_cost);
     assert(level_cost(1) == level_base_cost);
     puts("flash sale: -10% on all prices and purchase OK");
 }
 
-/* Ульта CodeCracker: без кружка вокруг куба - ни диска, ни кольца, ни дуг,
- * ни обода из точек; звёздочки - гладкие. */
+/* CodeCracker ult: nothing circles the cube - no disc, no ring, no arcs, no
+ * rim of dots; the sparks are smooth. */
 static void test_codecracker_fx(void) {
     fx_ring_count = 0;
     fx_big_circle_count = 0;
@@ -1678,8 +1693,8 @@ static void test_codecracker_fx(void) {
     draw_codecracker_fx_at(200, 200, 0.3, 0.7);
     assert(fx_ring_count == 0);
     assert(fx_big_circle_count == 0);
-    /* Ни один штрих не идёт по окружности вокруг куба: кольцо из дуг
-     * начинается именно так. Искры летят назад и такой обводки не дают. */
+        /* No stroke runs around the cube: the ring of arcs starts exactly like that.
+         * The sparks fly backwards and never form such an outline. */
     assert(fx_orbit_lines == 0);
 
     /* A smooth star needs many more strokes than its diameter in pixels:
@@ -1691,7 +1706,7 @@ static void test_codecracker_fx(void) {
     puts("codecracker fx: no halo circle in the ult; stars drawn smooth, not pixelated");
 }
 
-/* FPS в бою: считается по настоящей длине кадра, а не по обрезанному dt. */
+/* Battle FPS is counted from the real frame length, not from the clamped dt. */
 static void test_fps_meter(void) {
     int i;
     fps_acc = 0;
@@ -1705,7 +1720,7 @@ static void test_fps_meter(void) {
     }
     assert(fps_shown == 30);
 
-    /* Справа снизу, тем же мелким шрифтом: подпись упирается в угол. */
+        /* Bottom right, same small font: the caption sits in the corner. */
     int saved_w = screen_w;
     int saved_h = screen_h;
     screen_w = 1280;
@@ -1725,7 +1740,7 @@ static void test_fps_meter(void) {
     screen_w = saved_w;
     screen_h = saved_h;
 
-    /* 8 кадров в секунду: dt обрезан до 0.1 с и по нему выходило бы 10. */
+        /* 8 fps: dt is clamped to 0.1 s, which would read as 10. */
     fps_acc = 0;
     fps_frames = 0;
     fps_shown = 0;
@@ -1736,7 +1751,7 @@ static void test_fps_meter(void) {
         i = i + 1;
     }
     assert(fps_shown == 8);
-    /* Свернутое приложение - не «0 FPS»: окно просто начинается заново. */
+        /* A minimised app is not "0 FPS": the window simply starts over. */
     fps_acc = 0;
     fps_frames = 0;
     fps_shown = 0;
@@ -1775,7 +1790,7 @@ static char stub_current_room[25];
 const char *net_current_room(void) { return stub_current_room; }
 void net_room_prep_reset(void) { stub_prep_status = 0; }
 
-/* Ачивка mov eax, 0x229 и экран комнат с паролями. */
+/* The mov eax, 0x229 achievement and the password rooms screen. */
 
 static void test_dice_alone_and_bubbles(void) {
     /* Dice event: prizes, admin-only cubes, throw + collect. */
@@ -1888,9 +1903,9 @@ static void test_dice_alone_and_bubbles(void) {
     puts("dice event + alone wait + chat bubbles: OK");
 }
 
-/* Ивенты: 2 - плиты, 3 - Дед Мороз, 4 - кубик. Раньше "event 3" включал те
- * же плиты, а правило базы пускало только 0..3, поэтому запись кубика
- * отклонялась и поллер возвращал предыдущий ивент (часто плиты). */
+/* Events: 2 - plates, 3 - Santa, 4 - cube. "event 3" used to start the same
+ * plates, and the database rule allowed only 0..3, so the cube write was
+ * rejected and the poller kept returning the previous event. */
 static void test_battle_events(void) {
     double saved_w = screen_w, saved_h = screen_h;
     screen_w = 1280;
@@ -1900,11 +1915,11 @@ static void test_battle_events(void) {
     player_class = CLASS_ORDINARY;
     reset_battle();
 
-    /* Азум: на 2% меньше HP (13 -> 12.74). */
+        /* Azum: 2% less HP (13 -> 12.74). */
     assert(fabs(azum_hp - 12.74) < 1e-9);
     assert(fabs(player_max_hp_for(CLASS_AZUM) - 12.74 * round_hp_mult()) < 1e-9);
 
-    /* Команды админа выбирают три РАЗНЫХ ивента. */
+        /* Admin commands pick three DIFFERENT events. */
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
     snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
     stub_login_status = 2;
@@ -1917,7 +1932,7 @@ static void test_battle_events(void) {
     stub_login_status = 2;
     stub_event_mode = 0;
 
-    /* Ивент 3: Дед Мороз появляется сразу, плиты не заряжаются. */
+        /* Event 3: Santa shows up at once, no plates charge. */
     event_mode = 3;
     plates_event_reset();
     plates_prev_mode = 0;
@@ -1932,22 +1947,22 @@ static void test_battle_events(void) {
     draw_event_candies();
     draw_event_santa();
     draw_plates_hud();
-    /* Раунд заканчивается один раз: пока ивент включён, он не повторяется. */
+        /* A round ends once: while the event stays on it does not repeat. */
     plates_santa_gone = 1;
     for (int i = 0; i < plates_candy_max; i++) arr_set(plates_candies, i * plates_candy_fields, 0);
     tick_plates_event();
     assert(plates_finished == 1 && plates_phase == 4);
     for (int i = 0; i < 10; i++) tick_plates_event();
     assert(plates_phase == 4);
-    /* Выключили и включили снова - новый раунд с самого начала. */
+        /* Off and on again - a new round from the start. */
     event_mode = 0;
     tick_plates_event();
     event_mode = 3;
     tick_plates_event();
     assert(plates_phase == 3);
 
-    /* Ивент 4: плиты под ним не тикают, а кубик переживает короткое
-     * мигание значения event (поллер ещё видит старый ивент). */
+        /* Event 4: plates do not tick under it, and the cube survives a short
+         * flicker of the event value (the poller still sees the old event). */
     event_mode = 4;
     tick_plates_event();
     assert(plates_phase == 0 && plates_prev_mode == 4);
@@ -1962,7 +1977,7 @@ static void test_battle_events(void) {
     update_dice_event();
     assert(dice_active == 0);
 
-    /* Ивент 2: обе плиты заняты -> заряд -> Санта и конфеты. */
+        /* Event 2: both plates taken -> charge -> Santa and candies. */
     event_mode = 2;
     plates_prev_mode = 4;
     dt = 0.05;
@@ -2035,7 +2050,7 @@ static void test_eax229_and_rooms(void) {
     rooms_open();
     assert(rooms_mode == 0);
     logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(0) + rooms_row_h() / 2, 0, 81);
-    press_new = 0;
+    press_points_clear();
     assert(stub_prep_calls == 1 && stub_prep_create == 0 && strcmp(stub_prep_name, "main") == 0);
     stub_prep_status = 2; /* open room: allowed in */
     update_rooms();
@@ -2045,7 +2060,7 @@ static void test_eax229_and_rooms(void) {
     game_state = ST_ROOMS;
     rooms_open();
     logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(1) + rooms_row_h() / 2, 0, 82);
-    press_new = 0;
+    press_points_clear();
     stub_prep_status = 3; /* password required */
     update_rooms();
     assert(rooms_mode == 2 && str_len(rooms_msg) > 0);
@@ -2123,7 +2138,7 @@ static void test_class_stars(void) {
     assert(class_imbalance_of(CLASS_ORDINARY) == 1);
     assert(class_imbalance_of(CLASS_SANTA) == 2);
     assert(class_imbalance_of(CLASS_AZUM) == 3);
-    assert(class_imbalance_of(CLASS_BUK) == 3);
+    assert(class_imbalance_of(CLASS_EBUC) == 3);
     assert(class_imbalance_of(CLASS_ASTRA) == 4);
     assert(class_imbalance_of(CLASS_CODECRACKER) == 5);
     double r = stat_star_r();
@@ -2220,18 +2235,17 @@ static void test_overlay_transitions(void) {
     /* A covered documents button may not claim an account's press. */
     docs_show(0, 0);
     acct_show(ACCT_MENU);
-    press_new = 1;
-    press_x = acct_x() + acct_w() / 2;
-    press_y = acct_menu_y(0) + btn_h / 2;
-    press_btn_live = 0;
-    press_phase = 0;
+    press_points_clear();
+    press_points_add(acct_x() + acct_w() / 2, acct_menu_y(0) + btn_h / 2, 7);
     press_overlay = 2;
     assert(button_press_k(acct_x(), acct_menu_y(0), acct_w(), btn_h) == 0);
-    assert(press_new == 1);
+    /* The finger is still waiting: the covered button took nothing. */
+    assert(press_point_n == 1);
     press_overlay = 3;
     (void)button_press_k(acct_x(), acct_menu_y(0), acct_w(), btn_h);
-    assert(press_new == 0 && press_btn_live == 1);
+    assert(press_point_n == 0 && press_phase[0] == 1);
     press_overlay = 0;
+    press_points_clear();
     acct_close();
     docs_close();
     /* Reset must discard callbacks as well as the transition clock. */
@@ -2273,7 +2287,7 @@ int main(void) {
     assert(fabs(astra_ability_final_time_for(0) - astra_ability_beat_time_for(astra_hit_count, 0) - astra_final_delay) < 1e-9);
     assert(class_cost_of(CLASS_AZUM) == 65);
     assert(class_cost_of(CLASS_SANTA) == 100);
-    assert(class_cost_of(CLASS_BUK) == 120);
+    assert(class_cost_of(CLASS_EBUC) == 120);
     assert(class_cost_of(CLASS_ASTRA) == 135);
     assert(class_has_super(CLASS_ASTRA) == 1);
     assert(astra_cd_for(0) == 8);
@@ -2288,14 +2302,14 @@ int main(void) {
     assert(strcmp(class_card_tex(CLASS_ASTRA, SKIN_NORMAL), ASTRA_CARD_TEX) == 0);
     assert(class_has_super(CLASS_ASTRA) == 1 && player_max_hp_for(CLASS_ASTRA) == astra_hp * round_hp_mult());
     /* Long-fight balance: every pool doubled (ordinary/santa 20, azum 13,
-     * astra 18, buk 24) and the ability numbers scaled with them, while the
+     * astra 18, ebuc 24) and the ability numbers scaled with them, while the
      * basic attacks kept their old damage - that is what makes fights last.
      * Azum then got a 2% nerf: 13 -> 12.74. */
     assert(player_max_hp_for(CLASS_ORDINARY) == 20 * round_hp_mult() &&
            player_max_hp_for(CLASS_SANTA) == 20 * round_hp_mult());
-    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && buk_hp == 24 && enemy_base_hp == 20);
-    assert(punch_damage == 1 && santa_damage == 0.25 && buk_damage == 1.0);
-    assert(buk_universe_damage >= buk_hp);
+    assert(fabs(azum_hp - 12.74) < 1e-9 && astra_hp == 18 && ebuc_hp == 24 && enemy_base_hp == 20);
+    assert(punch_damage == 1 && santa_damage == 0.25 && ebuc_damage == 1.0);
+    assert(ebuc_universe_damage >= ebuc_hp);
     azum_tex_ok = azum_punch_tex_ok = 1;
     azum_zombie_tex_ok = azum_zombie_punch_tex_ok = 1;
     assert(strcmp(fighter_sprite(CLASS_AZUM, 0, SKIN_NORMAL), AZUM_TEX) == 0);
@@ -2329,21 +2343,68 @@ int main(void) {
     player_class = CLASS_ORDINARY;
     player->x = 160;
     player->y = 90;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + 14, joy.y, 0, 7);
     assert(fabs(joy.dx - 1) < 1e-9 && fabs(joy.dy) < 1e-9);
     move_player();
     double near_stick_move = player->x - 160;
+        /* Acceleration: the first frame from a standstill moves less than a steady walk. */
+    double first_step = near_stick_move;
     player->x = 160;
+    move_player();
+    double second_step = player->x - 160;
+    assert(second_step > first_step);
+    player->x = 160;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + joy.r, joy.y, 2, 7);
     assert(fabs(joy.dx - 1) < 1e-9 && fabs(joy.dy) < 1e-9);
     move_player();
     assert(fabs((player->x - 160) - near_stick_move) < 1e-9);
     player->x = 160;
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
     joy_touch(joy.x + 5, joy.y, 2, 7);
     assert(joy.dx == 0 && joy.dy == 0);
     move_player();
     assert(fabs(player->x - 160) < 1e-9);
     joy_touch(joy.x + 5, joy.y, 1, 7);
+
+        /* Braking: a released stick does not stop the cube in the same frame, it
+         * fades the speed over walk_stop_time. */
+    {
+        joy_touch(joy.x + joy.r, joy.y, 0, 9);
+        double frames_to_stop = 0;
+        player->x = 160;
+        player_vx = 0;
+        player_vy = 0;
+        player_stop_from = 0;
+        if (joy_id < 0) joy_touch(joy.x + joy.r, joy.y, 0, 9);
+        while (frames_to_stop < 60) {
+            move_player();
+            frames_to_stop = frames_to_stop + 1;
+            if (frames_to_stop > 30) break;
+            if (player_vx >= joy_speed - 0.01) break;
+        }
+        assert(fabs(player_vx - joy_speed) < 0.5);
+        joy_touch(joy.x + joy.r, joy.y, 1, 9);
+        assert(joy.dx == 0 && joy.dy == 0);
+        player_stop_from = 0;
+        frames_to_stop = 0;
+        player->x = 160;
+        while (frames_to_stop < 60 && fabs(player_vx) > 0.001) {
+            move_player();
+            frames_to_stop = frames_to_stop + 1;
+        }
+                /* at dt = 1/60 this is 5 frames, about 0.08 s */
+        assert(frames_to_stop >= 4 && frames_to_stop <= 8);
+        move_player();
+        assert(fabs(player_vx) < 1e-9);
+    }
 
     player->x = 400;
     player->y = 400;
@@ -2619,7 +2680,7 @@ int main(void) {
         candy_scale_drawn = -1;
         draw_candies();
         assert(candy_draws == 1);
-        /* scale приходит как float, сравниваем с допуском */
+                /* scale arrives as a float, so compare with a tolerance */
         assert(candy_scale_drawn > candy_scale - 1e-5 && candy_scale_drawn < candy_scale + 1e-5);
         assert(candy_alpha_drawn > 0 && candy_alpha_drawn < 0.2);
         x0 = candy_x_drawn;
@@ -2631,7 +2692,7 @@ int main(void) {
         draw_candies();
         assert(candy_scale_drawn > candy_scale - 1e-5 && candy_scale_drawn < candy_scale + 1e-5);
         assert(candy_alpha_drawn > 0.4 && candy_alpha_drawn < 1);
-        /* Ни роста, ни подлёта: место то же самое, что в начале появления. */
+                /* No growth and no fly-in: same place as at the start of the appearance. */
         assert(fabs(candy_x_drawn - x0) < 1e-3 && fabs(candy_y_drawn - y0) < 1e-3);
 
         arr_set(candy_t, 0, candy_pop_time);
@@ -2641,7 +2702,7 @@ int main(void) {
         assert(candy_alpha_drawn > 0.99);
         assert(fabs(candy_x_drawn - x0) < 1e-3 && fabs(candy_y_drawn - y0) < 1e-3);
 
-        /* Без текстуры - тот же альфа-канал в цвете круга. */
+                /* No texture - the same alpha channel in the circle colour. */
         candy_tex_ok = 0;
         arr_set(candy_t, 0, candy_pop_time * 0.05);
         candy_circle_color = 0;
@@ -2697,13 +2758,13 @@ int main(void) {
         assert(player->hp == player->max_hp);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        /* буК's turret shield leaves player HP untouched, but the blocked
+                /* ebuc's turret shield leaves player HP untouched, but the blocked
          * hit still disqualifies the achievement. */
         finished = 0;
         cups_awarded = 0;
         achievement_mask = 0;
-        player_class = CLASS_BUK;
-        player->max_hp = buk_hp;
+        player_class = CLASS_EBUC;
+        player->max_hp = ebuc_hp;
         player->hp = player->max_hp;
         player_was_hit = 0;
         arr_clear(turret_x);
@@ -2783,7 +2844,7 @@ int main(void) {
         assert(silent > 1700 && silent < 2300);
         assert(sorry > 400 && cubes > 400 && nick_line > 400);
 
-        /* Without an account the nick line is never picked: no "Пока, , удачи!". */
+                /* Without an account the nick line is never picked: no "Bye, , good luck!". */
         stub_login_nick[0] = 0;
         empty_nick = 0;
         for (i = 0; i < 4000; i++) {
@@ -2839,8 +2900,9 @@ int main(void) {
     assert(admin_slot("DIMASI4EK229") == 1);
     assert(admin_slot("QWERTYUIOPAJ1234") == 2);
     assert(admin_slot("regular_player") == 0);
-    /* Dev-права даёт профиль (ник), а не пароль: пароль можно менять
-     * сколько угодно, право не слетает; решает только ник и вход. */
+        /* Dev rights come from the profile (nick), not the password: the password
+         * can be changed as often as you like, the right stays; only nick and login
+         * matter. */
     stub_login_status = 2;
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", ADMIN_NICK);
     snprintf(stub_login_pass, sizeof(stub_login_pass), "%s", "test");
@@ -3008,7 +3070,7 @@ int main(void) {
         super_windup = 0;
         fire_super();
         assert(strcmp(stub_last_snd, "gift.wav") == 0);
-        player_class = CLASS_BUK;
+        player_class = CLASS_EBUC;
         punch_left = 0;
         punch_cd = 0;
         super_cd = 0;
@@ -3436,8 +3498,8 @@ int main(void) {
     /* The panel calls itself a content creator panel and the orb wears the
      * short name; the admin nick and the old "label: on/off" status line under
      * the panel are gone. */
-    /* The title, close button, orb, two tabs and six cheat labels. */
-    assert(adm_text_n == 11);
+    /* The title, close button, orb, two tabs and seven cheat labels. */
+    assert(adm_text_n == 12);
     assert(adm_has_text(tr_admin_title()) == 1);
     assert(adm_has_text(admin_orb_label()) == 1);
     assert(adm_has_text(language == 1 ? "Читы" : "Cheats") == 1);
@@ -3445,23 +3507,23 @@ int main(void) {
     assert(adm_has_text("ADMIN") == 0);
     assert(adm_has_text(ADMIN_NICK) == 0);
     assert(adm_has_text(": ") == 0);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 7; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
 
-    /* Панель содержит отдельные вкладки читов и подарков. */
+        /* The panel has separate cheat and gift tabs. */
     adm_reset_log();
     admin_draw();
     assert(adm_all_greyscale() == 1);
     assert(adm_all_flat() == 1);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 7; i++)
         assert(adm_has_text(admin_cheat_label(i)) == 1);
     /* The cheat grid starts below the tabs and remains inside the panel. */
     assert(fabs(admin_grid_top() - admin_content_top() - admin_row_h() - admin_gap()) < 0.001);
-    assert(admin_grid_top() + 3 * admin_cheat_row_h() + 2 * admin_gap() <=
+    assert(admin_grid_top() + 4 * admin_cheat_row_h() + 3 * admin_gap() <=
                admin_panel_y() + admin_panel_h() - admin_pad() + 0.01);
 
-    /* Клавиатура отдаёт текст в буфер самого поля: два разных поля не обязаны
-     * делить одну строку на всех. */
+        /* The keyboard writes into the field's own buffer: two fields do not have
+         * to share one string. */
     stub_kb_set("typed_nick");
     {
         char fa[32];
@@ -3486,8 +3548,8 @@ int main(void) {
         /* the panel is a fifth wider than the old one: 20% up */
         assert(admin_panel_w() >= screen_w * 0.58);
         assert(admin_content_top() < admin_panel_y() + admin_panel_h() - admin_pad());
-        /* six cheat buttons always fit between the header and the bottom edge */
-        assert(admin_grid_top() + 3 * admin_cheat_row_h() + 2 * admin_gap() <=
+        /* seven cheat buttons always fit between the header and the bottom edge */
+        assert(admin_grid_top() + 4 * admin_cheat_row_h() + 3 * admin_gap() <=
                admin_panel_y() + admin_panel_h() - admin_pad() + 0.01);
         assert(admin_cheat_row_h() >= 26);
         adm_reset_log();
@@ -3580,25 +3642,25 @@ int main(void) {
         logic_touch(tx, ty, 0, 1);
         assert(t_dir == 1 && t_target == ST_MODES);
         /* The squeeze is claimed by the button the draw passes under it. */
-        assert(press_new == 1);
+        assert(press_point_n == 1);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_new == 0 && press_phase == 1);
+        assert(press_point_n == 0 && press_phase[0] == 1);
         update_button_press();
-        assert(press_k > 0 && press_k < 1); /* easing in */
+        assert(press_k[0] > 0 && press_k[0] < 1); /* easing in */
         assert(button_press_k(menu_x(), menu_row(0), btn_w, btn_h) > 0);
         int n = 0;
         while (n < 3) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k > 0.95); /* fully squeezed and darkened */
+        assert(press_k[0] > 0.95); /* fully squeezed and darkened */
         /* The finger is still down - and the button springs back anyway. */
         n = 0;
         while (n < 30) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k == 0 && press_phase == 0);
+        assert(press_k[0] == 0 && press_phase[0] == 0);
         assert(button_press_k(menu_x(), menu_row(0), btn_w, btn_h) == 0);
         /* Letting go changes nothing: the row already fired. */
         logic_touch(tx + 4, ty, 2, 1);
@@ -3621,7 +3683,7 @@ int main(void) {
         logic_touch(menu_x() + btn_w / 2, menu_row(0) - 200, 1, 1);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
+        assert(press_phase[0] == 0);
 
         /* The NPC cube opens its dialogue on the press as well. */
         cube_npc_d0 = "d0";
@@ -3681,9 +3743,9 @@ int main(void) {
         logic_touch(pill_x, pill_y, 0, 3);
         assert(class_owned_of(cls) == 1 && player_class == cls && cups == 1000 - class_cost_of(cls));
         /* The squeeze of a press on the pill belongs to the whole card. */
-        assert(press_new == 1);
+        assert(press_point_n == 1);
         (void)button_press_k(classes_card_x(v0), classes_top(), classes_card_w(), class_card_h);
-        assert(press_new == 0 && press_phase == 1);
+        assert(press_point_n == 0 && press_phase[0] == 1);
         n = 0;
         while (n < 3) {
             update_button_press();
@@ -3697,7 +3759,7 @@ int main(void) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k == 0 && press_phase == 0);
+        assert(press_k[0] == 0 && press_phase[0] == 0);
 
         /* The card body takes the press as feedback only: nothing is bought
          * until the finger lifts on the same card. */
@@ -3707,7 +3769,7 @@ int main(void) {
         logic_touch(card_x, card_y, 0, 4);
         assert(class_owned_of(cls) == 0 && cups == 1000);
         (void)button_press_k(classes_card_x(v0), classes_top(), classes_card_w(), class_card_h);
-        assert(press_phase == 1); /* the card itself is what darkens */
+        assert(press_phase[0] == 1); /* the card itself is what darkens */
         n = 0;
         while (n < 30) {
             update_button_press();
@@ -3736,33 +3798,32 @@ int main(void) {
          * claimed by the very same test: a press either fires and squeezes,
          * or does neither. */
         game_state = ST_LOBBY;
-        press_phase = 0;
-        press_k = 0;
-        press_new = 0;
+        press_points_clear();
+        press_pulses_clear();
         t_dir = 0;
         t_target = 0;
         /* Just beside the button (the old invisible touch margin): nothing. */
         logic_touch(menu_x() - 6, menu_row(0) + btn_h / 2, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         logic_touch(menu_x() + btn_w / 2, menu_row(0) + btn_h + 4, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         /* The transparent rounded corner is not part of the button either. */
         logic_touch(menu_x() + 2, menu_row(0) + 2, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         /* The very edge of the visible shape fires - and squeezes. */
         logic_touch(menu_x() + btn_radius, menu_row(0) + 1, 0, 6);
         assert(t_dir == 1 && t_target == ST_MODES);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 1);
+        assert(press_phase[0] == 1);
         n = 0;
         while (n < 30) {
             update_button_press();
@@ -3783,35 +3844,41 @@ int main(void) {
         logic_touch(menu_x() + btn_w / 2, menu_row(0) + btn_h / 2, 0, 7);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
         n = 0;
-        while (press_phase != 2 && n < 30) {
+        while (press_phase[0] != 2 && n < 30) {
             update_button_press();
             n = n + 1;
         }
         update_button_press();
-        assert(press_phase == 2);
+        assert(press_phase[0] == 2);
         t_dir = 0;
-        press_new = 1; /* the second tap */
+        press_points_add(menu_x() + btn_w / 2, menu_row(0) + btn_h / 2, 7); /* the second tap */
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 1 && press_new == 0);
+        assert(press_phase[0] == 1 && press_point_n == 0);
         n = 0;
         while (n < 30) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_phase == 0);
+        assert(press_phase[0] == 0);
 
         /* A touch that lands mid-transition is ignored, so it squeezes nothing. */
         t_dir = 1;
         logic_touch(menu_x() + btn_w / 2, menu_row(1) + btn_h / 2, 0, 8);
-        assert(press_new == 0);
+        assert(press_point_n == 0);
         t_dir = 0;
         /* Another finger sliding does not drag the press point away. */
         logic_touch(menu_x() + btn_w / 2, menu_row(1) + btn_h / 2, 0, 9);
         t_dir = 0;
         t_target = 0;
         logic_touch(5, 5, 2, 10);
-        assert(press_x == menu_x() + btn_w / 2 && press_y == menu_row(1) + btn_h / 2);
-        press_new = 0;
+        {
+            int pi = 0;
+            while (pi < (int)press_point_n && press_point_id[pi] != 9)
+                pi = pi + 1;
+            assert(pi < (int)press_point_n);
+            assert(press_point_x[pi] == menu_x() + btn_w / 2 && press_point_y[pi] == menu_row(1) + btn_h / 2);
+        }
+        press_points_clear();
 
         game_state = ST_LOBBY;
         screen_h = saved_h;
@@ -3836,12 +3903,12 @@ int main(void) {
         assert(bpass_corner_x() == screen_w - screen_margin - bpass_corner_w());
         /* The old theme is the rose one, so its cards are rose too. */
         assert(card_bg == 0xFF44203A);
-        press_new = 0;
+        press_points_clear();
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(4) + settings_btn_h() / 2, 0, 21);
         assert(new_theme == 1 && ui_purple == 0xFF5F10A0);
         assert(lobby_label_x(100) == center_x(100));
         assert(card_bg == 0xFF2A2A40);
-        press_new = 0;
+        press_points_clear();
         /* Row 5 opens the legal documents window over the settings. */
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(5) + settings_btn_h() / 2, 0, 22);
         assert(t_dir == 1 && docs_open == 0);
@@ -3850,7 +3917,7 @@ int main(void) {
         assert(logic_back() == 1 && docs_open == 1);
         finish_transition();
         assert(docs_open == 0 && game_state == ST_SETTINGS);
-        press_new = 0;
+        press_points_clear();
 
         /* The promo code sits in the bottom-right corner of the modes screen
          * (on a landscape phone-sized screen, as the game runs). */
@@ -3867,7 +3934,7 @@ int main(void) {
         t_dir = 0;
         t_target = 0;
 
-        /* Промокод 2027: +27 кубков, один раз; мусорный код ничего не даёт. */
+                /* Promo 2027: +27 cups, once; a junk code gives nothing. */
         {
             stub_login_status = 2;
             game_state = ST_PROMO;
@@ -3884,7 +3951,7 @@ int main(void) {
             stub_login_status = 0;
             game_state = ST_MODES;
         }
-        press_new = 0;
+        press_points_clear();
         /* Row 4 is the winter toggle: grey and dead without developer
          * access, a working toggle with it. */
         double saved_winter2 = winter_theme;
@@ -3892,15 +3959,15 @@ int main(void) {
         astra_ability_ok = 0;
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 24);
         assert(winter_theme == saved_winter2 && t_dir == 0);
-        press_new = 0;
+        press_points_clear();
         astra_ability_ok = 1;
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 25);
         assert(winter_theme == 1 - saved_winter2 && t_dir == 0);
-        press_new = 0;
+        press_points_clear();
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 26);
         assert(winter_theme == saved_winter2);
         astra_ability_ok = saved_dev;
-        press_new = 0;
+        press_points_clear();
         screen_w = saved_mw;
         screen_h = saved_mh;
         game_state = ST_LOBBY;
@@ -3921,7 +3988,7 @@ int main(void) {
     test_admin_keyboard();
 
     /* New Year battle pass: wins give XP, tiers claim in order for
-     * candies; tier 4 unlocks the Elf буК skin, tier 7 grants Santa. */
+          * candies; tier 4 unlocks the Elf ebuc skin, tier 7 grants Santa. */
     {
         bp_xp = 0;
         bp_claimed = 0;
@@ -3931,7 +3998,7 @@ int main(void) {
         award_battle_result(1);
         assert(bp_xp == 10 && stub_bpx == 10);
         double cups_after_win = cups;
-        assert(skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
+        assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
         bp_claim(2); /* out of order: nothing happens */
         assert(bp_claimed == 0 && candies == 1000);
         bp_claim(1);
@@ -3940,9 +4007,9 @@ int main(void) {
         bp_xp = 300;
         bp_claim(2);
         bp_claim(3);
-        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 0);
+        assert(bp_claimed == 3 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
         bp_claim(4);
-        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_BUK, SKIN_SPECIAL) == 1);
+        assert(bp_claimed == 4 && skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
         assert(class_owned_of(CLASS_SANTA) == 0);
         bp_claim(5);
         bp_claim(6);

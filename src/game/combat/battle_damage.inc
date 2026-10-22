@@ -1,5 +1,5 @@
 /* The screen shakes on every damage event that lands, not on ability casts:
- * punches, supers, poison ticks — if health drops, the camera taps. */
+ * punches, supers, poison ticks - if health drops, the camera taps. */
 static void damage_taken_shake(double dmg) {
     double amp = 3 + dmg * 1.2;
     if (amp > 7) {
@@ -31,7 +31,7 @@ static double take_damage(double dmg) {
         dmg_from_k = 0;
         return 0;
     }
-    /* Track the hit before буК's turrets absorb it: shielded damage still
+        /* Track the hit before ebuc's turrets absorb it: shielded damage still
      * disqualifies the no-damage victory achievement. */
     if (dmg > 0) {
         player_was_hit = 1;
@@ -46,7 +46,7 @@ static double take_damage(double dmg) {
         /* The running overclock absorbs half of everything that lands. */
         real = real * (1 - codecracker_absorb_for(player_level));
     }
-    if (player_class == CLASS_BUK) {
+    if (player_class == CLASS_EBUC) {
         real = player_shield_absorb(real);
     }
     if (player_class == CLASS_AZUM && azum_revived >= 1 && player_level >= 1) {
@@ -92,8 +92,8 @@ static void stun_enemy(double t) {
     if (t > enemy->stun) {
         enemy->stun = t;
     }
-    /* Настоящий стан игрой: метка админского стана больше не нужна, кружок
-     * снова показывает боевой стан. */
+        /* A real stun from the game: the admin stun mark is dropped and the ring
+         * shows the battle stun again. */
     cheat_estun_mark = 0;
     if (enemy->state >= 1 && enemy->state <= 3) {
         enemy->state = 0;
@@ -132,6 +132,9 @@ static double try_revive(void) {
             k = 50;
             player->x = rx;
             player->y = ry;
+                        /* Revival moves the cube: the old momentum must not carry it away
+                         * from the new spot. */
+            player_vel_reset();
         } else {
             k = k + 1;
         }

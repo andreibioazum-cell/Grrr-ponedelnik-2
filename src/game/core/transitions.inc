@@ -4,8 +4,8 @@ static void start_transition(double target) {
     }
     classes_swipe_reset();
     t_target = target;
-    /* Кнопка нажимается и сжимается, а экран в этот же кадр уже начал гаснуть
-     * - так нажатия не видно. Сначала даём кнопке досжаться, потом гасим. */
+        /* The button fires and squashes, and the screen starts to fade in the same
+         * frame - so the press is invisible. Let the button squash first, fade after. */
     t_hold = transition_hold;
     t_dir = 1;
 }
@@ -69,6 +69,7 @@ static double enter_screen(double state) {
             banned_msg = tr_banned();
             game_state = ST_LOBBY;
             ui_nav_gen = ui_nav_gen + 1;
+            press_pulses_clear();
             t_dir = -1;
             t_fade = 1;
             return 0;
@@ -100,12 +101,15 @@ static void update_transition(void) {
             t_action = NULL;
             action();
             ui_nav_gen = ui_nav_gen + 1;
+            /* A new screen must not inherit a squeeze from the old one. */
+            press_pulses_clear();
             t_dir = -1;
             return;
         }
         leave_screen(game_state);
         game_state = t_target;
         ui_nav_gen = ui_nav_gen + 1;
+        press_pulses_clear();
         if (enter_screen(t_target) == 1) {
             t_dir = -1;
         }

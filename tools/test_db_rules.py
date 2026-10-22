@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Проверки firebase.rules.json, которые уже один раз стоили ивента.
+"""Checks of firebase.rules.json that already cost an event once.
 
-Клиент пишет event = 0..4 (0 выкл, 1 диско, 2 плиты, 3 Дед Мороз, 4 кубик).
-Старое правило пускало только 0..3: запись кубика отклонялась, поллер
-возвращал предыдущий ивент, и вместо кубика включались плиты. Здесь же
-проверяется, что подарки перечислены по одному стикеру и чужие ключи закрыты.
+The client writes event = 0..4 (0 off, 1 disco, 2 plates, 3 Santa, 4 cube). The old
+rule allowed only 0..3: the cube write was rejected, the poller returned the
+previous event, and plates turned on instead of the cube. The same file checks
+that gifts are listed one sticker at a time and foreign keys stay closed.
 """
 import json
 import sys

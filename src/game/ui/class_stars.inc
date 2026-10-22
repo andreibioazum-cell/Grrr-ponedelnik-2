@@ -60,7 +60,7 @@ static double class_imbalance_of(double cls) {
     if (cls == CLASS_ASTRA) {
         return 4;
     }
-    if (cls == CLASS_AZUM || cls == CLASS_BUK) {
+    if (cls == CLASS_AZUM || cls == CLASS_EBUC) {
         return 3;
     }
     if (cls == CLASS_SANTA) {

@@ -1,16 +1,18 @@
-/* Смена пароля аккаунта (экран «Аккаунт → Сменить пароль»).
+/* Account password change (Account -> Change password).
  *
- * Идёт в своём потоке:
- *   1. текущий пароль должен совпасть с паролем сессии;
- *   2. свежий вход текущим паролем: Firebase меняет пароль только после
- *      недавнего входа, а сервер заодно ещё раз проверяет пароль;
- *   3. accounts:update ставит новый пароль (с тем же секретным хвостом, что и
- *      при входе) и выдаёт новые токены;
- *   4. сессия и файл сессии переходят на новый пароль, чтобы автовход не
- *      сломался. На других устройствах аккаунт придётся войти заново.
- * В старом режиме без Firebase пароль лежит в профиле: меняется поле pass.
- * Статус: 0 — ничего, 1 — идёт, 2 — изменён, 3 — ошибка сети или сервера,
- * 4 — неверный текущий пароль, 5 — новый пароль не подходит, 6 — не вошли. */
+  * Runs on its own thread:
+  *   1. the current password must match the session password;
+  *   2. a fresh sign-in with the current password: Firebase changes a password
+  *      only after a recent login, and the server checks the password again;
+  *   3. accounts:update sets the new password (with the same secret suffix as at
+  *      login) and hands out new tokens;
+  *   4. the session and the session file move to the new password, so auto login
+  *      keeps working. Other devices have to sign in again.
+  * In the old mode without Firebase the password sits in the profile: the pass
+  * field changes.
+  * Status: 0 - idle, 1 - running, 2 - changed, 3 - network or server error,
+  * 4 - wrong current password, 5 - the new password is not accepted, 6 - not
+  * signed in. */
 
 static volatile int s_pass_chg_status = 0;
 static char s_pass_chg_old[64], s_pass_chg_new[64];
@@ -120,7 +122,7 @@ void net_change_password(const char *old_pass, const char *new_pass) {
     s_pass_chg_status = 3;
 }
 
-/* Прочитать статус; готовый результат (2 и выше) отдаётся один раз. */
+/* Read the status; a finished result (2 and up) is returned once. */
 double net_change_password_status(void) {
     int s = s_pass_chg_status;
     if (s >= 2)

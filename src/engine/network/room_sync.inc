@@ -29,7 +29,7 @@ static int push_state(void) {
              "\"sdy\":%.5f,\"snow\":%.0f,\"stx\":%.5f,\"sty\":%.5f,\"sthp\":%.0f,\"s2x\":%.5f,\"s2y\":%.5f,\"s2hp\":%."
              "0f,\"s3x\":%.5f,\"s3y\":%.5f,\"s3hp\":%.0f,\"station\":%.0f,\"dax\":%.5f,\"day\":%.5f,\"dadx\":%.5f,"
              "\"dady\":%.5f,\"dash\":%.0f,\"gbx\":%.5f,\"gby\":%.5f,\"gbdx\":%.5f,\"gbdy\":%.5f,\"grab\":%.0f,\"uzx\":%"
-             ".5f,\"uzy\":%.5f,\"universe\":%.0f,\"thud\":%.0f,\"blk\":%.0f,\"ccu\":%.0f,\"cls\":%.0f,\"level\":%.0f,\"skin\":%.0f}",
+             ".5f,\"uzy\":%.5f,\"universe\":%.0f,\"thud\":%.0f,\"blk\":%.0f,\"ccu\":%.0f,\"bkx\":%.5f,\"bky\":%.5f,\"bkdx\":%.5f,\"bkdy\":%.5f,\"brick\":%.0f,\"cls\":%.0f,\"level\":%.0f,\"skin\":%.0f}",
              net.uid, enick, clamp01(a.x), clamp01(a.y), safe(a.a), safe(a.hp), safe(a.alive), seq, clamp01(a.punch_x),
              clamp01(a.punch_y), clamp11(a.punch_dx), clamp11(a.punch_dy), safe(a.punch), clamp01(a.snow_x),
              clamp01(a.snow_y), clamp11(a.snow_dx), clamp11(a.snow_dy), safe(a.snow), clamp01(a.station_x),
@@ -37,7 +37,9 @@ static int push_state(void) {
              safe(a.station2_hp), clamp01(a.station3_x), clamp01(a.station3_y), safe(a.station3_hp), safe(a.station),
              clamp01(a.dash_x), clamp01(a.dash_y), clamp11(a.dash_dx), clamp11(a.dash_dy), safe(a.dash),
              clamp01(a.grab_x), clamp01(a.grab_y), clamp11(a.grab_dx), clamp11(a.grab_dy), safe(a.grab),
-             clamp01(a.universe_x), clamp01(a.universe_y), safe(a.universe), safe(a.thud), safe(a.block), safe(a.ccu), safe(a.cls), safe(a.level),
+             clamp01(a.universe_x), clamp01(a.universe_y), safe(a.universe), safe(a.thud), safe(a.block), safe(a.ccu),
+             clamp01(a.brick_x), clamp01(a.brick_y), clamp11(a.brick_dx), clamp11(a.brick_dy), safe(a.brick), safe(a.cls),
+             safe(a.level),
              safe(a.skin));
     net_seal_body(body, sizeof(body));
     int c = fb_http("PUT", url, body, NULL, 0);
@@ -169,7 +171,7 @@ static int claim_slot(unsigned gen) {
                 "\"py\":0,\"pdx\":0,\"pdy\":0,\"punch\":0,\"sx\":0,\"sy\":0,\"sdx\":0,\"sdy\":0,\"snow\":0,\"stx\":0,"
                 "\"sty\":0,\"sthp\":0,\"s2x\":0,\"s2y\":0,\"s2hp\":0,\"s3x\":0,\"s3y\":0,\"s3hp\":0,\"station\":0,"
                 "\"dax\":0,\"day\":0,\"dadx\":0,\"dady\":0,\"dash\":0,\"gbx\":0,\"gby\":0,\"gbdx\":0,\"gbdy\":0,"
-                "\"grab\":0,\"uzx\":0,\"uzy\":0,\"universe\":0,\"thud\":0,\"blk\":0,\"ccu\":0,\"cls\":%.0f,\"level\":%.0f,\"skin\":%.0f}",
+                "\"grab\":0,\"uzx\":0,\"uzy\":0,\"universe\":0,\"thud\":0,\"blk\":0,\"ccu\":0,\"bkx\":0,\"bky\":0,\"bkdx\":0,\"bkdy\":0,\"brick\":0,\"cls\":%.0f,\"level\":%.0f,\"skin\":%.0f}",
                 net.uid, enick, safe(net.me.cls), safe(net.me.level), safe(net.me.skin));
         }
         net_seal_body(body, sizeof(body));
@@ -322,6 +324,16 @@ static void read_players(const char *resp, unsigned gen) {
         ps[slot].block = num(resp, p, 0);
         snprintf(p, sizeof(p), "%s/ccu", bp);
         ps[slot].ccu = num(resp, p, 0);
+        snprintf(p, sizeof(p), "%s/bkx", bp);
+        ps[slot].brick_x = num(resp, p, 0);
+        snprintf(p, sizeof(p), "%s/bky", bp);
+        ps[slot].brick_y = num(resp, p, 0);
+        snprintf(p, sizeof(p), "%s/bkdx", bp);
+        ps[slot].brick_dx = num(resp, p, 0);
+        snprintf(p, sizeof(p), "%s/bkdy", bp);
+        ps[slot].brick_dy = num(resp, p, 0);
+        snprintf(p, sizeof(p), "%s/brick", bp);
+        ps[slot].brick = num(resp, p, 0);
         snprintf(p, sizeof(p), "%s/cls", bp);
         ps[slot].cls = num(resp, p, 0);
         snprintf(p, sizeof(p), "%s/level", bp);

@@ -31,10 +31,10 @@ static void chat_sync_input(void) {
     chat_input = chat_input_buf;
 }
 
-/* Админ — это профиль (ник аккаунта), а не пароль. Вход в аккаунт уже
- * проверил Firebase Auth, а ник подделать нельзя: это занятый e-mail
- * <ник>@cb4.game. Поэтому пароль здесь не сравнивается вовсе — владелец
- * может менять его хоть сто раз, админка от этого не слетает. */
+/* Admin rights come from the profile (account nick), not the password. Signing in
+ * already went through Firebase Auth, and a nick cannot be faked: it is a taken
+ * e-mail <nick>@cb4.game. So no password is compared here - the owner may change
+ * it a hundred times and the admin panel stays. */
 static double is_admin(void) {
     if (net_login_status() != 2) {
         return 0;
@@ -76,7 +76,7 @@ static void chat_send(void) {
             return;
         }
     }
-    /* Мат, ругань и ссылки уходят в чат звёздочками (игра 12+). */
+        /* Swearing and links go to the chat as asterisks (the game is 12+). */
     net_chat_send(chat_clean(chat_input));
     ds_log("chat: %s", chat_input);
     chat_input = "";
@@ -89,8 +89,8 @@ static void chat_set_open(double v) {
     keyboard_hide();
 }
 
-/* Стикеры из чата убраны. Сообщения «/sticker …», оставшиеся в ленте,
- * не печатаем, чтобы не показывать игрокам служебную команду. */
+/* Stickers are gone from the chat. Leftover "/sticker ..." messages are not
+ * printed, so players never see a service command. */
 static double chat_is_sticker_msg(const char *msg) {
     return str_starts_with(msg, "/sticker ") == 1;
 }

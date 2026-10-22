@@ -9,6 +9,12 @@
       ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1)"
     },
 
+    "HitboxChaos": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')",
+      ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1)"
+    },
+
     "FlashSale": {
       ".read": true,
       ".write": "auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')",
@@ -180,6 +186,11 @@
             "thud": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000" },
             "blk": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
             "ccu": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+            "bkx": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+            "bky": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+            "bkdx": { ".validate": "newData.isNumber() && newData.val() >= -1.001 && newData.val() <= 1.001" },
+            "bkdy": { ".validate": "newData.isNumber() && newData.val() >= -1.001 && newData.val() <= 1.001" },
+            "brick": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000" },
             "cls": { ".validate": "newData.isNumber() && newData.val() >= 0 && (newData.val() <= 4 || (newData.val() == 6 && auth != null && (auth.token.email.toLowerCase() == 'dimasi4ek229@cb4.game' || auth.token.email.toLowerCase() == 'qwertyuiopaj1234@cb4.game')))" },
             "level": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" },
             "skin": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Проверяет ресурсы игры и схему сетевого хранилища."""
+"""Checks the game assets and the network storage schema."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def header_secret(prefix: str) -> str:
-    """Собирает секрет из зашитых в engine/network.h кусков (каждый байт xor)."""
+    """Rebuilds a secret from the pieces in engine/network.h (every byte xored)."""
     text = (ROOT / "src" / "engine" / "network.h").read_text(encoding="utf-8")
     mask = int(re.search(r"#define\s+NET_SECRET_XOR\s+0x([0-9a-fA-F]+)", text).group(1), 16)
     parts = []
@@ -72,7 +72,7 @@ def check_firebase_rules() -> None:
 
 
 def check_write_secret() -> None:
-    """Запись в базу закрыта секретом: клиент его шлёт, правила его требуют."""
+    """Writes are gated by the secret: the client sends it, the rules require it."""
     write_secret = header_secret("NET_WRITE_SECRET")
     pass_secret = header_secret("NET_PASS_SECRET")
     for name, secret in (("записи", write_secret), ("пароля", pass_secret)):

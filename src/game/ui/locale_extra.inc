@@ -5,8 +5,8 @@ static const char *tr_top(void) {
     return "Top";
 }
 
-/* Три прощания при выходе из игры. Третье собирается из двух частей, между
- * которыми подставляется ник игрока: "Пока, Дима, удачи!". */
+/* Three farewells on exit. The third is built from two parts with the player nick
+ * in between: "Bye, Dima, good luck!". */
 static const char *tr_bye_sorry(void) {
     if (language == 1) {
         return "Нам жаль что вы вышли, удачи!";

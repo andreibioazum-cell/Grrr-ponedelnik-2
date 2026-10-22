@@ -33,7 +33,8 @@ static void ban_write_async(const char *url, const char *nick, int banned) {
     DSThread t;
     if (!j)
         return;
-    /* Кладём чистый URL: токен допишет fb_http в потоке и обновит при 401. */
+        /* Store a clean URL: fb_http appends the token on its own thread and refreshes
+         * it on 401. */
     snprintf(j->url, sizeof(j->url), "%s", url);
     snprintf(j->nick, sizeof(j->nick), "%s", nick);
     j->banned = banned;

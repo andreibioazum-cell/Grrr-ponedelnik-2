@@ -1,8 +1,8 @@
-/* NPC cube in the lobby — typewriter dialogue system (new theme only).
+/* NPC cube in the lobby - typewriter dialogue system (new theme only).
  *
  * The typewriter reveals whole UTF-8 characters: slicing by raw bytes used to
  * land inside a Cyrillic letter, and the orphan byte fell back to the "?"
- * glyph at the end of the line. The panel slides up and fades in — and fades
+ * glyph at the end of the line. The panel slides up and fades in - and fades
  * out again with its text still in place, so closing never pops to an empty
  * box. Long lines word-wrap at full size instead of shrinking to fit.
  *
@@ -112,7 +112,7 @@ static void cube_npc_tap(void) {
     }
     double next = cube_npc_dialogue_line + 1;
     if (next >= cube_npc_dialogue_lines) {
-        /* Keep the last line on screen while the panel fades out — clearing
+        /* Keep the last line on screen while the panel fades out - clearing
          * the text here would pop the body empty mid-animation. The rewind
          * happens in cube_npc_tick() once the panel is fully gone. */
         cube_npc_dialogue_active = 0;
@@ -148,7 +148,7 @@ static void cube_npc_tick(void) {
 }
 
 /* Greedy word wrap. Cuts happen only just before a word, i.e. right after an
- * ASCII space — a UTF-8 safe byte boundary — so line slices never split a
+ * ASCII space - a UTF-8 safe byte boundary - so line slices never split a
  * Cyrillic letter. */
 static double dial_wrap(const char *vis, double max_w, double sc, double *starts, double *lens,
                         double max_lines) {
@@ -219,7 +219,7 @@ static void draw_lobby_npc_cube(void) {
     double a8 = floor(alpha * 255);
     /* Soft drop shadow under the panel */
     roundrect(px + 3, py + 9, pw, ph, 12, floor(alpha * 110) * 16777216);
-    /* Panel background — dark gray */
+    /* Panel background - dark gray */
     roundrect(px, py, pw, ph, 12, a8 * 16777216 + 0x1A1A1A);
     roundrect_outline(px, py, pw, ph, 12, 2, a8 * 16777216 + 0xCCCCCC);
     /* Portrait: NPC cube on the left */
@@ -231,7 +231,7 @@ static void draw_lobby_npc_cube(void) {
     } else {
         roundrect(ptx, pty, dial_portrait_sz, dial_portrait_sz, 8, a8 * 16777216 + 0x8040FF);
     }
-    /* Typewriter text — right of the portrait, big and word-wrapped. */
+    /* Typewriter text - right of the portrait, big and word-wrapped. */
     const char *full = cube_npc_dialogue_text();
     double shown = floor(cube_npc_dialogue_chars);
     double len = utf8_len(full);

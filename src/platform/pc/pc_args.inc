@@ -14,20 +14,28 @@
  *   --atk F:0|1            harness: press/release the punch pad
  *   --blk F:0|1            harness: press/release the block pad
  *   --super F:0|1          harness: press/release the super pad
+ *   --class F:N            harness: pick an owned class at frame F
  * Script events are kept as raw strings and interpreted by pc_headless.inc. */
 #ifndef PC_ARGS_H
 #define PC_ARGS_H
 
-#define PC_MAX_EVENTS 96
+/* Room for every event of a long run: a --report per frame in a two-second
+ * stretch already needs dozens, and a dropped event is invisible in the log. */
+#define PC_MAX_EVENTS 192
 #define PC_EVENT_LEN 200
+/* Paths are copied out of the command line: the parser tokenizes into its own
+ * stack buffer, so keeping a pointer there would dangle the moment parsing
+ * returns (the assets folder then read as garbage and the game failed to
+ * start - on Windows only when the stack happened to be reused). */
+#define PC_PATH_LEN 1024
 
 typedef struct {
     int frames;
     int warmup;
     int width, height;
     int headless;
-    const char *assets;
-    const char *data;
+    char assets[PC_PATH_LEN];
+    char data[PC_PATH_LEN];
     int eventc;
     char events[PC_MAX_EVENTS][PC_EVENT_LEN];
 } PcArgs;
@@ -39,8 +47,8 @@ static void pc_args_default(PcArgs *a) {
     a->width = 540;
     a->height = 960;
     a->headless = 0;
-    a->assets = "assets";
-    a->data = "cb4_data";
+    snprintf(a->assets, sizeof(a->assets), "assets");
+    snprintf(a->data, sizeof(a->data), "cb4_data");
 }
 
 static void pc_args_push_event(PcArgs *a, const char *name, const char *value) {
@@ -52,9 +60,14 @@ static void pc_args_push_event(PcArgs *a, const char *name, const char *value) {
 
 /* Splits on spaces, honours "double quotes"; the first token (the program
  * itself) is skipped. */
+/* The token table has to hold the whole command line: with a 128-slot table a
+ * long harness run (a --report per frame) silently lost every event past the
+ * cutoff, so the log just stopped in the middle. 1024 pointers are cheap. */
+#define PC_MAX_TOKENS 1024
+
 static void pc_args_parse(const char *cmdline, PcArgs *a) {
     char buf[4096];
-    char *p, *tok[128];
+    char *p, *tok[PC_MAX_TOKENS];
     int n = 0, i;
     if (!cmdline)
         return;
@@ -107,15 +120,16 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
             }
             i++;
         } else if (strcmp(k, "--assets") == 0) {
-            a->assets = v;
+            snprintf(a->assets, sizeof(a->assets), "%s", v);
             i++;
         } else if (strcmp(k, "--data") == 0) {
-            a->data = v;
+            snprintf(a->data, sizeof(a->data), "%s", v);
             i++;
         } else if (strcmp(k, "--touch") == 0 || strcmp(k, "--goto") == 0 || strcmp(k, "--type") == 0 ||
                    strcmp(k, "--enter") == 0 || strcmp(k, "--back") == 0 || strcmp(k, "--dump") == 0 ||
                    strcmp(k, "--report") == 0 || strcmp(k, "--stick") == 0 || strcmp(k, "--atk") == 0 ||
                    strcmp(k, "--blk") == 0 || strcmp(k, "--super") == 0 || strcmp(k, "--login") == 0 ||
+                   strcmp(k, "--class") == 0 || strcmp(k, "--room") == 0 ||
                    strcmp(k, "--logininfo") == 0) {
             pc_args_push_event(a, k + 2, v);
             i++;
@@ -124,3 +138,43 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
 }
 
 #endif
+
+/* Joins argv into one string for pc_args_parse. strncat counts the terminator out
+ * of its limit, so the old "- 2" left no room for the separator and a long command
+ * line (many --touch) ran past the end of the buffer. An argument is added only if
+ * it fits together with the space. */
+static void pc_args_join(int argc, char **argv, char *dst, size_t cap) {
+    size_t used = 0;
+    int i;
+    if (!dst || cap < 2)
+        return;
+    dst[0] = '\0';
+    snprintf(dst, cap, "cb4_headless ");
+    used = strlen(dst);
+    for (i = 1; i < argc; i++) {
+        size_t need = strlen(argv[i]) + 1;
+        if (need + 1 > cap - used)
+            break;
+        memcpy(dst + used, argv[i], need - 1);
+        used += need - 1;
+        dst[used++] = ' ';
+        dst[used] = '\0';
+    }
+}
+
+/* The --gfx-test path from the argument string (gfx_test.bmp by default). */
+static void pc_args_dump_path(const char *cmdline, char *dst, size_t cap) {
+    const char *dump = "gfx_test.bmp";
+    const char *p = cmdline ? strstr(cmdline, "--dump ") : NULL;
+    size_t n;
+    if (p) {
+        const char *colon = strchr(p, ':');
+        if (colon)
+            dump = colon + 1;
+    }
+    n = strcspn(dump, " \t\n");
+    if (n >= cap)
+        n = cap - 1;
+    memcpy(dst, dump, n);
+    dst[n] = '\0';
+}

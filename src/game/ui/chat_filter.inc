@@ -1,20 +1,21 @@
-/* Фильтр чата и ников.
+/* Chat and nick filter.
  *
- * Игра 12+ (436-ФЗ), поэтому нецензурная брань, оскорбления-ругательства,
- * порнография и ссылки (реклама, в том числе запрещённая, и переходы на
- * чужие ресурсы) в чат не попадают: такое слово заменяется на «***». Фильтр
- * стоит и на отправке, и на показе - сообщения от старых версий игры тоже
- * чистятся. Ник с бранью не пускается в игру.
+  * The game is 12+ (436-FZ), so swearing, abusive words, pornography and links
+  * (ads, including banned ones, and links to other sites) never reach the chat:
+  * such a word becomes "***". The filter runs on send and on display, so
+  * messages from older versions are cleaned too. A nick with swearing is not
+  * allowed into the game.
  *
- * Слово сводится к строчной кириллице: латиница читается и «по виду»
- * (xyй -> хуй, cyka -> сука), и «по звучанию» (huy -> хуй, blyad -> бляд),
- * цифры-заменители (3 -> з, 0 -> о, 6 -> б) тоже, знаки внутри слова
- * выбрасываются (х.у.й -> хуй), повторы букв схлопываются (хууй -> хуй). */
+  * A word is reduced to lowercase Cyrillic: latin letters are read by look
+  * (x, y, c, k and so on map to their Cyrillic twins) and by sound (huy,
+  * blyad), digit stand-ins too (3, 0, 6), symbols inside a word are dropped
+  * (dots between letters), repeated letters collapse. */
 
 #define CF_WORD_MAX 64
 #define CF_OUT_MAX 512
 
-/* Сводит код Unicode к строчному: A-Z, А-Я, Ё (ё считаем за е). */
+/* Folds a Unicode code point to lowercase: A-Z and the Cyrillic range
+ * (yo counts as ye). */
 static unsigned cf_lower(unsigned c) {
     if (c >= 'A' && c <= 'Z')
         return c + 32;
@@ -44,7 +45,7 @@ static unsigned cf_utf8_next(const unsigned char **p, const unsigned char *end) 
     return 0xFFFD;
 }
 
-/* Латиница и цифры «по виду» как кириллица; 0 - знак выбросить. */
+/* Latin letters and digits read by look as Cyrillic; 0 means drop the sign. */
 static unsigned cf_visual(unsigned c) {
     static const char from[] = "acekmoptxyhunrb30694@";
     static const unsigned to[] = {0x430, 0x441, 0x435, 0x43A, 0x43C, 0x43E, 0x440, 0x442, 0x445, 0x443, 0x43D,
@@ -60,7 +61,7 @@ static unsigned cf_visual(unsigned c) {
     return 0;
 }
 
-/* Латиница «по звучанию» (транслит). Двойные сочетания разбирает cf_norm. */
+/* Latin letters read by sound (translit). cf_norm handles double pairs. */
 static unsigned cf_phonetic(unsigned c) {
     static const char from[] = "abvgdezijklmnoprstufhxcywq30469";
     static const unsigned to[] = {0x430, 0x431, 0x432, 0x433, 0x434, 0x435, 0x437, 0x438, 0x439, 0x43A, 0x43B,
@@ -79,22 +80,22 @@ static unsigned cf_phonetic(unsigned c) {
 
 static unsigned cf_digraph(unsigned a, unsigned b) {
     if (b == 'h') {
-        if (a == 's') return 0x448; /* ш */
-        if (a == 'c') return 0x447; /* ч */
-        if (a == 'z') return 0x436; /* ж */
-        if (a == 'k') return 0x445; /* х */
+        if (a == 's') return 0x448; /* sha */
+        if (a == 'c') return 0x447; /* che */
+        if (a == 'z') return 0x436; /* zhe */
+        if (a == 'k') return 0x445; /* kha */
     }
     if (a == 'y' || a == 'j') {
-        if (b == 'a') return 0x44F; /* я */
-        if (b == 'u') return 0x44E; /* ю */
+        if (b == 'a') return 0x44F; /* ya */
+        if (b == 'u') return 0x44E; /* yu */
         if (b == 'o' || b == 'e') return 0x435;
     }
     if (a == 't' && b == 's')
-        return 0x446; /* ц */
+        return 0x446; /* tse */
     return 0;
 }
 
-/* Слово -> строчная кириллица в UTF-8. phonetic: читать латиницу транслитом. */
+/* Word -> lowercase Cyrillic in UTF-8. phonetic: read latin as translit. */
 static void cf_norm(const unsigned *w, int n, int phonetic, char *out, size_t cap) {
     size_t o = 0;
     unsigned last = 0;
@@ -108,8 +109,8 @@ static void cf_norm(const unsigned *w, int n, int phonetic, char *out, size_t ca
         else
             c = phonetic ? cf_phonetic(w[i]) : cf_visual(w[i]);
         if (!c && ((w[i] >= 'a' && w[i] <= 'z'))) {
-            /* Латинская буква без кириллического двойника ломает совпадение:
-             * «web» не читается как «еб». */
+                        /* A latin letter with no Cyrillic twin breaks the match:
+                         * "web" must not read as the "eb" root. */
             if (o + 2 >= cap)
                 break;
             out[o++] = '#';
@@ -138,7 +139,7 @@ static int cf_in(const char *w, const char *const *list) {
     return 0;
 }
 
-/* «ху[йеяию]», но не «психуй» и не «застрахуй». */
+/* The root plus a tail letter, but not inside "psihuy" or "zastrahuy". */
 static int cf_has_hu(const char *w) {
     static const char *const tails[] = {"хуй", "хуе", "хуя", "хуи", "хую", 0};
     const char *const *t;
@@ -155,8 +156,8 @@ static int cf_has_hu(const char *w) {
     return 0;
 }
 
-/* Корень «еб» в начале слова, в том числе после приставки. «себе», «веб»,
- * «хлеб», «небо» сюда не попадают. */
+/* The "eb" root at the start of a word, after a prefix too. Words like
+ * "sebe", "veb", "hleb" and "nebo" do not match. */
 static int cf_has_eb(const char *w) {
     static const char *const pre[] = {"", "за", "на", "по", "вы", "съ", "у", "от", "ото", "отъ", "до", "раз", "разъ",
                                       "рас", "про", "из", "изъ", "при", "пере", "недо", "въ", "вз", "взъ", "долбо",
@@ -174,7 +175,8 @@ static int cf_bad_cyr(const char *w, int skip_eb) {
     static const char *const roots[] = {"пизд", "пезд", "залуп", "мудак", "мудил", "пидор", "пидар", "пидрил",
                                         "пидрас", "гандон", "гондон", "шлюх", "дроч", "бляд", "долбоеб",
                                         "долбаеб", "уебок", "уебан", "уебищ", "мандав", "сукабл", 0};
-    /* Эти корни - только в начале слова: «употреблять» и «упорный» чистые. */
+        /* These roots count only at the start of a word: "upotreblyat" and
+         * "uporny" are clean. */
     static const char *const heads[] = {"блят", "порн", 0};
     static const char *const words[] = {"бля", "сука", "суки", "суке", "суку", "сукой", "сучка", "сучку", "сучки",
                                         "сучара", "сукин", "манда", "манды", 0};
@@ -204,7 +206,7 @@ static int cf_bad_latin(const char *raw) {
     return 0;
 }
 
-/* Ссылка или адрес сайта: http, www, ://, t.me, «что-то.ru» и т. п. */
+/* A link or a site address: http, www, ://, t.me, "something.ru" and so on. */
 static int cf_is_link(const char *raw) {
     static const char *const tlds[] = {"ru", "su", "com", "net", "org", "io", "me", "gg", "xyz", "ua", "by", "kz",
                                        "info", "biz", "site", "online", "top", "link", "cc", "tv", "app", "pro",
@@ -230,8 +232,8 @@ static int cf_is_link(const char *raw) {
     return 0;
 }
 
-/* Латинские слова на «eb»: eBay, ebook и старое латинское имя класса буК
- * (ebuC) - чтобы старое название в чате не маскировалось. */
+/* Latin words starting with "eb": eBay, ebook and the old latin class name
+ * ebuc (ebuC), so the old name is not hidden in the chat. */
 static int cf_latin_eb_ok(const char *raw) {
     static const char *const ok[] = {"ebuc", "ebay", "ebook", 0};
     const char *const *k;
@@ -245,7 +247,7 @@ static int cf_latin_eb_ok(const char *raw) {
     return 0;
 }
 
-/* 1 - слово (len байт с raw) должно быть скрыто. */
+/* 1 - the word (len bytes at raw) must be hidden. */
 static int chat_word_blocked(const char *raw, size_t len) {
     unsigned w[CF_WORD_MAX];
     char buf[CF_WORD_MAX + 1], norm[CF_WORD_MAX * 2 + 1];
@@ -276,7 +278,7 @@ static int chat_word_blocked(const char *raw, size_t len) {
     return 0;
 }
 
-/* Чистит текст в dst: запрещённые слова заменяются на «***». */
+/* Cleans text into dst: banned words become "***". */
 static void chat_clean_into(char *dst, size_t cap, const char *src) {
     size_t o = 0;
     if (!cap)
@@ -305,14 +307,14 @@ static void chat_clean_into(char *dst, size_t cap, const char *src) {
     dst[o] = 0;
 }
 
-/* То же для отрисовки: строка живёт в пуле кадра, как остальные надписи. */
+/* The same for drawing: the string lives in the frame pool like other labels. */
 static const char *chat_clean(const char *src) {
     char out[CF_OUT_MAX];
     chat_clean_into(out, sizeof(out), src);
     return ds_concat(out, "");
 }
 
-/* 1 - ник с бранью: такой ник в игру не пускаем. */
+/* 1 - the nick contains swearing: such a nick is not let into the game. */
 static double nick_blocked(const char *nick) {
     return nick && chat_word_blocked(nick, strlen(nick)) ? 1 : 0;
 }

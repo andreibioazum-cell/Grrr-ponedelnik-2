@@ -10,23 +10,23 @@
 
 Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
 
-* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions —
+* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions -
   `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
 * **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
   (Zig собирает exe и на Linux, MSVC не нужен).
-* **Управление:** `WASD`/стрелки — движение, `ЛКМ` — удар, `E` — блок
-  (удерживать), `Q` — суперудар, мышь — меню и чат, `Esc` — назад, `F12` —
+* **Управление:** `WASD`/стрелки - движение, `ЛКМ` - удар, `E` - блок
+  (удерживать), `Q` - суперудар, мышь - меню и чат, `Esc` - назад, `F12` -
   скриншот.
 
-Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой — окно,
+Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой - окно,
 программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
 клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
 
 ## Веб-панель админа
 
-Кроме APK в репозитории есть веб-версия — [index.html](index.html): панель
+Кроме APK в репозитории есть веб-версия - [index.html](index.html): панель
 админа для базы Firebase (вход по нику и паролю от игры, снимок базы, поиск и
-удаление мусора, ивенты 0..4, баннер, флаги магазина, баны, чистка чата и
+удаление мусора, ивенты 0..4, баннер, флаги магазина, шедевро-режим, баны, чистка чата и
 слотов, резервная копия). Сборка не нужна: открой файл в браузере.
 
 Потренироваться без боевой базы можно так:
@@ -37,7 +37,7 @@ python3 test/fake_firebase.py 8080
 
 затем открой <http://localhost:8080/>, нажми «Тестовый режим» и войди как
 `Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
-проверки — в [docs/admin-panel.md](docs/admin-panel.md).
+проверки - в [docs/admin-panel.md](docs/admin-panel.md).
 
 ## Правовая информация
 
@@ -68,7 +68,7 @@ Full version of Cubic Battle 4 for Android. The game is written in C, with a bit
 
 The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
 
-* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions —
+* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions -
   `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
 * **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
   (Zig cross-builds the exe on Linux too; MSVC is not needed).

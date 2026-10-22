@@ -103,10 +103,10 @@ static int fb_err_is(const char *resp, const char *code_name) {
     return resp && strstr(resp, code_name) != NULL;
 }
 
-/* Сменить пароль аккаунта на новый хвост. Вызывается сразу после входа по
- * старому хвосту: аккаунт переезжает на NET_PASS_SECRET, и старый хвост для
- * него перестаёт работать. Ошибку не считаем фатальной — игрок уже вошёл,
- * переедет при следующем входе. */
+/* Move the account password to the new suffix. Called right after a sign-in with
+ * the old suffix: the account moves to NET_PASS_SECRET and the old suffix stops
+ * working for it. An error here is not fatal - the player is already in and will
+ * move on the next sign-in. */
 static void fb_update_password(const char *pass) {
     char url[FB_URL_MAX], body[512], resp[2048], epass[192], idt[FB_ID_MAX], rt[FB_REFRESH_MAX];
     int code;
@@ -133,9 +133,9 @@ static void fb_update_password(const char *pass) {
         LOG("firebase auth: account moved to the new password suffix");
 }
 
-/* Одна попытка входа. 0 — вошли (токены сохранены), 1 — аккаунта нет или
- * пароль не подошёл, 2 — ошибка сети или сервера. В *no_such_account пишет 1,
- * если аккаунта нет вообще. */
+/* One sign-in attempt. 0 - signed in (tokens stored), 1 - no such account or
+ * wrong password, 2 - network or server error. *no_such_account gets 1 when the
+ * account does not exist at all. */
 static int fb_try_sign_in(const char *email, const char *epass, int *no_such_account) {
     char url[FB_URL_MAX], body[512], resp[2048], idt[FB_ID_MAX], rt[FB_REFRESH_MAX];
     int code;
@@ -177,14 +177,14 @@ static int fb_sign_in(const char *nick, const char *pass, int *registered) {
         *registered = 0;
     fb_email_of(nick, email, sizeof(email));
     snprintf(epass, sizeof(epass), "%s%s", pass, net_pass_suffix());
-    /* Сначала новый хвост пароля: по нему входят все аккаунты, созданные после
-     * перехода на NET_PASS_SECRET. */
+        /* Try the new suffix first: every account created after NET_PASS_SECRET uses
+         * it. */
     state = fb_try_sign_in(email, epass, &no_such_account);
     if (state == 2)
         return 2;
     if (state == 1 && !no_such_account) {
-        /* Аккаунт мог остаться со старым хвостом: пускаем по нему в последний
-         * раз и тут же переводим на новый. */
+                /* The account may still use the old suffix: let it in one last time and
+                 * move it to the new one right away. */
         snprintf(epass, sizeof(epass), "%s%s", pass, FB_LEGACY_PASS_SUFFIX);
         state = fb_try_sign_in(email, epass, NULL);
         if (state == 2)
@@ -243,7 +243,7 @@ static int put_default_user(const char *req_url, const char *nick, const char *p
 static void net_auth_session_ok(const char *nick, const char *pass) {
 
     int keep = 0;
-    int cups = 0, candies = 0, cls = 0, azum = 0, santa = 0, buk = 0;
+    int cups = 0, candies = 0, cls = 0, azum = 0, santa = 0, ebuc = 0;
     int lv = 0, lu = 0, ol = 0, ou = 0, al = 0, au = 0, sl = 0, su = 0, el = 0, eul = 0;
     int bp = 0, sk = 0, astra = 0, atl = 0, atu = 0;
     progress_read();
@@ -254,7 +254,7 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
         cls = pg.cls;
         azum = pg.azum;
         santa = pg.santa;
-        buk = pg.buk;
+        ebuc = pg.ebuc;
         lv = pg.level;
         lu = pg.levels_unlocked;
         ol = pg.ordinary_level;
@@ -263,14 +263,14 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
         au = pg.azum_levels_unlocked;
         sl = pg.santa_level;
         su = pg.santa_levels_unlocked;
-        el = pg.buk_level;
-        eul = pg.buk_levels_unlocked;
+        el = pg.ebuc_level;
+        eul = pg.ebuc_levels_unlocked;
         bp = pg.bp_level;
         sk = pg.azum_skin;
         astra = pg.astra;
         atl = pg.astra_level;
         atu = pg.astra_levels_unlocked;
-        if (cups > 0 || candies > 0 || azum || santa || buk || astra || cls != 0 || bp > 0 || lu > 0 || ou > 0 ||
+        if (cups > 0 || candies > 0 || azum || santa || ebuc || astra || cls != 0 || bp > 0 || lu > 0 || ou > 0 ||
             au > 0 || su > 0 || eul > 0 || atu > 0)
             keep = 1;
     }
@@ -284,7 +284,7 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
         session_save(nick, pass);
 
         net_save_astra(astra, atl, atu);
-        net_save_progress_all(cups, candies, cls, azum, santa, buk, lv, lu, ol, ou, al, au, sl, su, el, eul, bp, sk);
+        net_save_progress_all(cups, candies, cls, azum, santa, ebuc, lv, lu, ol, ou, al, au, sl, su, el, eul, bp, sk);
         LOG("moved local progress into new account '%s'", nick);
         return;
     }
@@ -294,7 +294,7 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
     pg.cls = 0;
     pg.azum = 0;
     pg.santa = 0;
-    pg.buk = 0;
+    pg.ebuc = 0;
     pg.level = 0;
     pg.levels_unlocked = 0;
     pg.ordinary_level = 0;
@@ -303,8 +303,8 @@ static void net_auth_session_ok(const char *nick, const char *pass) {
     pg.azum_levels_unlocked = 0;
     pg.santa_level = 0;
     pg.santa_levels_unlocked = 0;
-    pg.buk_level = 0;
-    pg.buk_levels_unlocked = 0;
+    pg.ebuc_level = 0;
+    pg.ebuc_levels_unlocked = 0;
     pg.bp_level = 0;
     pg.azum_skin = 0;
     pg.astra = 0;

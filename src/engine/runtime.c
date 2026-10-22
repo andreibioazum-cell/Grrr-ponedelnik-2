@@ -1,4 +1,4 @@
-/* Базовые функции игрового рантайма. */
+/* Base functions of the game runtime. */
 #include "engine/runtime/core.inc"
 #include "engine/runtime/values.inc"
 #ifdef CB_PC

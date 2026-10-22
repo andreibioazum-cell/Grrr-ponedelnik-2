@@ -23,15 +23,103 @@ static double player_walk_speed(void) {
     return spd;
 }
 
+/* Reset the motion: the cube stands, the direction stays (right by default),
+ * and stored momentum does not carry it further. */
+static void player_vel_reset(void) {
+    player_vx = 0;
+    player_vy = 0;
+    player_stop_from = 0;
+    player_dir_x = 1;
+    player_dir_y = 0;
+}
+
+/* The cube obeys the stick at once: the direction comes from it in the same
+ * frame, with no sideways drift when it turns. Only the length of the vector
+ * changes - the speed ramps up over walk_accel_time and fades to zero over
+ * walk_stop_time (about 0.08 s), so a released stick gives a short brake, not a
+ * wall stop. */
+static void player_walk_move(double spd) {
+    double jm = sqrt(joy.dx * joy.dx + joy.dy * joy.dy);
+    double have = sqrt(player_vx * player_vx + player_vy * player_vy);
+    double want = 0;
+    double step, rate;
+    if (jm > 0.15) {
+        player_dir_x = joy.dx / jm;
+        player_dir_y = joy.dy / jm;
+        want = spd;
+        player->angle = atan2(joy.dy, joy.dx);
+    }
+    if (want > have) {
+        player_stop_from = 0;
+        rate = (spd > 1 ? spd : 1) / (walk_accel_time > 0 ? walk_accel_time : 0.001);
+    } else {
+                /* Braking counts from the speed it started at, so stopping takes
+                 * walk_stop_time at any frame rate. */
+        if (player_stop_from <= 0) {
+            player_stop_from = have;
+        }
+        rate = player_stop_from / (walk_stop_time > 0 ? walk_stop_time : 0.001);
+    }
+    step = rate * dt;
+    if (step < 0) {
+        step = 0;
+    }
+    if (want >= have) {
+        have = have + step;
+        if (have > want) {
+            have = want;
+        }
+    } else {
+        have = have - step;
+        if (have < want) {
+            have = want;
+        }
+    }
+    if (have <= 0.0001) {
+        have = 0;
+        player_stop_from = 0;
+    }
+    player_vx = player_dir_x * have;
+    player_vy = player_dir_y * have;
+    player->x = player->x + player_vx * dt;
+    player->y = player->y + player_vy * dt;
+        /* Hit a wall - kill only that component, so the cube slides along the edge
+         * instead of sticking with stored speed. */
+    if (player->x < player->size) {
+        player->x = player->size;
+        if (player_vx < 0) player_vx = 0;
+    }
+    if (player->x > screen_w - player->size) {
+        player->x = screen_w - player->size;
+        if (player_vx > 0) player_vx = 0;
+    }
+    if (player->y < player->size) {
+        player->y = player->size;
+        if (player_vy < 0) player_vy = 0;
+    }
+    if (player->y > screen_h - player->size) {
+        player->y = screen_h - player->size;
+        if (player_vy > 0) player_vy = 0;
+    }
+    if (have > 1) {
+                /* Dust follows the real speed: less of it while ramping up, none once
+                 * the cube stops. */
+        tick_dust(player_vx / have, player_vy / have, have / (spd > 1 ? spd : 1));
+    }
+}
+
 static void move_player(void) {
     if (pthrow_t > 0) {
+        player_vel_reset();
         tick_player_throw();
         return;
     }
     if (player_stun > 0 || plates_lock_me == 1) {
+        player_vel_reset();
         return;
     }
     if (pgrab_active == 1 || astra_locked() == 1) {
+        player_vel_reset();
         return;
     }
     if (dash_active > 0) {
@@ -69,26 +157,7 @@ static void move_player(void) {
         tick_dust(dash_dx, dash_dy, 1);
         return;
     }
-    double spd = player_walk_speed();
-    player->x = player->x + joy.dx * spd * dt;
-    player->y = player->y + joy.dy * spd * dt;
-    double jm = sqrt(joy.dx * joy.dx + joy.dy * joy.dy);
-    if (jm > 0.15) {
-        player->angle = atan2(joy.dy, joy.dx);
-    }
-    if (player->x < player->size) {
-        player->x = player->size;
-    }
-    if (player->x > screen_w - player->size) {
-        player->x = screen_w - player->size;
-    }
-    if (player->y < player->size) {
-        player->y = player->size;
-    }
-    if (player->y > screen_h - player->size) {
-        player->y = screen_h - player->size;
-    }
-    tick_dust(joy.dx, joy.dy, jm);
+    player_walk_move(player_walk_speed());
 }
 
 static double enemy_in_punch(void) {

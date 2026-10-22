@@ -1,11 +1,11 @@
-/* У каждого класса своя ветка уровней, у CodeCracker в том числе: это
- * отдельный класс, а не обычный куб под другим именем. */
+/* Every class has its own level branch, CodeCracker too: it is a separate class,
+ * not the ordinary cube under another name. */
 static double class_level_of(double cls) { return arr_get(class_level_tbl, cls); }
 
 static double class_unlocked_of(double cls) { return arr_get(class_unlocked_tbl, cls); }
 
 static double class_id_valid(double cls) {
-    return cls == CLASS_ORDINARY || cls == CLASS_AZUM || cls == CLASS_SANTA || cls == CLASS_BUK ||
+    return cls == CLASS_ORDINARY || cls == CLASS_AZUM || cls == CLASS_SANTA || cls == CLASS_EBUC ||
            cls == CLASS_ASTRA || cls == CLASS_CODECRACKER;
 }
 
@@ -63,8 +63,8 @@ static double class_base_cost_of(double cls) {
     if (cls == CLASS_SANTA) {
         return santa_candy_cost;
     }
-    if (cls == CLASS_BUK) {
-        return buk_cost;
+    if (cls == CLASS_EBUC) {
+        return ebuc_cost;
     }
     return 0;
 }
@@ -95,8 +95,8 @@ static const char *class_name_of(double cls) {
     if (cls == CLASS_SANTA) {
         return tr_class_santa();
     }
-    if (cls == CLASS_BUK) {
-        return tr_class_buk();
+    if (cls == CLASS_EBUC) {
+        return tr_class_ebuc();
     }
     if (cls == CLASS_CODECRACKER) {
         return tr_class_codecracker();
@@ -114,8 +114,8 @@ static const char *class_desc_of(double cls) {
     if (cls == CLASS_SANTA) {
         return tr_class_santa_desc();
     }
-    if (cls == CLASS_BUK) {
-        return tr_class_buk_desc();
+    if (cls == CLASS_EBUC) {
+        return tr_class_ebuc_desc();
     }
     if (cls == CLASS_CODECRACKER) {
         return tr_class_codecracker_desc();
@@ -144,15 +144,15 @@ static double skin_is_active(double cls, double skin) {
     if (skin != SKIN_SPECIAL) {
         return 0;
     }
-    if (cls == CLASS_AZUM || cls == CLASS_BUK) {
+    if (cls == CLASS_AZUM || cls == CLASS_EBUC) {
         return 1;
     }
     return 0;
 }
 
 static double class_skin_of(double cls) {
-    if (cls == CLASS_BUK) {
-        return buk_skin;
+    if (cls == CLASS_EBUC) {
+        return ebuc_skin;
     }
     if (cls == CLASS_AZUM) {
         return azum_skin;
@@ -166,8 +166,8 @@ static double skin_unlocked_for(double cls, double skin) {
     if (skin == SKIN_NORMAL) {
         return 1;
     }
-    if (cls == CLASS_BUK) {
-        /* Elf буК: battle-pass tier 4 reward. */
+    if (cls == CLASS_EBUC) {
+                /* Elf ebuc: battle-pass tier 4 reward. */
         return bp_claimed >= 4 ? 1 : 0;
     }
     if (cls == CLASS_AZUM && has_achievement(ACH_LEGENDS) == 1) {
@@ -179,10 +179,10 @@ static double skin_unlocked_for(double cls, double skin) {
 static double skin_unlocked(double skin) { return skin_unlocked_for(player_class, skin); }
 
 static const char *skin_name_for(double cls, double skin) {
-    if (skin != SKIN_SPECIAL || (cls != CLASS_BUK && cls != CLASS_AZUM)) {
+    if (skin != SKIN_SPECIAL || (cls != CLASS_EBUC && cls != CLASS_AZUM)) {
         return tr_skin_normal();
     }
-    if (cls == CLASS_BUK) {
+    if (cls == CLASS_EBUC) {
         return tr_skin_elf();
     }
     return tr_skin_zombie();
@@ -191,7 +191,7 @@ static const char *skin_name_for(double cls, double skin) {
 static const char *skin_name_of(double skin) { return skin_name_for(player_class, skin); }
 
 static const char *skin_hint_for(double cls) {
-    if (cls == CLASS_BUK) {
+    if (cls == CLASS_EBUC) {
         return tr_skin_elf_hint();
     }
     return tr_skin_legends_hint();
@@ -208,8 +208,8 @@ static void pick_skin(double skin) {
         skin_msg_t = msg_time;
         return;
     }
-    if (player_class == CLASS_BUK) {
-        buk_skin = skin;
+    if (player_class == CLASS_EBUC) {
+        ebuc_skin = skin;
     } else {
         azum_skin = skin;
     }
@@ -228,7 +228,7 @@ static double class_visible(double cls) {
 
 static double class_at_order(double i) {
     if (i == 2) {
-        return CLASS_BUK;
+        return CLASS_EBUC;
     }
     if (i == 3) {
         return CLASS_SANTA;
@@ -333,7 +333,7 @@ static void select_level(double cls, double n) {
 
 static double buy_level(double cls, double n) {
     double cost = level_cost(n);
-    /* Кубки админа не снимаются: уровень открывается бесплатно. */
+        /* Admin cups are never taken: the level opens for free. */
     double free_buy = admin_playing() == 1;
     if (free_buy == 0 && cups < cost) {
         level_msg_kind = 0;
@@ -417,7 +417,7 @@ static void pick_class(double cls) {
         }
         candies = candies - cost;
     } else if (admin_playing() == 1) {
-        /* Кубки админа не снимаются: класс бесплатен. */
+                /* Admin cups are never taken: the class is free. */
     } else {
         if (cups < cost) {
             class_msg_t = msg_time;

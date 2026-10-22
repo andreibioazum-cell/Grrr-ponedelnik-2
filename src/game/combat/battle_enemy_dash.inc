@@ -179,7 +179,7 @@ static double enemy_tick_class_abilities(void) {
             enemy->state_time = 0;
             return 1;
         }
-    } else if (enemy_class == CLASS_BUK) {
+    } else if (enemy_class == CLASS_EBUC) {
         if (enemy_super_cd <= 0 && enemy_turret_count_alive() < turret_max) {
             enemy_super_kind = 2;
             enemy_super_windup = enemy_super_windup_time;

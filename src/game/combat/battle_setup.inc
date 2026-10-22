@@ -5,6 +5,11 @@ static void reset_battle(void) {
     player->x = screen_w / 2;
     player->y = screen_h / 2;
     player->angle = 0;
+        /* A new fight starts with a standing cube: the momentum of the last fight must
+         * not carry it out of the centre on the first frame. */
+    player_vel_reset();
+    chaos_reset();
+    ball_reset();
     player->max_hp = astra_ability_max_hp_for(player_class, astra_ability_local());
     player->hp = player->max_hp;
     player->size = 25 * player_scale;
@@ -176,8 +181,8 @@ static void reset_battle(void) {
     joy.x = 130;
     joy.y = screen_h - 150;
     joy.r = 70;
-    /* Кнопки крупные, поэтому разнесены шире: между центрами больше двух
-     * радиусов, иначе круги залезают друг на друга. */
+        /* The buttons are big, so they are spread wider: more than two radii between
+         * centres, otherwise the circles overlap. */
     atk_x = screen_w - 132;
     atk_y = screen_h - 138;
     atk2_x = screen_w - 132;
@@ -315,6 +320,7 @@ static void place_online(void) {
     double col = s - row * 2;
     player->x = screen_w * (0.3 + 0.4 * col);
     player->y = screen_h * (0.35 + 0.3 * row);
+    player_vel_reset();
     online_ready = 1;
 }
 

@@ -1,42 +1,40 @@
 #!/usr/bin/env python3
-"""Подставной Firebase для веб-панели (index.html) и сетевого кода игры.
+"""A fake Firebase for the web admin panel (index.html) and the game network code.
 
-Зачем он нужен. Веб-панель админа — это обычный HTML+JS, который ходит в
-Firebase REST. Без подставной базы её нельзя ни проверить, ни просто открыть и
-понажимать: боевой проект закрыт правилами, а ключ — ограничениями по referrer.
-Поэтому панель умеет «тестовый режим» (кнопка в настройках проекта): адрес базы
-= адрес этой страницы, вход любой парой «ник + пароль», аккаунт создаётся сам.
+Why it exists. The web admin panel is plain HTML+JS talking to the Firebase REST
+API. Without a stand-in database it can be neither checked nor simply opened and
+clicked: the live project is closed by rules, and the key is restricted by
+referrer. So the panel has a "test mode" (a button in the project settings): the
+database address is this page, any "nick + password" pair signs in, and the
+account is created on its own. The server serves the panel itself and the
+database from one port, so there are no CORS or mixed content problems:
+    -> http://localhost:8080/.json     (database root)
 
-Сервер раздаёт и саму панель, и базу — одним портом, чтобы не было проблем с
-CORS и смешанным контентом:
+What of Realtime Database REST is implemented:
+  GET    <path>.json            (+ X-Firebase-ETag -> ETag; empty path = root)
+  PUT    <path>.json            (if-match: "null" or etag -> 200/412)
+  PATCH  <path>.json            (deep merge of flat keys "a/b": value)
+  POST   <path>.json            (push key -> {"name": "-KEY"})
 
-    python3 test/fake_firebase.py 8080
-    → http://localhost:8080/          (index.html)
-    → http://localhost:8080/.json     (корень базы)
-
-Что реализовано из REST Realtime Database:
-  GET    <path>.json            (+ X-Firebase-ETag -> ETag; пустой путь = корень)
-  PUT    <path>.json            (if-match: "null" или etag -> 200/412)
-  PATCH  <path>.json            (глубокое слияние плоских ключей "a/b": value)
-  DELETE <path>.json
-  POST   <path>.json            (push-ключ -> {"name": "-KEY"})
-  GET    .../chat.json?orderBy="$key"&limitToLast=32
-
-Из Firebase Auth:
+From Firebase Auth:
   POST   /v1/accounts:signUp?key=K
   POST   /v1/accounts:signInWithPassword?key=K
+  POST   /v1/accounts:update?key=K  (password change)
   POST   /v1/token?key=K        (refresh_token -> id_token)
-  GET    /__stats.json          (счётчики для тестов)
+  GET    /__stats.json          (counters for the tests)
 
-Правила доступа повторяют firebase.rules.json настолько, чтобы панель можно
-было проверить в обоих режимах:
-  * корень и «чужие» узлы читает/пишет только админ;
-  * event, banner, bans, AzumBuff, FlashSale, rooms/*/meta пишет только админ;
-  * users/<ник> — сам игрок или админ;
-  * слоты и чат — любой вошедший игрок;
-  * AzumBuff и FlashSale читаются всеми (в правилах ".read": true);
-  * без токена — 401, под токеном, но без прав — 403 (именно на эти коды
-    панель реагирует переходом на «снимок по узлам» и удалением по детям).
+The access rules repeat firebase.rules.json closely enough to check the panel in
+both modes:
+  * the root and "foreign" nodes are read and written by the admin only;
+  * event, banner, bans, AzumBuff, FlashSale, HitboxChaos, rooms/*/meta are
+    admin writes;
+  * users/<nick> - the player or the admin;
+  * slots and chat - any signed-in player;
+  * AzumBuff, FlashSale and HitboxChaos are readable by all (".read": true in
+    the rules);
+  * no token gives 401, a token without rights gives 403 (the panel reacts to
+    exactly these codes by switching to a per-node snapshot and deleting per
+    child).
 """
 import base64
 import hashlib
@@ -54,10 +52,10 @@ PANEL = os.path.join(ROOT, "index.html")
 
 ADMINS = ("dimasi4ek229@cb4.game", "qwertyuiopaj1234@cb4.game")
 SECRET = "BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc"  # из firebase.rules.json (поле "w")
-PUBLIC_ROOT = ("AzumBuff", "FlashSale")      # ".read": true в правилах
+PUBLIC_ROOT = ("AzumBuff", "FlashSale", "HitboxChaos")      # ".read": true в правилах
 GAME_ROOT = ("users", "rooms", "bans", "event", "banner")
 KNOWN_ROOT = GAME_ROOT + PUBLIC_ROOT
-ADMIN_ONLY_WRITE = ("event", "banner", "bans", "AzumBuff", "FlashSale")
+ADMIN_ONLY_WRITE = ("event", "banner", "bans", "AzumBuff", "FlashSale", "HitboxChaos")
 
 LOCK = threading.Lock()
 AUTH = {}       # email -> password
@@ -65,13 +63,13 @@ REFRESH = {}    # refresh_token -> email
 TOKENS = {}     # id_token -> email
 COUNTER = [0]
 
-STATS = {"sign_up": 0, "sign_in": 0, "token_refresh": 0,
+STATS = {"sign_up": 0, "sign_in": 0, "token_refresh": 0, "password_update": 0,
          "rtdb_auth": 0, "rtdb_no_auth": 0, "rtdb_denied": 0, "static": 0}
 
 
 # ---------------------------------------------------------------------------
-# Наполнение базы: живые данные ровно той формы, что пускают правила,
-# плюс мусор, на котором видно работу уборщика панели.
+# Database seed: live data of exactly the shape the rules allow, plus junk that
+# shows the panel cleaner at work.
 # ---------------------------------------------------------------------------
 def profile(nick, **over):
     p = {
@@ -110,6 +108,7 @@ def slot(nick, seq, **over):
         "dax": 0, "day": 0, "dadx": 0, "dady": 0, "dash": 0,
         "gbx": 0, "gby": 0, "gbdx": 0, "gbdy": 0, "grab": 0,
         "uzx": 0, "uzy": 0, "universe": 0, "thud": 0, "blk": 0, "ccu": 0,
+        "bkx": 0, "bky": 0, "bkdx": 0, "bkdy": 0, "brick": 0,
         "cls": 0, "level": 2, "skin": 1,
     }
     s.update(over)
@@ -125,8 +124,8 @@ DB = {
     "users": {
         "Dimasi4ek229": profile("Dimasi4ek229", cups=4200, candies=31),
         "Player2": profile("Player2", cls=1, azum=1, cups=10),
-        # Мусорные «игроки»: ник не проходит правила, пароль в базе,
-        # неизвестное поле и накрутка сверх лимита правил.
+                # Junk "players": a nick the rules reject, a password in the database, an
+                # unknown field and a value above the rule limit.
         "xX_hack_Xx": {"nick": "xX_hack_Xx", "cups": 99999999, "pass": "123456",
                        "freeCups": True},
         "Spammer": {"nick": "Spammer", "cups": 5, "candies": 0, "cls": 0,
@@ -136,8 +135,9 @@ DB = {
     "rooms": {
         "main": {
             "players": {"0": slot("Dimasi4ek229", 18), "1": slot("Player2", 7),
-                        # заявка без движения (нулевой слот-заглушка: игра
-                        # пишет нули при захвате слота, room_sync.inc)
+                                                # a request with no movement (a zero slot placeholder:
+                                                # the game writes zeroes when it takes a slot,
+                                                # room_sync.inc)
                         "2": slot("Player3", 0, hp=0, alive=0, x=0, y=0, angle=0)},
             "chat": {
                 "-M0001": msg("Player2", "привет", "-M0001"),
@@ -150,7 +150,7 @@ DB = {
             "players": {},
             "chat": {"-N0001": msg("Player2", "комната с паролем", "-N0001")},
         },
-        # комната с мусорным узлом и битой meta
+                # a room with a junk node and a broken meta
         "junk": {"whatever": 1, "meta": {"owner": "x"}},
     },
     "bans": {"Spammer": True, "OldBan": False, "not a nick!": True},
@@ -159,19 +159,21 @@ DB = {
                "color": "white"},
     "AzumBuff": 0,
     "FlashSale": 0,
-    # корневой мусор: узлы, которых нет в игре
+    "HitboxChaos": 0,
+        # root junk: nodes the game knows nothing about
     "freeCupsHack": {"cups": 999999},
     "testtest": "junk",
 }
 
-# Админские аккаунты создаются сразу: вход ником Dimasi4ek229 с паролем «admin»
-# (панель сама добавит суффикс |cb4v1). Любой другой ник создаётся по signUp.
+# Admin accounts are created up front: signing in as Dimasi4ek229 with the
+# password "admin" works (the panel adds the |cb4v1 suffix itself). Any other
+# nick is created through signUp.
 for _admin in ADMINS:
     AUTH[_admin] = "admin|cb4v1"
 
 
 # ---------------------------------------------------------------------------
-# Токены: настоящий на вид JWT, чтобы jwt() в панели разбирал payload.
+# Tokens: a real-looking JWT, so jwt() in the panel can parse the payload.
 # ---------------------------------------------------------------------------
 def _b64(obj):
     raw = json.dumps(obj, separators=(",", ":")).encode()
@@ -237,7 +239,7 @@ def deep_del(node, parts):
 
 
 # ---------------------------------------------------------------------------
-# Права: урезанный firebase.rules.json
+# Rights: a trimmed down firebase.rules.json
 # ---------------------------------------------------------------------------
 def can_read(parts, email):
     if not parts:                                   # корень
@@ -258,7 +260,7 @@ def can_write(parts, email):
     head = parts[0]
     if head in ADMIN_ONLY_WRITE:
         if head == "bans" and len(parts) > 1:
-            # своих админов банить нельзя — как в правилах
+                        # you cannot ban your own admins - same as in the rules
             if parts[1].lower() in ("dimasi4ek229", "qwertyuiopaj1234"):
                 return False
         return email in ADMINS
@@ -268,7 +270,7 @@ def can_write(parts, email):
         if len(parts) > 2 and parts[2] == "players" and len(parts) > 3:
             if not re.match(r"^[0-3]$", parts[3]):
                 return False
-        return True                                 # слоты и чат — любому игроку
+        return True                                 # слоты и чат - любому игроку
     if head == "users":
         if len(parts) < 2:
             return email in ADMINS                  # список игроков целиком
@@ -287,14 +289,14 @@ class Handler(BaseHTTPRequestHandler):
             return
         sys.stderr.write("SVR %s\n" % (fmt % args))
 
-    # --- служебное ---------------------------------------------------------
+        # --- plumbing ----------------------------------------------------------
     def _read_body(self):
         n = int(self.headers.get("Content-Length") or 0)
         return self.rfile.read(n) if n > 0 else b""
 
     def _cors(self):
-        # Панель открывается из браузера (в том числе через https-прокси
-        # предпросмотра), поэтому разрешаем любой источник: база подставная.
+                # The panel opens from a browser (through the https preview proxy too),
+                # so any origin is allowed: the database is a fake.
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET,PUT,PATCH,DELETE,POST,OPTIONS")
         self.send_header("Access-Control-Allow-Headers",
@@ -316,7 +318,7 @@ class Handler(BaseHTTPRequestHandler):
         self._read_body()
         self._send(204, b"")
 
-    # --- роутинг -----------------------------------------------------------
+        # --- routing -----------------------------------------------------------
     def _handle(self):
         path, _, query = self.path.partition("?")
         if path == "/__stats.json":
@@ -338,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
     do_DELETE = _handle
     do_POST = _handle
 
-    # --- раздача панели ----------------------------------------------------
+        # --- serving the panel -------------------------------------------------
     def _static(self, path):
         if path not in ("/", "/index.html", "/favicon.ico"):
             self._send(404, b'{"error":"not found"}')
@@ -472,10 +474,10 @@ class Handler(BaseHTTPRequestHandler):
             if not email or not password:
                 self._fb_error("MISSING_EMAIL_OR_PASSWORD")
                 return
-            # Правила Firebase требуют 6+ символов, но игра и панель шлют
-            # «пароль + хвост» длиной 32, а тестовые аккаунты - короткие
-            # пароли из зерна. Минимум не проверяем: фейк не про политику
-            # паролей, а про то, что вход и запись проходят.
+                        # Firebase rules want 6+ chars, but the game and the panel send
+                        # "password + suffix" of 32, while the test accounts have short seed
+                        # passwords. The minimum is not checked: this fake is about sign-in
+                        # and writes passing, not about password policy.
             if not password:
                 self._fb_error("MISSING_EMAIL_OR_PASSWORD")
                 return
@@ -495,6 +497,12 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 with LOCK:
                     good = AUTH[email] == password
+                    # The admin account's password is rewritten by the game on
+                    # the first sign-in (legacy suffix -> new suffix). The tests
+                    # and the panel keep signing in with the seeded one, so the
+                    # fake always accepts it for an admin.
+                    if not good and email in ADMINS and password == "admin|cb4v1":
+                        good = True
                     if good:
                         STATS["sign_in"] += 1
                 if not good:
@@ -503,6 +511,30 @@ class Handler(BaseHTTPRequestHandler):
                 idt, rt = _issue_tokens(email)
             self._send(200, json.dumps({
                 "idToken": idt, "refreshToken": rt, "expiresIn": "3600",
+                "localId": email.split("@")[0], "email": email,
+            }).encode())
+            return
+
+        if endpoint == "v1/accounts:update":
+                        # After a sign-in with the "old suffix" the game moves the account to
+                        # the new password. Real Firebase does this; the fake used to answer
+                        # 400 and every sign-in logged an error even though it had worked.
+            idt = str(data.get("idToken", ""))
+            password = data.get("password", "")
+            with LOCK:
+                email = TOKENS.get(idt)
+            if not email:
+                self._fb_error("INVALID_ID_TOKEN")
+                return
+            if not password:
+                self._fb_error("MISSING_PASSWORD")
+                return
+            with LOCK:
+                AUTH[email] = password
+                STATS["password_update"] += 1
+            idt, nrt = _issue_tokens(email)
+            self._send(200, json.dumps({
+                "idToken": idt, "refreshToken": nrt, "expiresIn": "3600",
                 "localId": email.split("@")[0], "email": email,
             }).encode())
             return

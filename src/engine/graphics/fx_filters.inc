@@ -9,8 +9,8 @@ static void gray_texture_pixels(uint32_t *px, size_t n) {
     }
 }
 
-/* Вернуть оригинал пикселей, наложить фильтр, если он включён, и заново
- * залить текстуру в GPU. Оригинал прячется один раз и не перезаписывается. */
+/* Put the original pixels back, apply the filter if it is on, and upload the
+ * texture to the GPU again. The original is hidden once and never overwritten. */
 static void texture_refresh(Texture *t) {
     size_t n = (size_t)t->w * (size_t)t->h;
     if (t->gray_backup) {

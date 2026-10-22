@@ -9,6 +9,7 @@ static void start_punch_now(void) {
     punch_left = punch_time;
     punch_cd = punch_cooldown;
     queued_punch = 0;
+    chaos_punch_escape();
     punch_snd();
 }
 
@@ -153,8 +154,8 @@ static void fire_super(void) {
         queued_super = 0;
         codecracker_super_t = codecracker_super_time;
         ability_snd(OVERCLOCK_SOUND);
-        /* Кулдаун здесь НЕ стартует: он начнётся, когда рывок (оверклок)
-         * закончится — см. codecracker_tick_super_timer(). */
+                /* The cooldown does NOT start here: it starts when the dash (overclock)
+                 * ends - see codecracker_tick_super_timer(). */
         return;
     }
     if (player_class != 2 && player_class != 3) {
@@ -179,8 +180,8 @@ static void fire_super(void) {
     punch->active = 0;
     punch->hit = 0;
     ability_snd(player_class == CLASS_SANTA ? GIFT_SOUND : STATION_SOUND);
-    if (player_class == CLASS_BUK) {
-        super_cd = buk_station_cd;
+    if (player_class == CLASS_EBUC) {
+        super_cd = ebuc_station_cd;
     } else {
         super_cd = super_cd_time;
     }
@@ -212,7 +213,7 @@ static void tick_super_windup(void) {
         }
         return;
     }
-    if (player_class == CLASS_BUK) {
+    if (player_class == CLASS_EBUC) {
         place_turret();
         ds_log("turret placed, alive %g/%g", turret_count_alive(), turret_max);
     }

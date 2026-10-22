@@ -63,8 +63,8 @@ static int ds_vk_begin_frame_backend(uint32_t w, uint32_t h, uint32_t ow, uint32
     return 1;
 }
 
-/* Шрифт: тот же атлас, что строил Vulkan из ds_font_alpha - белый цвет с
- * альфой глифа, RGBA8, чтобы image-конвейер (v_col * tex) красил текст. */
+/* Font: the same atlas the Vulkan path built from ds_font_alpha - white with the
+ * glyph alpha, RGBA8, so the image pipeline (v_col * tex) tints the text. */
 static void pc_build_font_atlas(void) {
     const uint8_t *alpha;
     int aw, ah;
@@ -117,8 +117,8 @@ static void ds_vk_shutdown_backend(void) {
     vk_pending_font = 0;
 }
 
-/* "Загрузка" текстуры: пиксели уже в RAM, помечаем готовой сразу. desc -
- * просто маркер (адрес самой текстуры), как и просит общий код. */
+/* "Upload" of a texture: the pixels are already in RAM, mark it ready at once.
+ * desc is just a marker (the texture address itself), as the shared code asks. */
 static void ds_vk_pending_texture(Texture *t) {
     if (!t)
         return;
@@ -148,8 +148,9 @@ static void ds_vk_font_gpu_release(void) {
     vk_font_desc = 0;
 }
 
-/* Экран причины отказа (fallback_screen.inc рисует в ANativeWindow, которого
- * на PC нет): pc_main показывает текст сам, здесь только строка причины. */
+/* Screen for the failure reason (fallback_screen.inc draws into an
+ * ANativeWindow, which the PC does not have): pc_main shows the text itself,
+ * here only the reason string. */
 const char *ds_graphics_failure(void) { return pc_gfx_fail[0] ? pc_gfx_fail : "unknown renderer failure"; }
 
 int ds_graphics_show_failure(ANativeWindow *window, int attempts) {

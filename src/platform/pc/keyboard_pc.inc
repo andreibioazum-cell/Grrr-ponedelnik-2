@@ -34,8 +34,9 @@ void keyboard_hide(void) {
     kb_enter = 0;
 }
 
-/* Текст клавиатуры забирают в свой буфер: поле чата, логин, пароль и промокод
- * хранят его дольше одного кадра и каждый - свой (как на телефоне). */
+/* Keyboard text goes into the caller's own buffer: the chat field, login,
+ * password and promo code keep it longer than one frame, and each keeps its own
+ * (as on the phone). */
 void keyboard_get_text_to(char *dst, size_t cap) {
     if (!dst || cap == 0)
         return;
@@ -107,8 +108,8 @@ void keyboard_type(const char *text) {
             p++;
             continue;
         }
-        /* Управляющие символы - не текст: Enter и Backspace приходят
-         * отдельными клавишами, остальное в поле не печатаем. */
+                /* Control characters are not text: Enter and Backspace arrive as their
+                 * own keys, the rest is not typed into the field. */
         if (cp < 0x20 || (cp >= 0x7F && cp <= 0x9F))
             continue;
         kb_append_cp(cp);
@@ -118,7 +119,7 @@ void keyboard_type(const char *text) {
 void keyboard_backspace(void) {
     if (kb_len <= 0)
         return;
-    /* Откусываем последний UTF-8 символ: ведущий байт узнаётся по маске. */
+        /* Chop the last UTF-8 character: the lead byte is recognised by its mask. */
     int n = 1;
     while (n < kb_len && n < 4 && (kb_text[kb_len - n] & 0xC0) == 0x80)
         n++;
@@ -128,8 +129,8 @@ void keyboard_backspace(void) {
     kb_text[kb_len] = '\0';
 }
 
-/* Enter как «действие клавиатуры»: флаг забирает keyboard_enter_pressed().
- * pc_main зовёт её для VK_RETURN и для кнопочных кодов Android. */
+/* Enter as a "keyboard action": the flag is taken by keyboard_enter_pressed().
+ * pc_main calls it for VK_RETURN and for the Android key codes. */
 int keyboard_handle_key(int keycode, int action, int meta) {
     (void)meta;
     if (action != 0 && action != 2) /* down / multiple only */
