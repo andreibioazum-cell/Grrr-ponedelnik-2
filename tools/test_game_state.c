@@ -923,7 +923,7 @@ static void swipe_delete_knob(double frac, double id) {
     double ky = acct_slider_y() + acct_slider_h() / 2;
     double span = acct_w() - acct_knob_w() - 8;
     logic_touch(kx, ky, 0, id);
-    press_new = 0;
+    press_points_clear();
     logic_touch(kx + span * frac * 0.5, ky, 2, id);
     logic_touch(kx + span * frac, ky, 2, id);
     logic_touch(kx + span * frac, ky, 1, id);
@@ -937,7 +937,7 @@ static void test_account_delete(void) {
     assert(stub_delete_calls == calls && str_eq(acct_msg, tr_acct_need_pass()) == 1);
         /* The password is there but the knob was let go halfway - no deletion. */
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(0) + login_fh / 2, 0, 61);
-    press_new = 0;
+    press_points_clear();
     assert(keyboard_visible() == 1 && acct_field == 0);
     keyboard_type("secret1");
     acct_tick();
@@ -952,7 +952,7 @@ static void test_account_delete(void) {
     acct_knob = 0;
         /* A plain tap on the knob does nothing either. */
     logic_touch(acct_knob_x() + acct_knob_w() / 2, acct_slider_y() + acct_slider_h() / 2, 0, 63);
-    press_new = 0;
+    press_points_clear();
     logic_touch(acct_knob_x() + acct_knob_w() / 2, acct_slider_y() + acct_slider_h() / 2, 1, 63);
     assert(stub_delete_calls == calls);
         /* Full swipe with a password: delete with that password, the field is cleared. */
@@ -993,7 +993,7 @@ static void test_account_screen(void) {
     docs_open = 0;
     acct_open = 0;
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(3) + btn_h / 2, 0, 70);
-    press_new = 0;
+    press_points_clear();
     /* The account opens through the screen transition, like every other
      * screen: nothing yet, the account at the end of the fade. */
     assert(acct_open == 0 && t_dir == 1 && acct_pending == 1);
@@ -1006,13 +1006,13 @@ static void test_account_screen(void) {
     assert(acct_open == ACCT_MENU);
     t_dir = 0;
     logic_touch(acct_x() + acct_w() / 2, acct_menu_y(0) + btn_h / 2, 0, 71);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == ACCT_MENU && t_dir == 1);
     finish_transition();
     assert(acct_open == ACCT_PASS);
         /* Checks before the server: empty fields, mismatch, same password. */
     logic_touch(acct_x() + acct_w() / 2, acct_below_fields() + btn_h / 2, 0, 72);
-    press_new = 0;
+    press_points_clear();
     assert(str_eq(acct_msg, tr_acct_need_pass()) == 1 && stub_pass_calls == 0);
     snprintf(acct_buf[0], ACCT_BUF, "%s", "old1");
     snprintf(acct_buf[1], ACCT_BUF, "%s", "new1");
@@ -1032,17 +1032,17 @@ static void test_account_screen(void) {
     snprintf(stub_login_nick, sizeof(stub_login_nick), "%s", "tester");
         /* Keyboard input: Enter moves to the next field. */
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(1) + login_fh / 2, 0, 73);
-    press_new = 0;
+    press_points_clear();
     assert(acct_field == 1 && keyboard_visible() == 1);
     keyboard_type("new1");
     acct_tick();
     logic_touch(acct_x() + acct_w() / 2, acct_field_y(2) + login_fh / 2, 0, 74);
-    press_new = 0;
+    press_points_clear();
     keyboard_type("new1");
     acct_tick();
     assert(strcmp(acct_buf[1], "new1") == 0 && strcmp(acct_buf[2], "new1") == 0);
     logic_touch(acct_x() + acct_w() / 2, acct_below_fields() + btn_h / 2, 0, 75);
-    press_new = 0;
+    press_points_clear();
     assert(stub_pass_calls == 1 && strcmp(stub_pass_old, "old1") == 0 && strcmp(stub_pass_new, "new1") == 0);
     assert(acct_busy == 2 && acct_buf[0][0] == 0 && acct_buf[1][0] == 0);
     stub_pass_status = 4;
@@ -1059,7 +1059,7 @@ static void test_account_screen(void) {
         /* Sign out. */
     int logouts = stub_logout_calls;
     logic_touch(acct_x() + acct_w() / 2, acct_menu_y(2) + btn_h / 2, 0, 76);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == ACCT_MENU && stub_logout_calls == logouts && t_dir == 1);
     finish_transition();
     assert(acct_open == 0 && stub_logout_calls == logouts + 1);
@@ -1077,7 +1077,7 @@ static void test_account_screen(void) {
         /* Without a login the Account row leads to the login screen. */
     stub_login_status = 0;
     logic_touch(menu_x() + menu_btn_w() / 2, menu_row(3) + btn_h / 2, 0, 77);
-    press_new = 0;
+    press_points_clear();
     assert(acct_open == 0 && t_target == ST_LOGIN);
     t_dir = 0;
     t_target = 0;
@@ -1400,7 +1400,7 @@ static void test_legal(void) {
     login_nick = "tester";
     login_status = 8;
     logic_touch(login_consent_x() + 10, login_consent_y() + 10, 0, 40);
-    press_new = 0;
+    press_points_clear();
     assert(login_consent == 1 && login_status == 0);
     int uploads = stub_pd_uploads;
     login_do();
@@ -1409,7 +1409,7 @@ static void test_legal(void) {
     t_target = 0;
         /* The link under the box opens the documents and the nick is kept. */
     logic_touch(center_x(login_more_w()) + login_more_w() / 2, login_more_y() + btn_h * 0.4, 0, 41);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 0 && t_dir == 1);
     finish_transition();
     assert(docs_open == 1 && docs_page == LEGAL_PAGE_CONSENT - 2 && str_eq(login_nick, "tester") == 1);
@@ -1426,7 +1426,7 @@ static void test_legal(void) {
     docs_tick();
     assert(docs_open == 1 && docs_ask == 1 && docs_page == LEGAL_PAGE_CONSENT);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_row_y() + btn_h / 2, 0, 42);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 1 && t_dir == 1);
     finish_transition();
     assert(docs_open == 0 && stub_pd_ver == LEGAL_DOCS_VERSION);
@@ -1436,7 +1436,7 @@ static void test_legal(void) {
     stub_pd_ver = 0;
     docs_show(LEGAL_PAGE_CONSENT, 1);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_refuse_y() + btn_h / 2, 0, 43);
-    press_new = 0;
+    press_points_clear();
     finish_transition();
     assert(docs_open == 0 && stub_logout_calls == 1 && stub_login_status == 0);
         /* Online does not open without consent - the question is shown instead. */
@@ -1452,14 +1452,14 @@ static void test_legal(void) {
     docs_show(0, 0);
     assert(hit_docs_prev(docs_prev_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2) == 0);
     logic_touch(docs_next_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2, 0, 44);
-    press_new = 0;
+    press_points_clear();
     assert(docs_page == 0 && t_dir == 1);
     finish_transition();
     assert(docs_page == 1);
     docs_show(LEGAL_PAGE_RIGHTS, 0);
     assert(hit_docs_next(docs_next_x() + docs_nav_w() / 2, docs_row_y() + btn_h / 2) == 0);
     logic_touch(docs_mid_x() + docs_mid_w() / 2, docs_row_y() + btn_h / 2, 0, 45);
-    press_new = 0;
+    press_points_clear();
     finish_transition();
     assert(acct_open == ACCT_DELETE && docs_open == 1 && stub_delete_calls == 0);
     test_account_delete();
@@ -1478,7 +1478,7 @@ static void test_legal(void) {
     warn_open = 1;
     warn_closing = 0;
     logic_touch(warn_docs_x() + warn_docs_w() / 2, warn_btn_y() + btn_h / 2, 0, 47);
-    press_new = 0;
+    press_points_clear();
     assert(docs_open == 0 && t_dir == 1);
     finish_transition();
     assert(docs_open == 1 && warn_open == 1);
@@ -1535,7 +1535,7 @@ static void test_start_gate(void) {
     t_dir = 0;
     t_target = 0;
     t_fade = 0;
-    press_new = 0;
+    press_points_clear();
     stub_legal_ts = 0;
     puts("start gate: epilepsy warning only, the lobby is live right after it");
 }
@@ -2050,7 +2050,7 @@ static void test_eax229_and_rooms(void) {
     rooms_open();
     assert(rooms_mode == 0);
     logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(0) + rooms_row_h() / 2, 0, 81);
-    press_new = 0;
+    press_points_clear();
     assert(stub_prep_calls == 1 && stub_prep_create == 0 && strcmp(stub_prep_name, "main") == 0);
     stub_prep_status = 2; /* open room: allowed in */
     update_rooms();
@@ -2060,7 +2060,7 @@ static void test_eax229_and_rooms(void) {
     game_state = ST_ROOMS;
     rooms_open();
     logic_touch(rooms_x() + rooms_w() / 2, rooms_row_y(1) + rooms_row_h() / 2, 0, 82);
-    press_new = 0;
+    press_points_clear();
     stub_prep_status = 3; /* password required */
     update_rooms();
     assert(rooms_mode == 2 && str_len(rooms_msg) > 0);
@@ -2235,18 +2235,17 @@ static void test_overlay_transitions(void) {
     /* A covered documents button may not claim an account's press. */
     docs_show(0, 0);
     acct_show(ACCT_MENU);
-    press_new = 1;
-    press_x = acct_x() + acct_w() / 2;
-    press_y = acct_menu_y(0) + btn_h / 2;
-    press_btn_live = 0;
-    press_phase = 0;
+    press_points_clear();
+    press_points_add(acct_x() + acct_w() / 2, acct_menu_y(0) + btn_h / 2, 7);
     press_overlay = 2;
     assert(button_press_k(acct_x(), acct_menu_y(0), acct_w(), btn_h) == 0);
-    assert(press_new == 1);
+    /* The finger is still waiting: the covered button took nothing. */
+    assert(press_point_n == 1);
     press_overlay = 3;
     (void)button_press_k(acct_x(), acct_menu_y(0), acct_w(), btn_h);
-    assert(press_new == 0 && press_btn_live == 1);
+    assert(press_point_n == 0 && press_phase[0] == 1);
     press_overlay = 0;
+    press_points_clear();
     acct_close();
     docs_close();
     /* Reset must discard callbacks as well as the transition clock. */
@@ -3643,25 +3642,25 @@ int main(void) {
         logic_touch(tx, ty, 0, 1);
         assert(t_dir == 1 && t_target == ST_MODES);
         /* The squeeze is claimed by the button the draw passes under it. */
-        assert(press_new == 1);
+        assert(press_point_n == 1);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_new == 0 && press_phase == 1);
+        assert(press_point_n == 0 && press_phase[0] == 1);
         update_button_press();
-        assert(press_k > 0 && press_k < 1); /* easing in */
+        assert(press_k[0] > 0 && press_k[0] < 1); /* easing in */
         assert(button_press_k(menu_x(), menu_row(0), btn_w, btn_h) > 0);
         int n = 0;
         while (n < 3) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k > 0.95); /* fully squeezed and darkened */
+        assert(press_k[0] > 0.95); /* fully squeezed and darkened */
         /* The finger is still down - and the button springs back anyway. */
         n = 0;
         while (n < 30) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k == 0 && press_phase == 0);
+        assert(press_k[0] == 0 && press_phase[0] == 0);
         assert(button_press_k(menu_x(), menu_row(0), btn_w, btn_h) == 0);
         /* Letting go changes nothing: the row already fired. */
         logic_touch(tx + 4, ty, 2, 1);
@@ -3684,7 +3683,7 @@ int main(void) {
         logic_touch(menu_x() + btn_w / 2, menu_row(0) - 200, 1, 1);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
+        assert(press_phase[0] == 0);
 
         /* The NPC cube opens its dialogue on the press as well. */
         cube_npc_d0 = "d0";
@@ -3744,9 +3743,9 @@ int main(void) {
         logic_touch(pill_x, pill_y, 0, 3);
         assert(class_owned_of(cls) == 1 && player_class == cls && cups == 1000 - class_cost_of(cls));
         /* The squeeze of a press on the pill belongs to the whole card. */
-        assert(press_new == 1);
+        assert(press_point_n == 1);
         (void)button_press_k(classes_card_x(v0), classes_top(), classes_card_w(), class_card_h);
-        assert(press_new == 0 && press_phase == 1);
+        assert(press_point_n == 0 && press_phase[0] == 1);
         n = 0;
         while (n < 3) {
             update_button_press();
@@ -3760,7 +3759,7 @@ int main(void) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_k == 0 && press_phase == 0);
+        assert(press_k[0] == 0 && press_phase[0] == 0);
 
         /* The card body takes the press as feedback only: nothing is bought
          * until the finger lifts on the same card. */
@@ -3770,7 +3769,7 @@ int main(void) {
         logic_touch(card_x, card_y, 0, 4);
         assert(class_owned_of(cls) == 0 && cups == 1000);
         (void)button_press_k(classes_card_x(v0), classes_top(), classes_card_w(), class_card_h);
-        assert(press_phase == 1); /* the card itself is what darkens */
+        assert(press_phase[0] == 1); /* the card itself is what darkens */
         n = 0;
         while (n < 30) {
             update_button_press();
@@ -3799,33 +3798,32 @@ int main(void) {
          * claimed by the very same test: a press either fires and squeezes,
          * or does neither. */
         game_state = ST_LOBBY;
-        press_phase = 0;
-        press_k = 0;
-        press_new = 0;
+        press_points_clear();
+        press_pulses_clear();
         t_dir = 0;
         t_target = 0;
         /* Just beside the button (the old invisible touch margin): nothing. */
         logic_touch(menu_x() - 6, menu_row(0) + btn_h / 2, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         logic_touch(menu_x() + btn_w / 2, menu_row(0) + btn_h + 4, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         /* The transparent rounded corner is not part of the button either. */
         logic_touch(menu_x() + 2, menu_row(0) + 2, 0, 6);
         assert(t_dir == 0);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 0);
-        press_new = 0;
+        assert(press_phase[0] == 0);
+        press_points_clear();
         /* The very edge of the visible shape fires - and squeezes. */
         logic_touch(menu_x() + btn_radius, menu_row(0) + 1, 0, 6);
         assert(t_dir == 1 && t_target == ST_MODES);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 1);
+        assert(press_phase[0] == 1);
         n = 0;
         while (n < 30) {
             update_button_press();
@@ -3846,35 +3844,41 @@ int main(void) {
         logic_touch(menu_x() + btn_w / 2, menu_row(0) + btn_h / 2, 0, 7);
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
         n = 0;
-        while (press_phase != 2 && n < 30) {
+        while (press_phase[0] != 2 && n < 30) {
             update_button_press();
             n = n + 1;
         }
         update_button_press();
-        assert(press_phase == 2);
+        assert(press_phase[0] == 2);
         t_dir = 0;
-        press_new = 1; /* the second tap */
+        press_points_add(menu_x() + btn_w / 2, menu_row(0) + btn_h / 2, 7); /* the second tap */
         (void)button_press_k(menu_x(), menu_row(0), btn_w, btn_h);
-        assert(press_phase == 1 && press_new == 0);
+        assert(press_phase[0] == 1 && press_point_n == 0);
         n = 0;
         while (n < 30) {
             update_button_press();
             n = n + 1;
         }
-        assert(press_phase == 0);
+        assert(press_phase[0] == 0);
 
         /* A touch that lands mid-transition is ignored, so it squeezes nothing. */
         t_dir = 1;
         logic_touch(menu_x() + btn_w / 2, menu_row(1) + btn_h / 2, 0, 8);
-        assert(press_new == 0);
+        assert(press_point_n == 0);
         t_dir = 0;
         /* Another finger sliding does not drag the press point away. */
         logic_touch(menu_x() + btn_w / 2, menu_row(1) + btn_h / 2, 0, 9);
         t_dir = 0;
         t_target = 0;
         logic_touch(5, 5, 2, 10);
-        assert(press_x == menu_x() + btn_w / 2 && press_y == menu_row(1) + btn_h / 2);
-        press_new = 0;
+        {
+            int pi = 0;
+            while (pi < (int)press_point_n && press_point_id[pi] != 9)
+                pi = pi + 1;
+            assert(pi < (int)press_point_n);
+            assert(press_point_x[pi] == menu_x() + btn_w / 2 && press_point_y[pi] == menu_row(1) + btn_h / 2);
+        }
+        press_points_clear();
 
         game_state = ST_LOBBY;
         screen_h = saved_h;
@@ -3899,12 +3903,12 @@ int main(void) {
         assert(bpass_corner_x() == screen_w - screen_margin - bpass_corner_w());
         /* The old theme is the rose one, so its cards are rose too. */
         assert(card_bg == 0xFF44203A);
-        press_new = 0;
+        press_points_clear();
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(4) + settings_btn_h() / 2, 0, 21);
         assert(new_theme == 1 && ui_purple == 0xFF5F10A0);
         assert(lobby_label_x(100) == center_x(100));
         assert(card_bg == 0xFF2A2A40);
-        press_new = 0;
+        press_points_clear();
         /* Row 5 opens the legal documents window over the settings. */
         logic_touch(menu_x() + menu_btn_w() / 2, settings_row_y(5) + settings_btn_h() / 2, 0, 22);
         assert(t_dir == 1 && docs_open == 0);
@@ -3913,7 +3917,7 @@ int main(void) {
         assert(logic_back() == 1 && docs_open == 1);
         finish_transition();
         assert(docs_open == 0 && game_state == ST_SETTINGS);
-        press_new = 0;
+        press_points_clear();
 
         /* The promo code sits in the bottom-right corner of the modes screen
          * (on a landscape phone-sized screen, as the game runs). */
@@ -3947,7 +3951,7 @@ int main(void) {
             stub_login_status = 0;
             game_state = ST_MODES;
         }
-        press_new = 0;
+        press_points_clear();
         /* Row 4 is the winter toggle: grey and dead without developer
          * access, a working toggle with it. */
         double saved_winter2 = winter_theme;
@@ -3955,15 +3959,15 @@ int main(void) {
         astra_ability_ok = 0;
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 24);
         assert(winter_theme == saved_winter2 && t_dir == 0);
-        press_new = 0;
+        press_points_clear();
         astra_ability_ok = 1;
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 25);
         assert(winter_theme == 1 - saved_winter2 && t_dir == 0);
-        press_new = 0;
+        press_points_clear();
         logic_touch(menu_x() + menu_btn_w() / 2, modes_row(4) + btn_h / 2, 0, 26);
         assert(winter_theme == saved_winter2);
         astra_ability_ok = saved_dev;
-        press_new = 0;
+        press_points_clear();
         screen_w = saved_mw;
         screen_h = saved_mh;
         game_state = ST_LOBBY;

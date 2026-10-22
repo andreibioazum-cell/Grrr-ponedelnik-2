@@ -124,7 +124,9 @@ static double class_punch_damage_for(double cls, double lv) {
 /* One multiplier for every health pool (player, bot, network fighters): the hits
  * and abilities are unchanged, HP went up so a typical fight lasts about 45
  * seconds. It does not change the ratios between classes. */
-static double round_hp_mult(void) { return 1.5; }
+/* Both fighters get this share of their class health, so a fight lasts long
+ * enough to use the abilities instead of ending in two punches. */
+static double round_hp_mult(void) { return 2.5; }
 
 static double class_base_hp_for(double cls) {
     if (cls == CLASS_CODECRACKER) {

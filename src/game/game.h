@@ -40,6 +40,12 @@ const char *game_pc_login_nick(void);
 double game_pc_enemy_hp(void);
 double game_pc_finished(void);
 double game_pc_chaos(void);
+double game_pc_ult_mode(void);
+double game_pc_ball(void);
+double game_pc_class(void);
+double game_pc_block(void);
+void game_pc_pick_class(double cls);
+double game_pc_charge(void);
 #endif
 
 #endif

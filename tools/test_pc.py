@@ -356,6 +356,217 @@ def test_chaos(assets: Path) -> None:
             fake.wait(timeout=5)
 
 
+def fake_signs_in() -> bool:
+    """The fake remembers every account it handed out, so a server left over
+    from an older run can hold a password the game no longer sends. A sign-up
+    with a throwaway address tells a live server from a stale one."""
+    body = json.dumps({"email": f"probe{time.time()}@cb4.game", "password": "probe"}).encode()
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{FAKE_PORT}/v1/accounts:signUp?key=K",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
+class fake_server:
+    """The fake database on FAKE_PORT: started here unless a test already has
+    one running, and stopped again when the block ends."""
+
+    def __enter__(self) -> "fake_server":
+        self.process = None
+        if wait_port(FAKE_PORT, timeout=0.3) and fake_signs_in():
+            return self
+        if wait_port(FAKE_PORT, timeout=0.1):
+            raise RuntimeError(
+                f"на порту {FAKE_PORT} висит чужая подставная база со старыми паролями - перезапусти "
+                "test/fake_firebase.py"
+            )
+        self.process = subprocess.Popen(
+            [sys.executable, "test/fake_firebase.py", str(FAKE_PORT)],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if not wait_port(FAKE_PORT):
+            raise RuntimeError("подставная база не поднялась")
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        if self.process:
+            self.process.terminate()
+            self.process.wait(timeout=5)
+
+
+def login_taps() -> list[str]:
+    """Consent, the account screen and the admin sign-in, in one line."""
+    return [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+        "--login", "450:Dimasi4ek229:admin",
+    ]
+
+
+def test_multitouch(assets: Path) -> None:
+    """Four fingers at once: stick, block, punch and a held ult.
+
+    Every control keeps its own pointer, so a finger that holds the stick does
+    not take the pads away from the others. The run walks a step with the
+    stick, keeps a finger on the block, taps the punch under the guard (the
+    rules ignore it, the guard has to stay) and charges the ult with a fourth
+    finger, then drops the guard and lets the ball fly.
+    """
+    print("\n== 3e. Multi-touch: four fingers at once ==")
+    with fake_server():
+        result = harness(
+            assets,
+            SCRATCH / "multitouch",
+            [
+                "--frames", "1400",
+                *login_taps(),
+                "--class", "750:3",
+                "--goto", "800:1",
+                "--report", "890",
+                # finger 0: the stick, walked one step and back to the middle
+                "--touch", "900:130:810:0:0", "--touch", "910:130:745:2:0",
+                "--touch", "930:130:810:2:0",
+                # finger 1: guard up, with the stick finger still down
+                "--touch", "940:282:726:0:1", "--report", "960",
+                # finger 2: punch under the guard, guard must not fall
+                "--touch", "970:408:822:0:2", "--touch", "995:408:822:1:2",
+                "--report", "1000",
+                # guard down, then the ult pad with the stick still held
+                "--touch", "1020:282:726:1:1",
+                "--touch", "1040:408:630:0:3", "--report", "1080",
+                "--touch", "1100:408:630:1:3",
+                "--report", "1110", "--report", "1220", "--report", "1360",
+            ],
+        )
+        check("мультитач-бой без ошибок", result.returncode == 0, result.stderr[-1500:])
+        reports = parse_reports(result.stdout)
+        before, guarded = reports.get(890, {}), reports.get(960, {})
+        punched, charged = reports.get(1000, {}), reports.get(1080, {})
+        after = reports.get(1360, {})
+        check(
+            "палец на стике двигает кубика, пока второй держит блок",
+            float(guarded.get("y", "999")) < float(before.get("y", "0")),
+            f"было {before.get('y')}, стало {guarded.get('y')}",
+        )
+        check("второй палец держит блок", guarded.get("block") == "1", str(guarded))
+        check("удар под блоком не сбивает блок", punched.get("block") == "1", str(punched))
+        check("четвёртый палец зарядил мяч, пока стик занят", charged.get("charge") == "1", str(charged))
+        check(
+            "стик не сбит ультой",
+            float(charged.get("y", "999")) < float(before.get("y", "0")),
+            f"было {before.get('y')}, стало {charged.get('y')}",
+        )
+        check("мяч улетел и погас", after.get("ball") == "0", str(after))
+        check(
+            "мяч снял здоровье врагу",
+            float(after.get("foe", "nan")) < float(before.get("foe", "nan")),
+            f"враг {before.get('foe')} -> {after.get('foe')}",
+        )
+
+
+def test_ball(assets: Path) -> None:
+    """Hold the ult pad for 0.6 s and the super turns into a bouncing ball.
+
+    A quick tap has to fire the ordinary super, a real hold has to charge the
+    ball, and the released ball has to hurt the enemy.
+    """
+    print("\n== 3f. The charged ball ult ==")
+    with fake_server():
+        def fight(name: str, events: list[str]) -> dict[int, dict[str, str]]:
+            result = harness(
+                assets,
+                SCRATCH / name,
+                ["--frames", "1200", *login_taps(), "--class", "750:3", "--goto", "800:1", "--report", "880", *events],
+            )
+            return parse_reports(result.stdout)
+
+        tapped = fight("ball_tap", ["--touch", "900:408:630:0:7", "--touch", "920:408:630:1:7", "--report", "1010"])
+        held = fight(
+            "ball_hold",
+            # 0.6 s at 60 fps is 36 frames: 20 frames is still a tap, 60 is a hold
+            ["--touch", "900:408:630:0:7", "--report", "920", "--report", "960",
+             "--touch", "970:408:630:1:7", "--report", "1000", "--report", "1100"],
+        )
+    tap, hold_short, hold_long = tapped.get(1010, {}), held.get(920, {}), held.get(960, {})
+    after = held.get(1100, {})
+    base = held.get(880, {})
+    check("быстрое нажатие не превращается в мяч", tap.get("ball") == "0" and tap.get("charge") == "0", str(tap))
+    check("до 0.6 с ульта не заряжена", hold_short.get("charge") == "0", str(hold_short))
+    check("после 0.6 с удержания ульта стала мячом", hold_long.get("charge") == "1", str(hold_long))
+    check(
+        "мяч попал во врага и снял здоровье",
+        float(after.get("foe", "nan")) < float(base.get("foe", "nan")),
+        f"до {base.get('foe')}, после {after.get('foe')}",
+    )
+    check("мяч не остался на экране навсегда", after.get("ball") == "0", str(after))
+
+
+def test_ult_mode_switch(assets: Path) -> None:
+    """The little button above the ult of "буК": dispenser or ball.
+
+    The class has two ults, so it gets its own switch instead of a hold. The
+    run taps the switch, checks the pad now throws the ball, and taps the pad:
+    the ball flies and the enemy loses health.
+    """
+    print("\n== 3g. The buK ult switch ==")
+    with fake_server():
+        result = harness(
+            assets,
+            SCRATCH / "ult_mode",
+            [
+                "--frames", "1200",
+                *login_taps(),
+                "--class", "750:3",
+                "--goto", "800:1",
+                "--report", "880",
+                # the switch sits right above the ult pad
+                "--touch", "900:408:533:0:5", "--touch", "912:408:533:1:5",
+                "--report", "940",
+                # the ball mode throws the ball on the touch itself
+                "--touch", "960:408:630:0:6", "--touch", "972:408:630:1:6",
+                "--report", "1000", "--report", "1120",
+            ],
+        )
+        check("переключение ульты без ошибок", result.returncode == 0, result.stderr[-1500:])
+        reports = parse_reports(result.stdout)
+        before, after_tap = reports.get(880, {}), reports.get(940, {})
+        hit = reports.get(1120, {})
+        check("у буКа появилась своя кнопка режима", before.get("mode") == "0", str(before))
+        check("кнопка переключает ульту на шарик", reports.get(1000, {}).get("mode") == "1", str(reports.get(1000, {})))
+        check("в режиме шарика ульта пускает мяч", "ball away" in result.stderr, result.stderr[-800:])
+        check(
+            "мяч снял здоровье врагу",
+            float(hit.get("foe", "nan")) < float(before.get("foe", "nan")),
+            f"враг {before.get('foe')} -> {hit.get('foe')}",
+        )
+        check("в обычном режиме мяч не летит", before.get("ball") == "0", str(before))
+
+
+def test_longer_fights(assets: Path) -> None:
+    """Both fighters start a fight with enough health to use their abilities."""
+    print("\n== 3h. Longer fights ==")
+    with fake_server():
+        result = harness(
+            assets,
+            SCRATCH / "long_fight",
+            ["--frames", "900", *login_taps(), "--class", "750:3", "--goto", "800:1", "--report", "880"],
+        )
+        frame = parse_reports(result.stdout).get(880, {})
+        hp = float(frame.get("hp", "0"))
+        foe = float(frame.get("foe", "0"))
+        check("у игрока больше здоровья", hp >= 50, f"hp={hp}")
+        check("у врага тоже", foe >= 50 and foe == hp, f"hp={hp}, foe={foe}")
+
+
 def wait_port(port: int, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -430,6 +641,7 @@ def test_login(assets: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Проверка ПК-версии")
     parser.add_argument("--no-build", action="store_true", help="не пересобирать харнесс")
+    parser.add_argument("--only", default="", help="прогнать только тесты, в названии которых есть это слово")
     args = parser.parse_args()
 
     SCRATCH.mkdir(parents=True, exist_ok=True)
@@ -437,12 +649,22 @@ def main() -> int:
     if not args.no_build or not BINARY.is_file():
         build(fake_url)
     assets = stage_assets()
-    test_pixels(assets)
-    test_menu_and_battle(assets)
-    test_controls(assets)
-    test_walk_feel(assets)
-    test_chaos(assets)
-    test_login(assets)
+    tests = [
+        test_pixels,
+        test_menu_and_battle,
+        test_controls,
+        test_walk_feel,
+        test_multitouch,
+        test_ball,
+        test_ult_mode_switch,
+        test_longer_fights,
+        test_chaos,
+        test_login,
+    ]
+    for test in tests:
+        if args.only and args.only not in test.__name__:
+            continue
+        test(assets)
 
     print()
     if FAILED:

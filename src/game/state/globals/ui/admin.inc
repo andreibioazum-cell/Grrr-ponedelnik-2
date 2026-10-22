@@ -3,6 +3,7 @@
 double admin_ball_x;
 double admin_ball_y;
 double admin_ball_grab;
+double admin_ball_id;
 double admin_ball_px;
 double admin_ball_py;
 double admin_ball_grab_dx;

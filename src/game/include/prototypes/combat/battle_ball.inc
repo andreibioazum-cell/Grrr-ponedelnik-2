@@ -1,0 +1,11 @@
+static void ball_reset(void);
+static void ball_hold_start(double id);
+static void ball_hold_tick(void);
+static void ball_hold_release(double cancelled);
+static void ball_fire(void);
+static void ball_tick(void);
+static void ball_fade_tick(void);
+static void draw_ball(void);
+static double ult_mode_hit(double x, double y);
+static void ult_mode_toggle(void);
+static void ball_tap_fire(void);

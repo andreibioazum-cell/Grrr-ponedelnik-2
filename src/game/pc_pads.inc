@@ -78,7 +78,18 @@ void game_pc_player_xy(double *x, double *y) {
 double game_pc_enemy_hp(void) { return enemy ? enemy->hp : 0.0; }
 
 double game_pc_finished(void) { return finished; }
+double game_pc_ult_mode(void) { return ball_mode; }
+
 double game_pc_chaos(void) { return chaos_on; }
+double game_pc_ball(void) { return ball.active; }
+double game_pc_class(void) { return player_class; }
+double game_pc_block(void) { return player_block; }
+
+/* Harness only: pick a class the same way the shop card does, so a test can
+ * start a fight as a class with a super. Not owned means refused, as in the
+ * menu - this is not a way to unlock anything. */
+void game_pc_pick_class(double cls) { pick_class(cls); }
+double game_pc_charge(void) { return ball.charged; }
 
 /* The consent checkbox on the login screen is part of the form: a PC player
  * clicks it like any other control. */

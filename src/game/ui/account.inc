@@ -248,7 +248,7 @@ static void touch_account(double x, double y, double action, double id) {
     if (acct_gift_view_open == 1) {
         if (action == 0) {
             acct_gift_view_open = 0;
-            press_new = 0;
+            press_points_clear();
         }
         return;
     }

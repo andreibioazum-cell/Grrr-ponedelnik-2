@@ -89,6 +89,9 @@ static void pc_blit(void) {
         bi.bmiHeader.biPlanes = 1;
         bi.bmiHeader.biBitCount = 32;
         bi.bmiHeader.biCompression = BI_RGB;
+        /* COLORONCOLOR is the nearest-neighbour stretch: the window shows the
+         * frame as drawn, with no blurred pixels. */
+        SetStretchBltMode(dc, COLORONCOLOR);
         StretchDIBits(dc, 0, 0, cw, ch, 0, 0, pc_conv_w, pc_conv_h, pc_conv, &bi, DIB_RGB_COLORS, SRCCOPY);
     }
     ReleaseDC(pc_hwnd, dc);

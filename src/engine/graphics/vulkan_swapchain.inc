@@ -244,7 +244,6 @@ static int ds_vk_recreate_swapchain(void) {
     vkGetPhysicalDeviceFormatProperties(vk_phys, vk_sw_format, &fp);
     vk_blit_ok = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT) &&
                  (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_DST_BIT);
-    vk_blit_linear = vk_blit_ok && (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
     if (!vk_blit_ok)
         ds_log_err("vulkan: format %d lacks blit support, auto-scale degrades to copy", (int)vk_sw_format);
 

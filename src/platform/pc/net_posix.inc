@@ -119,11 +119,18 @@ typedef struct {
 
 static int pc_out_sink(void *ctx, const char *data, size_t len) {
     PcOutBuf *b = (PcOutBuf *)ctx;
-    if (b->out && b->cap && b->used + len < b->cap) {
-        memcpy(b->out + b->used, data, len);
-        b->used += len;
-        b->out[b->used] = '\0';
-    }
+    if (!b->out || b->cap == 0)
+        return 1;
+    /* Keep what fits and drop only the tail: a body that grew past the buffer
+     * used to lose whole chunks, which cut the JSON at the front and left the
+     * client with an unparsable answer. */
+    if (b->used + 1 >= b->cap)
+        return 1;
+    if (b->used + len > b->cap - 1)
+        len = b->cap - 1 - b->used;
+    memcpy(b->out + b->used, data, len);
+    b->used += len;
+    b->out[b->used] = '\0';
     return 1;
 }
 

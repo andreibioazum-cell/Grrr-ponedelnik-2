@@ -65,6 +65,7 @@
 #include "combat/battle_screen_fx.inc"
 #include "combat/battle_render.inc"
 #include "combat/battle_chaos.inc"
+#include "combat/battle_ball.inc"
 #include "combat/battle_event_plates.inc"
 #include "combat/battle_event_santa.inc"
 #include "combat/battle_event_dice.inc"

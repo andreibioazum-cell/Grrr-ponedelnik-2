@@ -189,7 +189,6 @@ static double admin_ball_hit(double x, double y) {
 }
 
 static double admin_touch(double x, double y, double action, double id) {
-    (void)id;
     if (is_admin() == 0) {
         return 0;
     }
@@ -201,6 +200,11 @@ static double admin_touch(double x, double y, double action, double id) {
         }
         return 1;
     }
+    /* The ball belongs to the finger that grabbed it: a second finger can
+     * tap the panel while the first one drags. */
+    if (admin_ball_grab == 1 && id != admin_ball_id) {
+        return 1;
+    }
     if (admin_ball_grab == 1) {
         if (action == 2 || action == 1) {
             double br = admin_ball_r();
@@ -209,6 +213,7 @@ static double admin_touch(double x, double y, double action, double id) {
         }
         if (action == 1 || action == 3) {
             admin_ball_grab = 0;
+            admin_ball_id = -1;
             double dx = x - admin_ball_px;
             double dy = y - admin_ball_py;
             if (action == 1 && sqrt(dx * dx + dy * dy) <= 13) {
@@ -220,6 +225,7 @@ static double admin_touch(double x, double y, double action, double id) {
     }
     if (action == 0 && admin_ball_hit(x, y) == 1) {
         admin_ball_grab = 1;
+        admin_ball_id = id;
         admin_ball_px = x;
         admin_ball_py = y;
         admin_ball_grab_dx = x - admin_ball_x;

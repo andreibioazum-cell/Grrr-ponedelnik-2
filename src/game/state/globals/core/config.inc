@@ -413,12 +413,6 @@ char login_pass_buf[128];
 const char *LOBBY_MUSIC;
 const char *BUTTON_CLICK_SOUND;
 double button_click_ok;
-double press_x;
-double press_y;
-double press_k;
-double press_phase;
-double press_new;
-double press_id;
 /* 1 = the new look (purple, gradients, centred menu, NPC cube),
  * 0 = the old one (rose, flat, left-aligned, no NPC). */
 double new_theme;

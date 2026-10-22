@@ -23,7 +23,7 @@
     } while (0)
 #define URL 512
 #define BODY 1024
-#define RESP 4096
+#define RESP 8192
 #define CHAT_RESP 8192
 #define WRITE_TICK 60
 #define READ_TICK 60

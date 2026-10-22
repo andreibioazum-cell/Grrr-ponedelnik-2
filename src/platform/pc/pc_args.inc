@@ -14,6 +14,7 @@
  *   --atk F:0|1            harness: press/release the punch pad
  *   --blk F:0|1            harness: press/release the block pad
  *   --super F:0|1          harness: press/release the super pad
+ *   --class F:N            harness: pick an owned class at frame F
  * Script events are kept as raw strings and interpreted by pc_headless.inc. */
 #ifndef PC_ARGS_H
 #define PC_ARGS_H
@@ -128,6 +129,7 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
                    strcmp(k, "--enter") == 0 || strcmp(k, "--back") == 0 || strcmp(k, "--dump") == 0 ||
                    strcmp(k, "--report") == 0 || strcmp(k, "--stick") == 0 || strcmp(k, "--atk") == 0 ||
                    strcmp(k, "--blk") == 0 || strcmp(k, "--super") == 0 || strcmp(k, "--login") == 0 ||
+                   strcmp(k, "--class") == 0 ||
                    strcmp(k, "--logininfo") == 0) {
             pc_args_push_event(a, k + 2, v);
             i++;

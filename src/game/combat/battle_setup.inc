@@ -9,6 +9,7 @@ static void reset_battle(void) {
          * not carry it out of the centre on the first frame. */
     player_vel_reset();
     chaos_reset();
+    ball_reset();
     player->max_hp = astra_ability_max_hp_for(player_class, astra_ability_local());
     player->hp = player->max_hp;
     player->size = 25 * player_scale;

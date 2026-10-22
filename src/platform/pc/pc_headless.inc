@@ -109,6 +109,14 @@ static void pc_event_parse(PcArgs *a) {
             }
             e->kind = 11;
             e->frame = frame;
+        } else if (strcmp(name, "class") == 0) {
+            int frame = 0;
+            double cls = 0;
+            if (sscanf(rest, "%d:%lf", &frame, &cls) != 2)
+                continue;
+            e->kind = 13;
+            e->frame = frame;
+            e->state = cls;
         } else if (strcmp(name, "logininfo") == 0) {
             e->kind = 12;
             e->frame = atoi(rest);
@@ -134,12 +142,40 @@ static void pc_report_state(int frame) {
     double px = 0, py = 0;
     game_pc_player_xy(&px, &py);
     printf("frame %d: state=%.0f battle=%d hp=%.2f foe=%.2f finished=%.0f x=%.1f y=%.1f login=%.0f nick=%s chaos=%.0f "
-           "error=%d\n",
+           "ball=%.0f charge=%.0f cls=%.0f block=%.0f mode=%.0f error=%d\n",
            frame,
            game_pc_state(), game_pc_in_battle(), game_pc_player_hp(), game_pc_enemy_hp(), game_pc_finished(), px, py,
            game_pc_login_status(), game_pc_login_nick()[0] ? game_pc_login_nick() : "-", game_pc_chaos(),
+           game_pc_ball(), game_pc_charge(), game_pc_class(), game_pc_block(), game_pc_ult_mode(),
            ds_game_has_error() ? 1 : 0);
     fflush(stdout);
+}
+
+static int pc_login_retry_at = 0;
+static int pc_login_retries = 0;
+
+/* A sign-in can lose the race with a busy machine: the fake database runs on
+ * the same box as the harness, and a dropped connection leaves the screen with
+ * "no connection". The fields keep what was typed, so the retry is one more tap
+ * on the submit button instead of a whole failed scenario. */
+static void pc_login_retry_tick(int frame) {
+    float nx = 0, ny = 0, px = 0, py = 0, bx = 0, by = 0, bw = 0, bh = 0;
+    if (pc_login_retries <= 0 || pc_login_retry_at == 0 || frame < pc_login_retry_at)
+        return;
+    if (game_pc_login_status() != 4) {
+        pc_login_retry_at = 0;
+        pc_login_retries = 0;
+        return;
+    }
+    game_pc_login_fields(&nx, &ny, &px, &py, &bx, &by, &bw, &bh);
+    (void)nx;
+    (void)ny;
+    (void)px;
+    (void)py;
+    pc_touch(bx + bw * 0.5f, by + bh * 0.5f, 0, 1);
+    pc_touch(bx + bw * 0.5f, by + bh * 0.5f, 1, 1);
+    pc_login_retries--;
+    pc_login_retry_at = pc_login_retries > 0 ? frame + 30 : 0;
 }
 
 static void pc_apply_event(PcEvent *e, int frame) {
@@ -181,6 +217,9 @@ static void pc_apply_event(PcEvent *e, int frame) {
     case 10:
         pc_ctl_super(e->action);
         break;
+    case 13:
+        game_pc_pick_class(e->state);
+        break;
     case 11: {
         float nx = 0, ny = 0, px = 0, py = 0, bx = 0, by = 0, bw = 0, bh = 0;
         const char *sep;
@@ -216,6 +255,8 @@ static void pc_apply_event(PcEvent *e, int frame) {
         keyboard_type(sep + 1);
         pc_touch(bx + bw * 0.5f, by + bh * 0.5f, 0, 1);
         pc_touch(bx + bw * 0.5f, by + bh * 0.5f, 1, 1);
+        pc_login_retry_at = frame + 30;
+        pc_login_retries = 3;
         break;
     }
     case 12: {
@@ -285,6 +326,7 @@ static int pc_run_headless(PcArgs *args) {
         for (i = 0; i < pc_event_count; i++)
             if (pc_events[i].frame == frame)
                 pc_apply_event(&pc_events[i], frame);
+        pc_login_retry_tick(frame);
         (void)pc_step();
         if (ds_game_has_error())
             failed = 1;

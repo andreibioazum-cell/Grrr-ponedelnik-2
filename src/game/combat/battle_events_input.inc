@@ -190,6 +190,7 @@ static void draw_online(void) {
         }
     }
     draw_ability_hitboxes();
+    chaos_draw();
     draw_gift();
     draw_boom();
     draw_remote_snow();
@@ -318,6 +319,7 @@ static void touch_game(double x, double y, double action, double id) {
     if (action == 3) {
         blk_id = -1;
         player_block = 0;
+        ball_hold_release(1);
         drop_joy();
         return;
     }
@@ -338,6 +340,12 @@ static void touch_game(double x, double y, double action, double id) {
         start_transition(0);
         return;
     }
+    /* Ebuc keeps two ults and switches between them with his own button: the
+     * letter on it is what the next tap throws. */
+    if (game_state == ST_SOLO && player_class == CLASS_EBUC && action == 0 && ult_mode_hit(x, y) == 1) {
+        ult_mode_toggle();
+        return;
+    }
     /* The three combat buttons sit close together, so the nearest one wins the
      * press. Punch and super go off the moment the finger lands - a hit that
      * waits for the release is a hit that feels late - while the block pad
@@ -354,6 +362,10 @@ static void touch_game(double x, double y, double action, double id) {
         if (action == 0 && db <= pr && db <= dp && db <= dsu) {
             blk_id = id;
             player_block = 1;
+            /* A guard and a charge do not mix: letting go of the pad while the
+             * guard is up would swallow the ult, so the hold is dropped here
+             * with no charge and no cooldown. */
+            ball_hold_release(1);
             return;
         }
         if (id == blk_id) {
@@ -364,9 +376,27 @@ static void touch_game(double x, double y, double action, double id) {
             return;
         }
         if (class_has_super(player_class) == 1) {
-            if (action == 0 && dsu <= pr && dsu <= dp) {
-                if (game_state == ST_SOLO || online_ready == 1) {
-                    fire_super();
+            /* The ult pad belongs to its own finger: a hold charges the ball,
+             * a quick tap still fires the ordinary super. In an online fight
+             * the super fires on the press, exactly as before. */
+            if (action == 0 && dsu <= pr && dsu <= dp && ball.hold_id == -1 && player_block == 0) {
+                /* In ball mode the pad throws the ball on the touch itself. */
+                if (game_state == ST_SOLO && player_class == CLASS_EBUC && ball_mode == 1) {
+                    ball_tap_fire();
+                    return;
+                }
+                if (game_state == ST_ONLINE) {
+                    if (online_ready == 1) {
+                        fire_super();
+                    }
+                } else if (game_state == ST_SOLO) {
+                    ball_hold_start(id);
+                }
+                return;
+            }
+            if (ball.hold_id != -1 && id == ball.hold_id) {
+                if (action == 1 || action == 3) {
+                    ball_hold_release(action == 3 ? 1 : 0);
                 }
                 return;
             }

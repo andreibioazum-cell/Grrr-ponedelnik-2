@@ -1,6 +1,7 @@
 admin_ball_x = 0;
 admin_ball_y = 0;
 admin_ball_grab = 0;
+admin_ball_id = -1;
 admin_ball_px = 0;
 admin_ball_py = 0;
 admin_ball_grab_dx = 0;
