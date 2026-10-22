@@ -83,6 +83,7 @@ double game_pc_ult_mode(void) { return ball_mode; }
 double game_pc_chaos(void) { return chaos_on; }
 double game_pc_ball(void) { return ball.active; }
 double game_pc_bounces(void) { return ball.bounces; }
+double game_pc_remote_bricks(void) { return remote_bricks_live(); }
 double game_pc_class(void) { return player_class; }
 double game_pc_block(void) { return player_block; }
 

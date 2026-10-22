@@ -7,5 +7,11 @@ static void ball_tick(void);
 static void ball_fade_tick(void);
 static void draw_ball(void);
 static void draw_ball_count(void);
+static void ball_online_tick(void);
+static void draw_remote_bricks(void);
+static void remote_bricks_reset(void);
+#ifdef CB_PC
+static double remote_bricks_live(void);
+#endif
 static double ult_mode_hit(double x, double y);
 static void ult_mode_toggle(void);

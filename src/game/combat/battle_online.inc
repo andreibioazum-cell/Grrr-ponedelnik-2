@@ -321,8 +321,7 @@ static void push_self(void) {
     }
     progress_push_to_net();
     net_publish(player->x / screen_w, player->y / screen_h, player->angle, player->hp, alive);
-    /* The raised block is synced state: others draw the guard, and the
-     * victim-side damage already cuts frontal hits while it is up. */
+    /* The block is synced: others draw the guard, the victim cuts the hit. */
     net_publish_block(player_block);
     net_publish_codecracker_super(codecracker_super_t > 0 ? 1 : 0);
     net_publish_punch(punch->x / screen_w, punch->y / screen_h, punch->dx, punch->dy, punch->shot);
@@ -391,7 +390,8 @@ static void update_online(void) {
     tick_hurt_fades();
     tick_remote_punches();
     update_aim();
-    chaos_tick(); /* local joke mode, online as well */
+    chaos_tick(); /* joke mode runs online too */
+    ball_online_tick(); /* buK brick */
     if (finished != 0) {
         return;
     }

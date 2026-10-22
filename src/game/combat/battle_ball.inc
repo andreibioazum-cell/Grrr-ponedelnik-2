@@ -23,7 +23,7 @@
 typedef struct {
     double active;
     double x, y, vx, vy;
-    double bounces, t, spin;
+    double bounces, t, spin, shot;
     /* Aiming: the countdown runs in aim_t, the throw follows aim_dx/aim_dy. */
     double aim_on, aim_id, aim_t, aim_dx, aim_dy;
     double trail_x[BALL_TRAIL], trail_y[BALL_TRAIL], trail_a[BALL_TRAIL];
@@ -60,7 +60,7 @@ static void draw_ult_mode(void) {
     const char *label;
     uint32_t fill;
     double sc = 0.62;
-    if (player_class != CLASS_EBUC || game_state != ST_SOLO) {
+    if (player_class != CLASS_EBUC || (game_state != ST_SOLO && game_state != ST_ONLINE)) {
         return;
     }
     label = ball_mode == 1 ? "Ш" : "Д";
@@ -86,7 +86,9 @@ static void ball_reset(void) {
     ball.aim_t = 0;
     ball.aim_dx = 1;
     ball.aim_dy = 0;
+    ball.shot = 0;
     ball_mode = 0;
+    remote_bricks_reset();
     while (i < BALL_TRAIL) {
         ball.trail_a[(int)i] = 0;
         i = i + 1;
@@ -191,6 +193,12 @@ static void ball_fire(void) {
     ball.t = 0;
     ball.spin = 0;
     ball.active = 1;
+    ball.shot = ball.shot + 1;
+    if (game_state == ST_ONLINE) {
+        /* Online the throw is published, not simulated for the others: every
+         * client runs the same flight from the origin and the direction. */
+        net_publish_brick(player->x / screen_w, player->y / screen_h, ball.aim_dx, ball.aim_dy, ball.shot);
+    }
     super_cd = super_cd_time;
     ability_snd(STATION_SOUND);
     ds_log("brick thrown");
@@ -248,7 +256,7 @@ static void ball_tick(void) {
             ball_burst(0);
             return;
         }
-        if (circle_hits_enemy(ball.x, ball.y, BALL_RADIUS) == 1) {
+        if (game_state != ST_ONLINE && circle_hits_enemy(ball.x, ball.y, BALL_RADIUS) == 1) {
             ball_burst(1);
             return;
         }
@@ -328,4 +336,115 @@ static void ball_fade_tick(void) {
         }
         i = i + 1;
     }
+}
+
+/* Bricks thrown by other players in an online fight. Every client flies them
+ * from the published origin and direction, so the bounces happen in the same
+ * places on every screen, and the hit lands where the local player stands. */
+#define REMOTE_BRICKS 4
+
+static double rb_on[REMOTE_BRICKS], rb_shot[REMOTE_BRICKS];
+static double rb_x[REMOTE_BRICKS], rb_y[REMOTE_BRICKS], rb_vx[REMOTE_BRICKS], rb_vy[REMOTE_BRICKS];
+static double rb_bounces[REMOTE_BRICKS], rb_t[REMOTE_BRICKS], rb_spin[REMOTE_BRICKS];
+
+static void remote_bricks_reset(void) {
+    double i = 0;
+    while (i < REMOTE_BRICKS) {
+        rb_on[(int)i] = 0;
+        rb_shot[(int)i] = -1;
+        i = i + 1;
+    }
+}
+
+static void remote_bricks_tick(void) {
+    double s = 0;
+    if (game_state != ST_ONLINE) {
+        return;
+    }
+    while (s < max_players && s < REMOTE_BRICKS) {
+        double shot = net_player_brick(s);
+        if (net_player_online(s) != 1 || s == net_slot()) {
+            rb_on[(int)s] = 0;
+            rb_shot[(int)s] = -1;
+            s = s + 1;
+            continue;
+        }
+        if (shot != rb_shot[(int)s]) {
+            rb_shot[(int)s] = shot;
+            if (shot > 0) {
+                rb_on[(int)s] = 1;
+                rb_x[(int)s] = net_player_brick_x(s) * screen_w;
+                rb_y[(int)s] = net_player_brick_y(s) * screen_h;
+                rb_vx[(int)s] = net_player_brick_dx(s) * BALL_SPEED;
+                rb_vy[(int)s] = net_player_brick_dy(s) * BALL_SPEED;
+                rb_bounces[(int)s] = 0;
+                rb_t[(int)s] = 0;
+                rb_spin[(int)s] = 0;
+            }
+        }
+        if (rb_on[(int)s] == 1) {
+            double x = rb_x[(int)s], y = rb_y[(int)s], vx = rb_vx[(int)s], vy = rb_vy[(int)s];
+            rb_t[(int)s] = rb_t[(int)s] + dt;
+            rb_spin[(int)s] = rb_spin[(int)s] + dt * 6;
+            x = x + vx * dt;
+            y = y + vy * dt;
+            if (x < BALL_RADIUS || x > screen_w - BALL_RADIUS) {
+                vx = 0 - vx;
+                x = clamp(x, BALL_RADIUS, screen_w - BALL_RADIUS);
+                rb_bounces[(int)s] = rb_bounces[(int)s] + 1;
+            }
+            if (y < BALL_RADIUS || y > screen_h - BALL_RADIUS) {
+                vy = 0 - vy;
+                y = clamp(y, BALL_RADIUS, screen_h - BALL_RADIUS);
+                rb_bounces[(int)s] = rb_bounces[(int)s] + 1;
+            }
+            rb_x[(int)s] = x;
+            rb_y[(int)s] = y;
+            rb_vx[(int)s] = vx;
+            rb_vy[(int)s] = vy;
+            if (circle_hits_player(x, y, BALL_RADIUS) == 1) {
+                take_damage_at(BALL_DAMAGE, x, y);
+                rb_on[(int)s] = 0;
+            } else if (rb_bounces[(int)s] > BALL_MAX_BOUNCES || rb_t[(int)s] > BALL_MAX_TIME) {
+                rb_on[(int)s] = 0;
+            }
+        }
+        s = s + 1;
+    }
+}
+
+static void draw_remote_bricks(void) {
+    double s = 0;
+    while (s < REMOTE_BRICKS) {
+        if (rb_on[(int)s] == 1) {
+            ring(rb_x[(int)s], rb_y[(int)s], BALL_RADIUS * 1.25, 3, 0x99FFD54F);
+            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] - 14, 46, 28, rb_spin[(int)s], 0xFFD2703F);
+            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] - 8, 46, 2, rb_spin[(int)s], 0xFFFFE9CC);
+            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] + 6, 46, 2, rb_spin[(int)s], 0xFFFFE9CC);
+        }
+        s = s + 1;
+    }
+}
+
+#ifdef CB_PC
+/* How many bricks of other players are in the air right now (harness only). */
+static double remote_bricks_live(void) {
+    double s = 0, n = 0;
+    while (s < REMOTE_BRICKS) {
+        if (rb_on[(int)s] == 1) {
+            n = n + 1;
+        }
+        s = s + 1;
+    }
+    return n;
+}
+#endif
+
+/* Everything the brick needs per frame in an online fight: the local aim and
+ * flight plus the bricks of the others. */
+static void ball_online_tick(void) {
+    ball_aim_tick();
+    ball_tick();
+    ball_fade_tick();
+    remote_bricks_tick();
 }

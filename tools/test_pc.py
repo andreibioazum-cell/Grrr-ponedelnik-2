@@ -412,6 +412,62 @@ def test_chaos_online(assets: Path) -> None:
         check("шедевро-режим виден в онлайне", frame_a.get("chaos") == "1", str(frame_a))
 
 
+def test_brick_online(assets: Path) -> None:
+    """Two clients in one room, and the buK brick flies over the network.
+
+    The complaint that started this: in an online fight ("CCP") nothing of the
+    brick could be seen. Here the thrower switches the ult to the brick, aims it
+    by hand, and the other client has to see the brick and lose health.
+    """
+    print("\n== 3j. The buK brick in an online fight ==")
+    room = f"brk{int(time.time()) % 100000}"
+    nick = f"brk{int(time.time()) % 100000}"
+    taps = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+    ]
+    with fake_server():
+        thrower = harness_async(
+            assets,
+            SCRATCH / "brick_net_a",
+            ["--frames", "2400", *taps, "--login", "500:Dimasi4ek229:admin",
+             "--class", "600:3", "--room", f"900:{room}:1",
+             "--report", "1500",
+             # the mode button, then the pad: the countdown and a dragged aim
+             "--touch", "1560:408:533:0:5", "--touch", "1572:408:533:1:5",
+             "--touch", "1600:408:630:0:7", "--touch", "1630:408:700:2:7",
+             "--touch", "1640:408:700:1:7",
+             "--report", "1700", "--report", "2000", "--report", "2300"],
+        )
+        time.sleep(5)
+        victim = harness_async(
+            assets,
+            SCRATCH / "brick_net_b",
+            ["--frames", "2400", *taps, "--login", "500:" + nick + ":pass1234",
+             "--room", f"960:{room}:0",
+             "--report", "1500", "--report", "1750", "--report", "1850", "--report", "2000", "--report", "2300"],
+        )
+        out_a, err_a = thrower.communicate(timeout=500)
+        out_b, err_b = victim.communicate(timeout=500)
+    rep_a = parse_reports(out_a)
+    rep_b = parse_reports(out_b)
+    a1500, a1700, a2300 = rep_a.get(1500, {}), rep_a.get(1700, {}), rep_a.get(2300, {})
+    b1500, b2300 = rep_b.get(1500, {}), rep_b.get(2300, {})
+    seen = [rep_b.get(f, {}).get("rbricks") for f in (1750, 1850, 2000, 2300)]
+    a2000 = rep_a.get(2000, {})
+    check("метатель в онлайне", a1500.get("state") == "5" and a1500.get("battle") == "1", str(a1500))
+    check("второй игрок в том же бою", b1500.get("state") == "5" and b1500.get("battle") == "1", str(b1500))
+    check("кнопка режимов работает в онлайне", a1700.get("mode") == "1", str(a1700))
+    check("кирпич улетел в онлайне", "brick thrown" in err_a and float(a2000.get("bounces", "0")) > 0,
+          f"{a2000} / {err_a[-400:]}")
+    check("другой игрок видит кирпич", "1" in seen, f"rbricks по кадрам: {seen}")
+    check(
+        "кирпич снял здоровье второму игроку",
+        float(b2300.get("hp", "nan")) < float(b1500.get("hp", "nan")),
+        f"до {b1500.get('hp')}, после {b2300.get('hp')} / {err_b[-300:]}",
+    )
+
+
 def fake_signs_in() -> bool:
     """The fake remembers every account it handed out, so a server left over
     from an older run can hold a password the game no longer sends. A sign-up
@@ -735,6 +791,7 @@ def main() -> int:
         test_longer_fights,
         test_chaos,
         test_chaos_online,
+        test_brick_online,
         test_login,
     ]
     for test in tests:

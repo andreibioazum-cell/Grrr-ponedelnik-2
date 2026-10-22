@@ -43,6 +43,7 @@ double game_pc_chaos(void);
 double game_pc_ult_mode(void);
 double game_pc_ball(void);
 double game_pc_bounces(void);
+double game_pc_remote_bricks(void);
 double game_pc_class(void);
 double game_pc_block(void);
 void game_pc_pick_class(double cls);

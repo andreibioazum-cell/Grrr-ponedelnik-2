@@ -83,6 +83,9 @@ typedef struct {
     double thud;
     double block;
     double ccu;
+    /* The buK brick: where it was thrown from, where it goes, and the shot
+     * number that makes the throw unique. */
+    double brick_x, brick_y, brick_dx, brick_dy, brick;
     double cls, level, skin;
     int online;
     char nick[24];

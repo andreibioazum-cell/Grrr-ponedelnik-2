@@ -88,6 +88,8 @@ void net_publish_universe(double x, double y, double counter);
 
 void net_publish_thud(double counter);
 void net_publish_block(double on);
+/* The buK brick: origin, direction and the shot number of the throw. */
+void net_publish_brick(double x, double y, double dx, double dy, double shot);
 void net_publish_codecracker_super(double on);
 void net_set_class(double cls);
 double net_status(void);
@@ -139,6 +141,11 @@ double net_player_universe(double slot);
 
 double net_player_thud(double slot);
 double net_player_block(double slot);
+double net_player_brick_x(double slot);
+double net_player_brick_y(double slot);
+double net_player_brick_dx(double slot);
+double net_player_brick_dy(double slot);
+double net_player_brick(double slot);
 double net_player_codecracker_super(double slot);
 double net_player_dash(double slot);
 double net_player_dash_x(double slot);

@@ -191,6 +191,8 @@ static void draw_online(void) {
     }
     draw_ability_hitboxes();
     chaos_draw();
+    draw_ball();
+    draw_remote_bricks();
     draw_gift();
     draw_boom();
     draw_remote_snow();
@@ -342,7 +344,8 @@ static void touch_game(double x, double y, double action, double id) {
     }
     /* Ebuc keeps two ults and switches between them with his own button: the
      * letter on it is what the next tap throws. */
-    if (game_state == ST_SOLO && player_class == CLASS_EBUC && action == 0 && ult_mode_hit(x, y) == 1) {
+    if (player_class == CLASS_EBUC && (game_state == ST_SOLO || game_state == ST_ONLINE) && action == 0 &&
+        ult_mode_hit(x, y) == 1) {
         ball_aim_cancel();
         ult_mode_toggle();
         return;
@@ -395,7 +398,8 @@ static void touch_game(double x, double y, double action, double id) {
              * nothing in the game waits for a hold. In brick mode the press
              * only starts the countdown, and the throw comes later. */
             if (action == 0 && dsu <= pr && dsu <= dp && player_block == 0 && ball.aim_on == 0) {
-                if (game_state == ST_SOLO && player_class == CLASS_EBUC && ball_mode == 1) {
+                if (player_class == CLASS_EBUC && ball_mode == 1 &&
+                    (game_state == ST_SOLO || online_ready == 1)) {
                     ball_aim_start(id);
                     return;
                 }

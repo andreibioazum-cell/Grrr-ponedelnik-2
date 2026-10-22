@@ -92,6 +92,20 @@ void net_publish_block(double on) {
     }
     unlock();
 }
+void net_publish_brick(double x, double y, double dx, double dy, double shot) {
+    lock();
+    net.me.brick_x = x;
+    net.me.brick_y = y;
+    net.me.brick_dx = dx;
+    net.me.brick_dy = dy;
+    net.me.brick = shot;
+    if (net.slot >= 0) {
+        net.players[net.slot] = net.me;
+        net.players[net.slot].online = 1;
+    }
+    unlock();
+}
+
 void net_publish_codecracker_super(double on) {
     lock();
     net.me.ccu = on ? 1 : 0;
@@ -308,6 +322,11 @@ READER(net_player_universe, net.players[i].universe)
 READER(net_player_thud, net.players[i].thud)
 READER(net_player_block, net.players[i].block)
 READER(net_player_codecracker_super, net.players[i].ccu)
+READER(net_player_brick_x, net.players[i].brick_x)
+READER(net_player_brick_y, net.players[i].brick_y)
+READER(net_player_brick_dx, net.players[i].brick_dx)
+READER(net_player_brick_dy, net.players[i].brick_dy)
+READER(net_player_brick, net.players[i].brick)
 READER(net_player_class, net.players[i].cls)
 #undef READER
 double net_player_level(double slot) {

@@ -108,6 +108,7 @@ def slot(nick, seq, **over):
         "dax": 0, "day": 0, "dadx": 0, "dady": 0, "dash": 0,
         "gbx": 0, "gby": 0, "gbdx": 0, "gbdy": 0, "grab": 0,
         "uzx": 0, "uzy": 0, "universe": 0, "thud": 0, "blk": 0, "ccu": 0,
+        "bkx": 0, "bky": 0, "bkdx": 0, "bkdy": 0, "brick": 0,
         "cls": 0, "level": 2, "skin": 1,
     }
     s.update(over)
