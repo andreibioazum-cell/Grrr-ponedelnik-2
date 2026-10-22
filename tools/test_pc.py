@@ -701,7 +701,7 @@ def test_longer_fights(assets: Path) -> None:
         cls = frame.get("cls", "0")
         base = raw.get(cls, 20.0)
         check("здоровья больше, чем у голого класса", hp > base, f"hp={hp}, база={base}")
-        check("и ровно на четверть, а не в разы", abs(hp - base * 1.25) < 0.01, f"hp={hp}, база={base}")
+        check("и всего на десятую часть, а не в разы", abs(hp - base * 1.1) < 0.01, f"hp={hp}, база={base}")
         # The enemy brings the pool of its own class, so only the range is fixed.
         check("у врага свой пул, тоже умеренный", 15 < foe <= 30, f"foe={foe}")
 
