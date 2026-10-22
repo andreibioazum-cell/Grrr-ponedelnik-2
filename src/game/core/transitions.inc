@@ -100,12 +100,15 @@ static void update_transition(void) {
             t_action = NULL;
             action();
             ui_nav_gen = ui_nav_gen + 1;
+            /* A new screen must not inherit a squeeze from the old one. */
+            press_pulses_clear();
             t_dir = -1;
             return;
         }
         leave_screen(game_state);
         game_state = t_target;
         ui_nav_gen = ui_nav_gen + 1;
+        press_pulses_clear();
         if (enter_screen(t_target) == 1) {
             t_dir = -1;
         }
