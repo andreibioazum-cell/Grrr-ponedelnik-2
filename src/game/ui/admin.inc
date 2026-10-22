@@ -185,10 +185,11 @@ static double admin_cheat_value(double idx) {
     return cheat_chaos;
 }
 
-/* True while at least one cheat switch is on. */
+/* True while at least one cheat switch is on – now includes masterpiece hitboxes too:
+ * if anything is on, cups must not be given. */
 static double admin_any_cheat_on(void) {
     if (cheat_god == 1 || cheat_damage == 1 || cheat_speed == 1 || cheat_nocd == 1 || cheat_cc == 1 ||
-        cheat_estun == 1) {
+        cheat_estun == 1 || cheat_chaos == 1) {
         return 1;
     }
     return 0;
@@ -236,7 +237,6 @@ static void admin_press_cheat(double idx) {
         cheat_estun = v;
     }
     if (idx == 6) {
-        /* A joke, not an advantage: it does not stain the battle. */
         cheat_chaos = v;
         if (v == 1) {
             ds_log("admin: masterpiece hitboxes on");

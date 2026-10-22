@@ -77,6 +77,7 @@ ACH_LEGENDS = 16;
 /* Keep the saved achievement bit; it now means a flawless full-HP win. */
 ACH_LAST_HP = 32;
 ACH_EAX229 = 64;
+ACH_BUK_GIFT = 128;
 ACH_LEGENDS_NEED = 7;
 azum_revive_count = 0;
 ach_toast_bit = 0;

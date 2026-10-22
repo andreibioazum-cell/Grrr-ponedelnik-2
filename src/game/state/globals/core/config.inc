@@ -73,6 +73,7 @@ double ACH_ALL_CHARACTERS;
 double ACH_LEGENDS;
 double ACH_LAST_HP;
 double ACH_EAX229;
+double ACH_BUK_GIFT;
 double ACH_LEGENDS_NEED;
 double azum_revive_count;
 double ach_toast_bit;

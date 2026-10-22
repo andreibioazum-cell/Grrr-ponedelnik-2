@@ -89,7 +89,7 @@ static void finish_game(double result) {
     enemy_super_windup = 0;
     enemy_super_kind = 0;
     enemy_grab_clear();
-    /* A brick still in the air would freeze on the result screen: the fight is
+    /* A projectile still in the air would freeze on the result screen: the fight is
      * over, so it bursts where it is and does nothing. */
     ball_clear_after_finish();
     turret_heal_t = 0;
@@ -296,7 +296,7 @@ static void draw_pad(double cx, double cy, double r, uint32_t col, const char *l
 
 static void draw_controls(void) {
     ring(joy.x, joy.y, joy.r, 4, 0x000000);
-    /* The brick countdown belongs to the interface, above the fight. */
+    /* The projectile countdown belongs to the interface, above the fight. */
     draw_ball_count();
     circle(joy.x + joy.ox, joy.y + joy.oy, 34, 0x000000);
         /* All three battle buttons are the same size and much bigger than before:

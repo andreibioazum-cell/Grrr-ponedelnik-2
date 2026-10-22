@@ -1,15 +1,16 @@
-/* Ebuc has two ults, picked by the small button above the pad: "Д" for the
- * dispenser, "Ш" for the brick. The brick is aimed by hand - the tap starts a
- * 3-2-1 countdown over the cube, a dragged finger points the throw, and the
- * brick leaves that way when the count hits zero and bounces off the walls
- * (ten bounces, then it just bursts). Lifting the finger early keeps the aim.
- * Ebuc only, and nothing in the game charges by holding. */
+/* Ebuc (буК) has two ults, picked by the small button above the pad: dispenser
+ * and magic blue projectile (renamed from brick). The projectile is aimed by
+ * hand - the tap starts a 3-2-1 countdown over the cube, a dragged finger
+ * points the throw (only when touching near the cube), and the projectile
+ * leaves that way when the count hits zero and bounces off the walls (ten
+ * bounces, then it just bursts). Lifting the finger early keeps the aim. Ebuc
+ * only, and nothing in the game charges by holding. */
 
 #define BALL_COUNT_FROM 3.0      /* countdown digits: 3, 2, 1 */
 #define BALL_COUNT_STEP 0.7      /* seconds per digit */
 #define BALL_SPEED 620.0       /* px per second */
 #define BALL_RADIUS 24.0
-#define BALL_DAMAGE 6.0
+#define BALL_DAMAGE 10.0
 #define BALL_MAX_BOUNCES 10.0
 #define BALL_MAX_TIME 8.0      /* safety net: the ball always goes away */
 #define BALL_TRAIL 12
@@ -25,9 +26,10 @@ typedef struct {
 
 static UltBall ball;
 
-/* The ult mode of a class that has two of them. Ebuc (the cube called "буК")
- * can throw either his dispenser or this ball, and the small button above the
- * pad switches between them: 0 - dispenser, 1 - ball. */
+/* The ult mode of a class that has two of them. Ebuc (the cube called "буК",
+ * genitive "буКа") can throw either his dispenser or this magic blue projectile,
+ * and the small button above the pad switches between them: 0 - dispenser (blue),
+ * 1 - projectile (yellow indicator). */
 static double ball_mode;
 
 static double ult_mode_r(void) { return 26; }
@@ -46,24 +48,19 @@ static void ult_mode_toggle(void) {
 }
 
 /* Shown only where both modes exist, so the pad keeps its meaning everywhere
- * else. The letter says what the next tap will throw. */
+ * else. No text – just color: yellow = magic blue projectile (former brick),
+ * blue = dispenser. Only black outline, no white. */
 static void draw_ult_mode(void) {
     double x = ult_mode_x();
     double y = ult_mode_y();
     double r = ult_mode_r();
-    const char *label;
     uint32_t fill;
-    double sc = 0.62;
     if (player_class != CLASS_EBUC || (game_state != ST_SOLO && game_state != ST_ONLINE)) {
         return;
     }
-    label = ball_mode == 1 ? "Ш" : "Д";
     fill = ball_mode == 1 ? 0xFFFFB300u : 0xFF2F6FEDu;
-    circle(x, y, r + 3, 0x66000000u);
     circle(x, y, r, fill);
-    ring(x, y, r, 3, 0xCCFFFFFFu);
-    text_scaled(label, x - text_ink_width(label) * sc / 2, y - text_ink_height(label) * sc / 2,
-                (unsigned)0xFFFFFFFFu, sc);
+    ring(x, y, r, 3, 0xFF000000u);
 }
 
 static void ball_reset(void) {
@@ -104,7 +101,7 @@ static void ball_trail_push(double x, double y) {
     ball.trail_a[0] = 1;
 }
 
-/* The pad was pressed in brick mode: start the countdown. The finger that
+/* The pad was pressed in projectile mode: start the countdown. The finger that
  * started it owns the aim, so a second finger cannot drag the throw away. */
 static void ball_aim_start(double id) {
     if (ball.aim_on == 1 || ball.active == 1) {
@@ -135,13 +132,19 @@ static double ball_aim_digit(void) {
     return d;
 }
 
-/* The finger moved: the brick goes where it points, from the cube outwards.
- * A touch right on the cube means nothing yet, so the old aim stays. */
+/* The finger moved: the projectile goes where it points, from the cube outwards.
+ * Only touches directly around the player count – not any empty area without
+ * buttons. A touch right on the cube means nothing yet. Hitbox direction is
+ * shown when hitboxes are enabled. */
 static void ball_aim_point(double x, double y) {
     double dx = x - player->x;
     double dy = y - player->y;
     double len = sqrt(dx * dx + dy * dy);
     if (ball.aim_on == 0 || len < 14) {
+        return;
+    }
+    /* Only when pressing directly around the player, not anywhere on screen. */
+    if (len > 180) {
         return;
     }
     ball.aim_dx = dx / len;
@@ -154,7 +157,7 @@ static void ball_aim_cancel(void) {
     ball.aim_t = 0;
 }
 
-/* The countdown is over: the brick is thrown. Lifting the finger early does
+/* The countdown is over: the magic projectile is thrown. Lifting the finger early does
  * not stop it, the aim is already chosen. */
 static void ball_aim_tick(void) {
     if (ball.aim_on == 0) {
@@ -195,7 +198,7 @@ static void ball_fire(void) {
     }
     super_cd = super_cd_time;
     ability_snd(STATION_SOUND);
-    ds_log("brick thrown");
+    ds_log("magic projectile thrown");
 }
 
 static void ball_burst(double damage) {
@@ -246,7 +249,7 @@ static void ball_tick(void) {
         }
         if (ball.bounces > BALL_MAX_BOUNCES || ball.t > BALL_MAX_TIME) {
             /* Out of bounces: it bursts where it is and nobody gets hurt. */
-            ds_log("charged ult: ball used up after %g bounces", ball.bounces);
+            ds_log("charged ult: projectile used up after %g bounces", ball.bounces);
             ball_burst(0);
             return;
         }
@@ -258,7 +261,7 @@ static void ball_tick(void) {
     ball_trail_push(ball.x, ball.y);
 }
 
-/* Aim preview: a dashed line the way the brick will go. */
+/* Aim preview: dashed line + hitbox direction when hitboxes are shown. */
 static void draw_ball_aim(void) {
     double i = 1;
     double len = punch_reach * 2.4;
@@ -270,6 +273,11 @@ static void draw_ball_aim(void) {
         circle(player->x + ball.aim_dx * len * k, player->y + ball.aim_dy * len * k, 3 + 4 * (1 - k),
                ((unsigned)(int)(150 + 90 * k) << 24) | 0x00FFD54F);
         i = i + 1;
+    }
+    if (show_hitboxes == 1) {
+        double hx = player->x + ball.aim_dx * 48;
+        double hy = player->y + ball.aim_dy * 48;
+        draw_hit_circle(hx, hy, BALL_RADIUS, 0.85);
     }
 }
 
@@ -300,17 +308,17 @@ static void draw_ball(void) {
         if (ball.trail_a[(int)i] > 0) {
             a = ball.trail_a[(int)i];
             circle(ball.trail_x[(int)i], ball.trail_y[(int)i], BALL_RADIUS * (0.12 + 0.45 * a),
-                   ((unsigned)(int)(a * 170) << 24) | 0x00FFC640);
+                   ((unsigned)(int)(a * 170) << 24) | 0x003A8BFF);
         }
         i = i + 1;
     }
     if (ball.active == 1) {
-        /* A spinning brick: fired clay with mortar lines. */
-        ring(ball.x, ball.y, BALL_RADIUS * 1.25, 4, 0xCCFFD54F);
-        rect_rot(ball.x - 23, ball.y - 14, 46, 28, ball.spin, 0xFFD2703F);
-        rect_rot(ball.x - 23, ball.y - 8, 46, 2, ball.spin, 0xFFFFE9CC);
-        rect_rot(ball.x - 23, ball.y + 6, 46, 2, ball.spin, 0xFFFFE9CC);
-        rect_rot(ball.x - 8, ball.y - 14, 2, 8, ball.spin, 0xFFFFE9CC);
+        /* Magic blue projectile: blue stretched square, slightly rounded, no ring. */
+        double hw = 26, hh = 16;
+        roundrect(ball.x - hw, ball.y - hh, hw * 2, hh * 2, 6, 0xFF3A8BFFu);
+        if (show_hitboxes == 1) {
+            draw_hit_circle(ball.x, ball.y, BALL_RADIUS, 1);
+        }
     }
 }
 
@@ -329,7 +337,7 @@ static void ball_fade_tick(void) {
     }
 }
 
-/* Bricks thrown by other players in an online fight. Every client flies them
+/* Projectiles thrown by other players in an online fight. Every client flies them
  * from the published origin and direction, so the bounces happen in the same
  * places on every screen, and the hit lands where the local player stands. */
 #define REMOTE_BRICKS 4
@@ -408,10 +416,11 @@ static void draw_remote_bricks(void) {
     double s = 0;
     while (s < REMOTE_BRICKS) {
         if (rb_on[(int)s] == 1) {
-            ring(rb_x[(int)s], rb_y[(int)s], BALL_RADIUS * 1.25, 3, 0x99FFD54F);
-            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] - 14, 46, 28, rb_spin[(int)s], 0xFFD2703F);
-            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] - 8, 46, 2, rb_spin[(int)s], 0xFFFFE9CC);
-            rect_rot(rb_x[(int)s] - 23, rb_y[(int)s] + 6, 46, 2, rb_spin[(int)s], 0xFFFFE9CC);
+            double hw = 26, hh = 16;
+            roundrect(rb_x[(int)s] - hw, rb_y[(int)s] - hh, hw * 2, hh * 2, 6, 0xFF3A8BFFu);
+            if (show_hitboxes == 1) {
+                draw_hit_circle(rb_x[(int)s], rb_y[(int)s], BALL_RADIUS, 1);
+            }
         }
         s = s + 1;
     }
@@ -431,7 +440,7 @@ static double remote_bricks_live(void) {
 }
 #endif
 
-/* The round is over: the brick goes away and so do the ones in the air. */
+/* The round is over: the projectile goes away and so do the ones in the air. */
 static void ball_clear_after_finish(void) {
     ball.active = 0;
     ball.aim_on = 0;
@@ -440,8 +449,8 @@ static void ball_clear_after_finish(void) {
     remote_bricks_reset();
 }
 
-/* Everything the brick needs per frame in an online fight: the local aim and
- * flight plus the bricks of the others. */
+/* Everything the projectile needs per frame in an online fight: the local aim and
+ * flight plus the projectiles of the others. */
 static void ball_online_tick(void) {
     ball_aim_tick();
     ball_tick();
