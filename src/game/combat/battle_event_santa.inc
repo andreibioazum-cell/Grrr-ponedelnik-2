@@ -66,7 +66,7 @@ static void draw_event_candies(void) {
             } else if (v > 0.02) {
                 p = clamp(t / plates_candy_pop_time, 0, 1);
                 pop = 1 - (1 - p) * (1 - p);
-                /* Появление - прозрачностью, исчезновение по-прежнему сжатием. */
+                                /* Appears by alpha, still disappears by shrinking. */
                 sc = candy_scale * v;
                 if (sc > 0.02 && pop > 0.02) {
                     hw = 25 * sc;
@@ -93,9 +93,9 @@ static void draw_event_santa(void) {
         double p = plates_santa_t / 0.4;
         pop = 1 - (1 - p) * (1 - p);
     }
-    /* Дед Мороз рисуется как обычный боец: тот же размер куба
-     * (25 * cube_scale * player_scale) и та же настоящая размытая тень
-     * (draw_shadow_blur_tex), а не резкая серая копия со сдвигом. */
+        /* Santa is drawn like a normal fighter: the same cube size
+         * (25 * cube_scale * player_scale) and the same real blurred shadow
+         * (draw_shadow_blur_tex), not a hard grey copy with an offset. */
     double half_px = 25 * cube_scale * player_scale * pop;
     double sc = cube_scale * player_scale * pop;
     if (sc <= 0.01) {

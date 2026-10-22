@@ -30,9 +30,10 @@ static double admin_slot(const char *nick) {
     return 0;
 }
 
-/* Админ по нику вошедшего аккаунта. Кубки такого игрока игра не тратит:
- * классы и уровни бесплатны, поражение ничего не отнимает, а стикеры в
- * магазине покупаются без списания (движок gifts.inc держит тот же список). */
+/* Admin by the nick of the signed-in account. The game never spends this
+ * player's cups: classes and levels are free, a loss takes nothing, and stickers
+ * in the shop are bought without a charge (the engine keeps the same list in
+ * gifts.inc). */
 static double admin_playing(void) {
     if (net_login_status() != 2) {
         return 0;

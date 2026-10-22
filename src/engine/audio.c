@@ -1,4 +1,4 @@
-/* Загрузка и воспроизведение звука. */
+/* Audio loading and playback. */
 #include "engine/audio/decode_mixer.inc"
 #include "engine/audio/playback.inc"
 #ifdef CB_PC

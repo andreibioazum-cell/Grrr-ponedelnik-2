@@ -24,9 +24,9 @@ void net_set_system_language(const char *code) {
     st_unlock();
 }
 
-/* Язык новой установки берётся из телефона: русский телефон - русская игра,
- * любой другой - английская. Если язык неизвестен, остаётся русский
- * (168-ФЗ: для российских игроков текст должен быть на русском). */
+/* A fresh install takes its language from the phone: a Russian phone gets the
+ * Russian game, any other the English one. If the language is unknown Russian
+ * stays (168-FZ: Russian players must get Russian text). */
 static int system_language_default(void) {
     int ru;
     st_lock();
@@ -38,7 +38,7 @@ static int system_language_default(void) {
 static void settings_read(void) {
     char path[320], line[128];
     FILE *f;
-    /* -1: в файле языка нет, берём язык телефона. */
+        /* -1: no language in the file, use the phone language. */
     int language = -1, hitboxes = 1, musicvol = 70, has_file = 0;
     int winter = 0, legal = 0, theme = 1, pdc = 0, pdv = 0;
     st_lock();
@@ -287,8 +287,8 @@ double settings_legal_ts(void) {
     return v;
 }
 
-/* Согласие на обработку персональных данных (152-ФЗ, ст. 9). Хранится на
- * устройстве: когда дано и на какую редакцию документов. version 0 — отзыв. */
+/* Personal data consent (152-FZ, art. 9). Stored on the device: when it was
+ * given and for which revision of the documents. version 0 means withdrawn. */
 void settings_set_pd_consent(double version) {
     settings_read();
     st_lock();
@@ -308,9 +308,9 @@ double settings_pd_consent_version(void) {
     return v;
 }
 
-/* Копия отметки о согласии в профиле игрока: оператор должен уметь доказать,
- * что согласие получено (ст. 9 ч. 3). Отдельный запрос: если правила базы ещё
- * не знают этих полей, сохранение прогресса от этого не страдает. */
+/* A copy of the consent mark in the player profile: the operator must be able to
+ * prove consent was obtained (art. 9 part 3). A separate request, so that saving
+ * progress does not suffer if the database rules do not know these fields yet. */
 void net_pd_consent_upload(void) {
     char nick[LOGIN_NICK_MAX + 1] = "", url[URL], body[BODY];
     int pdc, pdv;

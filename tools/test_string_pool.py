@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Собирает и проверяет кадровую уборку пула строк рантайма."""
+"""Builds and checks the per-frame cleanup of the runtime string pool."""
 
 from __future__ import annotations
 

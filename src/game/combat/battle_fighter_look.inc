@@ -36,8 +36,8 @@ static void resolve_fighter_looks(void) {
     resolve_fighter_look(FLOOK_BOT, enemy_class, SKIN_NORMAL);
 }
 
-/* Один отступ размытия. Прозрачность 0 в движке означает «совсем
- * непрозрачный», поэтому пустые отступы просто не рисуем. */
+/* One blur offset. Alpha 0 means "fully opaque" in the engine, so empty offsets
+ * are simply not drawn. */
 static void shadow_tap_circle(double x, double y, double r, double a) {
     unsigned ai = (unsigned)(int)(a + 0.5);
     if (ai < 1) {
@@ -54,10 +54,10 @@ static void shadow_tap_tex(double x, double y, double half_px, double scale, con
     tex_tint(x - half_px, y - half_px, name, ang, scale, ((uint32_t)ai) << 24);
 }
 
-/* Настоящее размытие тени - свёртка силуэта: центр, кольцо из шести отступов
- * поближе и кольцо из шести подальше. Каждый отступ берёт свою долю общей
- * плотности, поэтому край тени мягкий по-настоящему, а не выглядит вторым
- * увеличенным пятном. */
+/* Real shadow blur - a convolution of the silhouette: the centre, a ring of six
+ * closer offsets and a ring of six farther ones. Every offset takes its share of
+ * the total density, so the shadow edge is genuinely soft and does not look like
+ * a second, bigger blob. */
 static void draw_shadow_blur_circle(double cx, double cy, double r, double alpha, double blur) {
     const double kw[3] = {0.25, 0.09, 0.06};
     const double kr[3] = {0.0, 0.55, 1.0};
@@ -101,9 +101,9 @@ static void draw_shadow_blur_tex(double cx, double cy, double half_px, double sc
     }
 }
 
-/* Смаз движения: на скорости за бойцом остаются полупрозрачные копии его же
- * спрайта по пути, по которому он только что прошёл. Это размытие самого
- * движения, а не всего кадра. */
+/* Motion blur: at speed the fighter leaves semi-transparent copies of its own
+ * sprite along the path it just took. That blurs the motion itself, not the whole
+ * frame. */
 static void draw_motion_ghosts(double x, double y, double dx, double dy, double half_px, double scale,
                                const char *name, double ang) {
     double len = sqrt(dx * dx + dy * dy);
@@ -116,7 +116,8 @@ static void draw_motion_ghosts(double x, double y, double dx, double dy, double 
         dy = dy / len * lim;
         len = lim;
     }
-    /* Корень из скорости: обычная ходьба уже заметна, рывок - сильный шлейф. */
+        /* Square root of the speed: a walk is already visible, a dash leaves a long
+         * trail. */
     double a = 0.40 * sqrt(len / lim);
     if (a < 0.02) {
         return;

@@ -28,8 +28,8 @@ static double hit_menu_row(double px, double py, double i) {
 
 static double settings_stride(void) {
     double s = menu_stride();
-    /* Список начинается с высоты кнопки «Играть», поэтому в расчёт идёт только
-     * место под ним - иначе на невысоком экране нижние пункты уезжают за край. */
+        /* The list starts at the height of the Play button, so only the room under it
+         * counts - otherwise the last rows run off a short screen. */
     double fit = (screen_h - 16 - menu_top()) / SETTINGS_ROWS;
     if (fit < s) {
         s = fit;
@@ -49,7 +49,7 @@ static double settings_btn_h(void) {
 }
 
 static double settings_top(void) {
-    /* Список настроек начинается с той же высоты, что и кнопка «Играть». */
+        /* The settings list starts at the same height as the Play button. */
     return menu_top();
 }
 
@@ -61,9 +61,9 @@ static double hit_settings_row(double px, double py, double i) {
 
 static double lobby_title_y(void) { return menu_top() - 70; }
 
-/* Надписи лобби (заголовок, приветствие, кубки) стоят ровно посередине
- * колонки кнопок: в новой теме это середина экрана, в старой - середина
- * прижатой влево колонки, а не её левый край. */
+/* Lobby captions (title, greeting, cups) sit exactly in the middle of the button
+ * column: the middle of the screen in the new theme, the middle of the left-hand
+ * column in the old one, not its left edge. */
 static double lobby_label_x(double w) {
     return menu_x() + (btn_w - w) / 2;
 }
@@ -160,7 +160,7 @@ static double levels_btn_x(void) {
 
 static double skins_btn_x(void) { return screen_w / 2 + class_action_gap / 2; }
 
-static double class_has_skins(double cls) { return cls == CLASS_AZUM || cls == CLASS_BUK; }
+static double class_has_skins(double cls) { return cls == CLASS_AZUM || cls == CLASS_EBUC; }
 
 static double skins_btn_visible(void) { return class_has_skins(player_class); }
 
@@ -257,7 +257,7 @@ static double hit_modes_row(double px, double py, double i) {
     return hit_button(px, py, menu_x(), modes_row(i), menu_btn_w(), btn_h);
 }
 
-/* Промокод: отдельная кнопка в правом нижнем углу экрана режимов. */
+/* Promo code: its own button in the bottom right corner of the modes screen. */
 static double promo_corner_w(void) { return fit_w(220); }
 
 static double promo_corner_x(void) { return screen_w - screen_margin - promo_corner_w(); }
@@ -282,7 +282,7 @@ static double hit_bpass_corner(double px, double py) {
     return hit_button(px, py, bpass_corner_x(), bpass_corner_y(), bpass_corner_w(), btn_h);
 }
 
-/* Под предупреждением два действия: «Документы» слева, согласие справа. */
+/* The warning has two actions: Documents on the left, consent on the right. */
 static double warn_row_w(void) { return fit_w(920); }
 
 static double warn_docs_w(void) { return clamp(warn_row_w() * 0.34, 150, 300); }

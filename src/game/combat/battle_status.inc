@@ -46,9 +46,10 @@ static void tick_status_fades(void) {
     if (enemy_grab_quiet > 0) {
         estun = 0;
     }
-    /* Стан из админки - не повод вешать на врага оранжевый кружок: сам враг
-     * стоит, а подсветка только мешает. Метка держится и после выключения
-     * чита, иначе кружок мигал бы на остатке того стана и на его затухании. */
+        /* A stun from the admin panel is no reason to hang an orange ring on the
+         * enemy: the enemy stands still and the highlight only gets in the way. The
+         * mark stays after the cheat is off, otherwise the ring would flicker through
+         * the leftover stun and its fade. */
     if (cheat_estun == 1 || cheat_estun_mark == 1) {
         estun = 0;
     }

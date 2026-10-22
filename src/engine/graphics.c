@@ -1,5 +1,5 @@
-/* Рендерер игры: Vulkan на Android, программный растеризатор на PC (CB_PC).
- * Общие слои (команды, геометрия, текст, ассеты) одни на оба бэкенда. */
+/* Game renderer: Vulkan on Android, the software rasterizer on PC (CB_PC). The
+ * shared layers (commands, geometry, text, assets) are the same for both. */
 #include "engine/graphics/types.inc"
 #include "engine/graphics/geometry.inc"
 #include "engine/graphics/text.inc"

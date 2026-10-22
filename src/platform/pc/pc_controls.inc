@@ -91,4 +91,17 @@ static void pc_ctl_pad_touch(int which, int down) {
 
 static void pc_ctl_attack(int down) { pc_ctl_pad_touch(0, down); }
 static void pc_ctl_block(int down) { pc_ctl_pad_touch(1, down); }
-static void pc_ctl_super(int down) { pc_ctl_pad_touch(2, down); }
+
+/* The ordinary cube has no super: the game draws no super pad for it, so a
+ * press at that empty spot would be read as the joystick and drag the player
+ * across the arena. Only classes that own the pad get the key. */
+static void pc_ctl_super(int down) {
+    if (down == 0) {
+        pc_ctl_pad_touch(2, 0);
+        return;
+    }
+    if (game_pc_has_super())
+        pc_ctl_pad_touch(2, 1);
+    else
+        pc_ctl_super_down = 0;
+}

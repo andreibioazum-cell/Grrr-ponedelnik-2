@@ -4,10 +4,10 @@
  *   1:  10 XP,  12 candies -> +10 cups
  *   2:  30 XP,  20 candies -> +20 cups
  *   3:  60 XP,  35 candies -> +30 cups
- *   4: 100 XP,  50 candies -> Elf буК skin
+  *   4: 100 XP,  50 candies -> Elf ebuc skin
  *   5: 150 XP,  70 candies -> +60 cups
  *   6: 220 XP,  95 candies -> +120 candies
- *   7: 300 XP, 120 candies -> Santa (Дед Мороз) class
+  *   7: 300 XP, 120 candies -> Santa class
  * XP is the cloud profile field "bpx"; claimed tiers ride the existing
  * "bp" profile field (bp_claimed). */
 
@@ -75,7 +75,7 @@ static void bp_grant(double t) {
     } else if (t == 7) {
         set_class_owned(CLASS_SANTA, 1);
     }
-    /* tier 4 is the Elf буК skin itself: skin_unlocked_for() opens it
+        /* tier 4 is the Elf ebuc skin itself: skin_unlocked_for() opens it
      * once bp_claimed reaches 4, nothing else to grant. */
 }
 
@@ -133,7 +133,7 @@ static const char *bp_status_text(double t) {
                      language == 1 ? " · открыть" : " · open");
 }
 
-/* One tier as a normal button: "3. +30 кубков · 35 конфет · открыть". The
+/* One tier as a normal button: "3. +30 cups, 35 candies, unlock". The
  * row is dead grey until it can actually be claimed. */
 static void bp_draw_row(double t) {
     double x = bp_row_x(), y = bp_row_y(t), w = bp_row_w(), h = bp_row_h();

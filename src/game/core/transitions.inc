@@ -4,8 +4,8 @@ static void start_transition(double target) {
     }
     classes_swipe_reset();
     t_target = target;
-    /* Кнопка нажимается и сжимается, а экран в этот же кадр уже начал гаснуть
-     * - так нажатия не видно. Сначала даём кнопке досжаться, потом гасим. */
+        /* The button fires and squashes, and the screen starts to fade in the same
+         * frame - so the press is invisible. Let the button squash first, fade after. */
     t_hold = transition_hold;
     t_dir = 1;
 }

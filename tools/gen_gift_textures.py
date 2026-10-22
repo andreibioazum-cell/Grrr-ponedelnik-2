@@ -155,8 +155,9 @@ def rocket():
 
 # ---------------------------------------------------------------- emerald
 def emerald():
-    """Белый изумруд: цвет камню даёт слой оттенка в gift_icon() (gift_icons.inc),
-    а он виден только на белом - на цветном спрайте оттенок превращается в грязь."""
+        """A white emerald: the colour comes from the hue layer in gift_icon()
+        (gift_icons.inc), and it only shows on white - on a coloured sprite the hue
+        turns into mud."""
     im = canvas(); d = ImageDraw.Draw(im)
     dark = (56, 56, 64, 255)
 

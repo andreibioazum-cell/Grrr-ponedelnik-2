@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Проверяет ограничение размера собственных исходников проекта."""
+"""Checks the size limit on the project's own sources."""
 
 from pathlib import Path
 import sys

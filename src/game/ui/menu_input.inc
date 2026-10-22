@@ -86,9 +86,9 @@ static void login_open(void) {
     login_status = 0;
     login_nick = "";
     login_pass = "";
-    /* Галочка сбрасывается при КАЖДОМ заходе на экран входа/регистрации
-     * (требование оператора; и 152-ФЗ, ст. 9 заодно: согласие не должно
-     * стоять заранее только потому, что его дали когда-то раньше). */
+        /* The box resets on EVERY visit to the login or sign-up screen (an operator
+         * requirement, and 152-FZ art. 9 too: consent must not be pre-ticked just
+         * because it was given once). */
     login_consent = 0;
     keyboard_clear();
     keyboard_hide();
@@ -169,7 +169,7 @@ static void open_online(void) {
         start_transition(ST_LOGIN);
         return;
     }
-    /* Онлайн-бой и чат - обработка данных: без согласия туда не пускаем. */
+        /* Online play and chat process data: no entry without consent. */
     if (consent_ok() == 0) {
         docs_transition(LEGAL_PAGE_CONSENT, 1);
         return;
@@ -220,12 +220,17 @@ static void touch_lobby(double x, double y, double action) {
         return;
     }
     if (hit_menu_row(x, y, 3) == 1) {
-        /* Вошедший игрок попадает в свой аккаунт (смена пароля, выход,
-         * удаление), остальные - на вход. */
+                /* A signed-in player lands in their own account (password change, sign
+                 * out, deletion), everyone else on the login screen. */
         if (net_login_status() == 2) {
-            /* Как и остальные экраны: сначала переход, аккаунт - в его конце. */
-            acct_pending = 1;
-            start_transition(ST_LOBBY);
+                        /* Like the other screens: the transition first, the account at its
+                         * end. The request is only raised when the transition really starts:
+                         * otherwise it outlives a refusal (another transition is already
+                         * running) and opens the account later, back in the lobby. */
+            if (t_dir == 0) {
+                acct_pending = 1;
+                start_transition(ST_LOBBY);
+            }
             return;
         }
         login_after = ST_LOBBY;

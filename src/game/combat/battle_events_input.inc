@@ -79,7 +79,7 @@ static void update_banner(void) {
     if (ts <= 0) {
         /* The author's countdown ended and the banner was cleared on the
          * server: drop it here at the same moment, so it disappears for
-         * everyone at once — and late joiners never linger on a dead banner. */
+         * everyone at once - and late joiners never linger on a dead banner. */
         banner_t = 0;
         return;
     }

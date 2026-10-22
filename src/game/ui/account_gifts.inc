@@ -132,9 +132,9 @@ static double hit_acct_gift_any(double x, double y) {
     }
     return 0;
 }
-/* Кнопка «Осмотреть»: слева в ряду действий. В магазине она стоит в паре с
- * «Купить», в коллекции - первая из трёх («Осмотреть», «Подарить», «Продать»).
- * Столбец 0 - осмотр, 1 - купить/подарить, 2 - продать. */
+/* The Look button, leftmost of the action row. In the shop it pairs with Buy, in
+ * the collection it is the first of three (Look, Gift, Sell). Column 0 - look,
+ * 1 - buy or gift, 2 - sell. */
 static double acct_gift_inspect_w(void) {
     double cols = acct_gift_is_owned == 1 ? 3 : 2;
     return (acct_w() - (cols - 1) * ACCT_GIFT_COL_GAP) / cols;
@@ -159,9 +159,9 @@ static double hit_acct_gift_inspect(double x, double y) {
            hit_button(x, y, acct_x(), acct_below_fields(), acct_gift_inspect_w(), btn_h) == 1;
 }
 
-/* Осмотр стикера в полное разрешение: спрайт рисуется один в один со своим
- * 192x192 (GIFT_TEX_PX), без уменьшения до размера карточки. Закрытие -
- * любое новое нажатие (touch_account) или «назад» (acct_back). */
+/* Look at a sticker at full resolution: the sprite is drawn one to one, its own
+ * 192x192 (GIFT_TEX_PX), not scaled down to a card. It closes on any new press
+ * (touch_account) or on back (acct_back). */
 static void draw_acct_gift_viewer(void) {
     double id = acct_gift_sel_id();
     double isz = GIFT_TEX_PX;
@@ -203,7 +203,10 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
     if (action == 1 || action == 3) {
         if (acct_gift_drag < 0 || id != acct_gift_drag) return 0;
         if (action == 1 && acct_gift_drag_move < 14) {
-            double row = acct_gift_hit_row(y);
+            /* The card chosen is the one under the finger when it landed, not
+             * the one under the lifted finger: a couple of pixels of drift
+             * used to pick the neighbour after a "tap". */
+            double row = acct_gift_drag_row >= 0 ? acct_gift_drag_row : acct_gift_hit_row(y);
             double picked = acct_gift_own_id(row);
             if (picked >= 0) {
                 acct_gift_choice = picked;
@@ -213,6 +216,7 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
             }
         }
         acct_gift_drag = -1;
+        acct_gift_drag_row = -1;
         return 1;
     }
     if (action != 0) return 0;
@@ -220,6 +224,7 @@ static double touch_acct_gift_list(double x, double y, double action, double id)
         acct_gift_drag = id;
         acct_gift_drag_y = y;
         acct_gift_drag_move = 0;
+        acct_gift_drag_row = acct_gift_hit_row(y);
         acct_gift_vel = 0;
         return 1;
     }
@@ -324,9 +329,9 @@ static void draw_acct_gifts(void) {
     }
     double total = acct_gift_own_total();
     if (total < 1) {
-        /* Пустая коллекция: подпись живёт под заголовком «МОИ ПОДАРКИ», в
-         * правой колонке. По середине экрана она попадала на магазин и
-         * выглядела как сообщение обо всей странице. */
+                /* Empty collection: the caption lives under the MY GIFTS header, in the
+                 * right column. In the middle of the screen it landed on the shop and
+                 * looked like a message about the whole page. */
         const char *empty = language == 1 ? "Пока нет подарков" : "No stickers yet";
         text_in_box(empty, acct_gift_x(1), vt, acct_gift_col_w(), 22, text_color,
                     fit_text_scale(empty, acct_gift_col_w() - 12, 0.5));
@@ -353,8 +358,8 @@ static void draw_acct_gifts(void) {
     ctext_scaled(hint_line, acct_top() + 27, text_color, fit_text_scale(hint_line, fit_w(screen_w), 0.5));
     acct_gift_draw_field();
     if (acct_gift_view_open == 1) {
-        /* Осмотр занял весь экран: ряд действий под ним не нужен и не должен
-         * просвечивать сквозь тёмный фон. */
+                /* The viewer took the whole screen: the action row below it is not
+                 * needed and must not show through the dark background. */
         return;
     }
     if (acct_gift_busy == 1) {
@@ -366,8 +371,8 @@ static void draw_acct_gifts(void) {
         const char *hint = language == 1 ? "Нажмите на стикер" : "Tap a sticker";
         ctext_scaled(hint, acct_below_fields() + (btn_h - 16) / 2, text_color, 0.55);
     } else if (acct_gift_is_owned == 0) {
-        /* Пара «Осмотреть | Купить»: у админа покупка бесплатна, поэтому
-         * кнопка «Купить» для него никогда не серая. */
+                /* The Look and Buy pair: buying is free for the admin, so Buy is never
+                 * grey for them. */
         double bw = acct_gift_inspect_w();
         const char *look = language == 1 ? "Осмотреть" : "Inspect";
         const char *buy = ds_concat(language == 1 ? "Купить · " : "Buy · ",

@@ -4,7 +4,7 @@
  * here - the event is a lottery, not the shop). A thrown cube flies to
  * a random spot and lies there; whoever walks over it collects its
  * candy prize:
- *   Ordinary 2, Azum 5, Astra 9, буК 15, Santa 30, CodeCracker 60,
+  *   Ordinary 2, Azum 5, Astra 9, ebuc 15, Santa 30, CodeCracker 60,
  *   Legendary Azum 95 - the best cube, chance 0.08%.
  * Chances are rolled in 0.001% units (roll 0..99999). The event replaces
  * the old infection event on the same admin command, event 4. */
@@ -12,7 +12,7 @@
 #define DICE_CUBE_ORDINARY 0
 #define DICE_CUBE_AZUM 1
 #define DICE_CUBE_ASTRA 2
-#define DICE_CUBE_BUK 3
+#define DICE_CUBE_EBUC 3
 #define DICE_CUBE_SANTA 4
 #define DICE_CUBE_CODECRACKER 5
 #define DICE_CUBE_LEGENDARY 6
@@ -40,7 +40,7 @@ static double dice_prize_of(double cube) {
     if (cube == DICE_CUBE_SANTA) {
         return 30;
     }
-    if (cube == DICE_CUBE_BUK) {
+    if (cube == DICE_CUBE_EBUC) {
         return 15;
     }
     if (cube == DICE_CUBE_ASTRA) {
@@ -67,7 +67,7 @@ static double dice_roll_cube(void) {
     }
     roll = roll - 3000;
     if (roll < 7000) {
-        return DICE_CUBE_BUK; /* 7% -> 15 */
+        return DICE_CUBE_EBUC; /* 7% -> 15 */
     }
     roll = roll - 7000;
     if (roll < 14000) {
@@ -87,8 +87,8 @@ static const char *dice_cube_tex(double cube) {
     if (cube == DICE_CUBE_SANTA) {
         return SANTA_CARD_TEX;
     }
-    if (cube == DICE_CUBE_BUK) {
-        return BUK_CARD_TEX;
+    if (cube == DICE_CUBE_EBUC) {
+        return EBUC_CARD_TEX;
     }
     if (cube == DICE_CUBE_ASTRA) {
         return ASTRA_CARD_TEX;
@@ -109,8 +109,8 @@ static const char *dice_cube_name(double cube) {
     if (cube == DICE_CUBE_SANTA) {
         return class_name_of(CLASS_SANTA);
     }
-    if (cube == DICE_CUBE_BUK) {
-        return class_name_of(CLASS_BUK);
+    if (cube == DICE_CUBE_EBUC) {
+        return class_name_of(CLASS_EBUC);
     }
     if (cube == DICE_CUBE_ASTRA) {
         return class_name_of(CLASS_ASTRA);

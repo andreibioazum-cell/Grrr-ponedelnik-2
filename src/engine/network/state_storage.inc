@@ -172,11 +172,11 @@ static void lg_unlock(void) {
 
 typedef struct {
     DSMutex lock;
-    int loaded, cups, candies, cls, azum, santa, buk, level, levels_unlocked;
+    int loaded, cups, candies, cls, azum, santa, ebuc, level, levels_unlocked;
     int ordinary_level, ordinary_levels_unlocked;
     int azum_level, azum_levels_unlocked;
     int santa_level, santa_levels_unlocked;
-    int buk_level, buk_levels_unlocked;
+    int ebuc_level, ebuc_levels_unlocked;
     int bp_level, azum_skin;
     int bp_xp;
 
@@ -249,10 +249,10 @@ static void file_write_atomic(const char *path, const char *text) {
     remove(tmp);
 }
 
-static void progress_write(int cups, int candies, int cls, int azum, int santa, int buk, int level,
+static void progress_write(int cups, int candies, int cls, int azum, int santa, int ebuc, int level,
                            int levels_unlocked, int ordinary_level, int ordinary_levels_unlocked, int azum_level,
-                           int azum_levels_unlocked, int santa_level, int santa_levels_unlocked, int buk_level,
-                           int buk_levels_unlocked, int bp_level, int azum_skin, int astra, int astra_level,
+                           int azum_levels_unlocked, int santa_level, int santa_levels_unlocked, int ebuc_level,
+                           int ebuc_levels_unlocked, int bp_level, int azum_skin, int astra, int astra_level,
                            int astra_levels_unlocked, int bp_xp, int codecracker_level,
                            int codecracker_levels_unlocked);
 static void progress_read(void);

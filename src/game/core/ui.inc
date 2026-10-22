@@ -81,8 +81,8 @@ static void centered_text(const char *label, double x, double w, double y, uint3
     text_scaled(label, x + (w - tw) / 2, y, c, scale);
 }
 
-/* Пара чисел в одной строке (кубки и леденцы): x - левый край строки, так
- * строка встаёт под нужную надпись лобби. */
+/* A pair of numbers on one line (cups and candies): x is the left edge of the
+ * line, so it lines up under the lobby caption. */
 static void money_pair(const char *left, const char *right, double x, double y, double scale, double gap) {
     double lw = text_ink_width(left) * scale;
     text_scaled(left, x, y, text_color, scale);
@@ -146,8 +146,8 @@ static void button_scaled_color(const char *label, double x, double y, double w,
     text_in_box(label, bx, by, bw, bh, shade(color, 1 - PRESS_SHADE * p), scale * s);
 }
 
-/* Та же масштабируемая кнопка, но с лицом своего цвета (зелёная полученная
- * ячейка батл-пасса и т.п.): нажатие и затемнение — как у обычной. */
+/* The same scaled button, but with a face of its own colour (a claimed battle
+ * pass cell and so on): press and dimming work as on a normal one. */
 static void button_scaled_face(const char *label, double x, double y, double w, double h, double scale, uint32_t face) {
     double p = button_press_k(x, y, w, h);
     double s = 1 - PRESS_SQUEEZE * p;
@@ -219,10 +219,9 @@ static double battle_back_x(void) { return (screen_w - btn_w) / 2; }
 
 static double battle_back_y(void) { return back_y; }
 
-/* Фиолетовый экрана итога боя для новой темы. */
+/* Result screen purple for the new theme. */
 #define RESULT_PURPLE 0xFF5F10A0
-/* Розовый старой темы: в ней окна и победы, и поражения розовые, под её
- * розовые кнопки. */
+/* The old theme's pink: its win and loss windows are pink, to match its buttons. */
 #define RESULT_ROSE 0xFFD4508A
 
 /* The face of the result window: in the old theme both the victory and the

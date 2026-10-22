@@ -31,10 +31,10 @@ int game_back(void) {
     return logic_back() != 0;
 }
 
-/* Прощание при выходе из игры. Сюда попадают все способы уйти: кнопка «назад»,
- * свайп снизу вверх (домой или в недавние) и выгрузка приложения из списка -
- * во всех случаях активность сначала останавливается, и Android присылает
- * паузу/остановку раньше, чем процесс убивают. */
+/* Farewell when leaving the game. Every way out lands here: the back button, the
+ * swipe up (home or recents) and unloading the app from the list - in all of them
+ * the activity stops first, and Android sends pause/stop before the process is
+ * killed. */
 void game_bye(void) {
     bye_notice_roll();
 }

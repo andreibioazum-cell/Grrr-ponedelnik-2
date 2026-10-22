@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""Сборка ПК-версии Cubic Battle 4 (Windows .exe и Linux-харнесс).
+"""Builds the PC version of Cubic Battle 4 (the Windows .exe and the Linux harness).
 
-Игра на ПК — это те же самые исходники, что и на Android: game.c, рантайм,
-сеть, звук. Платформенный слой лежит в src/platform/pc: окно Win32, мышь и
-клавиатура как касания, программный растеризатор (вместо Vulkan) и WinHTTP
-(вместо HttpURLConnection). Поэтому собирать нужно ровно четыре единицы
-трансляции, а не переписывать игру.
+The PC game is the very same sources as on Android: game.c, the runtime, network,
+audio. The platform layer lives in src/platform/pc: a Win32 window, mouse and
+keyboard as touches, the software rasterizer (instead of Vulkan) and WinHTTP
+(instead of HttpURLConnection). So exactly four translation units get built, and
+the game is not rewritten.
 
-    python3 tools/build_pc.py                 # текущая ОС
-    python3 tools/build_pc.py --windows       # x86_64 .exe (нужен zig)
-    python3 tools/build_pc.py --linux         # харнесс без окна (нужен gcc)
-    python3 tools/build_pc.py --check         # собрать и прогнать дымовой тест
+    python3 tools/build_pc.py                 # current OS
+    python3 tools/build_pc.py --windows       # x86_64 .exe (needs zig)
+    python3 tools/build_pc.py --linux         # headless harness (needs gcc)
+    python3 tools/build_pc.py --check         # build and run a smoke test
 
-Компилятор ищется так:
-  * Windows: zig cc -target x86_64-windows (zig ставится как pip-пакет
-    `ziglang`, либо уже лежит в PATH; MSVC не нужен);
-  * Linux: gcc + g++.
-Ресурсы готовит существующий stage_assets.py (textures/, fonts/, sounds/) -
-ровно те же, что кладутся в APK.
+The compiler is found like this:
+  * Windows: zig cc -target x86_64-windows (zig comes from the `ziglang` pip
+    package or from PATH; MSVC is not needed);
+  * Linux: gcc or clang.
+
+Assets are staged by the existing stage_assets.py (textures/, fonts/, sounds/),
+exactly the ones packed into the APK.
 """
 
 from __future__ import annotations
@@ -163,7 +164,7 @@ def compile_windows(extra: list[str]) -> tuple[Path, list[str]]:
 
 
 def smoke(binary: Path) -> None:
-    """Быстрый прогон без окна: экран согласия -> лобби -> бой."""
+    """A quick run without a window: consent -> lobby -> battle."""
     data = BUILD / "smoke_data"
     shutil.rmtree(data, ignore_errors=True)
     data.mkdir(parents=True, exist_ok=True)
@@ -248,8 +249,8 @@ def main() -> int:
 
     extra: list[str] = []
     if args.firebase:
-        # Харнесс проверяет настоящий сетевой путь: подставная база
-        # test/fake_firebase.py по обычному http на localhost.
+                # The harness checks the real network path: the fake database in
+                # test/fake_firebase.py over plain http on localhost.
         extra.append(f'-DNET_FIREBASE_URL="{args.firebase}"')
         log(f"база для сборки: {args.firebase}")
     if args.data_path:

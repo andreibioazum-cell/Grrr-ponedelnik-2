@@ -1,27 +1,26 @@
-/* Звуки способностей. У каждой способности свой короткий эффект, файлы
- * лежат в assets/audio и синтезируются tools/gen_ability_sounds.py:
- *   удар            punch.wav
- *   рывок Азума     dash.wav
- *   захват Астры    grab.wav
- *   подарок Санты   gift.wav
- *   станция буКа    station.wav
- *   оверклок        overclock.wav
- * У зомби-скина Азума свои, кастомные: удар рычит, рывок стонет
- * (zombie_punch.wav / zombie_dash.wav). Вызывается из точек запуска
- * способностей (start_punch_now, start_dash_now, start_grab_now,
- * fire_super), поэтому онлайн-соперник свои способности не озвучивает —
- * звук только у локального игрока. */
+/* Ability sounds. Every ability has its own short effect, the files live in
+ * assets/audio and are synthesised by tools/gen_ability_sounds.py:
+ *   punch            punch.wav
+ *   Azum dash        dash.wav
+ *   Astra grab       grab.wav
+ *   Santa gift       gift.wav
+ *   ebuc station     station.wav
+ *   overclock        overclock.wav
+ * The Azum zombie skin has its own: the punch growls, the dash moans
+ * (zombie_punch.wav / zombie_dash.wav). Called from the ability start points
+ * (start_punch_now, start_dash_now, start_grab_now, fire_super), so an online
+ * opponent does not voice their abilities - only the local player is heard. */
 
-/* Проиграть эффект способности. Загрузка — ленивая и кешируемая самим
- * snd_load: если файла нет, звук просто молчит (snd_play не вызывается). */
+/* Play an ability effect. Loading is lazy and cached by snd_load itself: a
+ * missing file simply stays silent (snd_play is not called). */
 static void ability_snd(const char *name) {
     if (snd_load(name) == 1) {
         snd_play(name);
     }
 }
 
-/* Предзагрузка на старте и громкость чуть ниже музыки интерфейса, чтобы
- * первый удар в бою не дёргал диск и не бил по ушам. */
+/* Preload at start, a bit quieter than the interface music, so the first punch
+ * of a fight does not hit the disk and the ears. */
 static void ability_sounds_init(void) {
     const char *names[] = {PUNCH_SOUND, DASH_SOUND, GRAB_SOUND, GIFT_SOUND,
                            STATION_SOUND, OVERCLOCK_SOUND, ZOMBIE_PUNCH_SOUND, ZOMBIE_DASH_SOUND};

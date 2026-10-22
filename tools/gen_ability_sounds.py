@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Синтезирует звуковые эффекты способностей в assets/audio/*.wav.
+"""Synthesises the ability sound effects into assets/audio/*.wav.
 
-Файлы в репозитории лежат готовые; этот скрипт — их исходник: если звук
-захочется поменять, правим синтез здесь и перегенерируем, а не ищем, чем
-был нарезан wav. Только стандартная библиотека (wave + math + random).
+The files are committed ready to use; this script is their source: to change a
+sound, edit the synthesis here and regenerate instead of hunting for whatever cut
+the wav. Standard library only (wave + math + random).
 
-Звуки (все — короткий моно 22050 Гц, 16 бит):
-  punch.wav         удар: короткий щелчок + низкий чирп-толчок 200→60 Гц;
-  dash.wav          рывок Азума: шумовой свист вверх-вниз;
-  grab.wav          захват Астры: электронный зум вниз;
-  gift.wav          подарок Деда Мороза: три ноты колокольчиком;
-  station.wav       станция буКа: металлический лязг + бип;
-  overclock.wav     оверклок кодкрэкера: разгон синуса вверх;
-  zombie_punch.wav  удар зомби-Азума: тот же толчок плюс низкий рык
-                    (пила 105→50 Гц с тремоло) и чуть хряща;
-  zombie_dash.wav   рывок зомби-Азума: стонущий свист вниз.
+All sounds are short mono 22050 Hz 16 bit:
+  punch.wav         hit: a short click plus a low chirp push 200 -> 60 Hz;
+  dash.wav          Azum dash: a noise whistle up and down;
+  grab.wav          Astra grab: an electronic zoom down;
+  gift.wav          Santa gift: three bell notes;
+  station.wav       ebuc station: a metal clang plus a beep;
+  overclock.wav     codecracker overclock: a sine sweeping up;
+  zombie_punch.wav  zombie Azum punch: the same push plus a low growl
+                    (a 105 -> 50 Hz saw with tremolo) and a bit of crunch;
+  zombie_dash.wav   zombie Azum dash: a moaning whistle down.
 """
 
 from __future__ import annotations
@@ -66,10 +66,10 @@ def main() -> int:
     def nz(t: float) -> float:
         return noise[int(t * RATE) % RATE]
 
-    # Удар: короткий глухой щелчок + низкий чирп-толчок 200 -> 60 Гц.
-    # Раньше тут был длинный всплеск белого шума - звучал как падающий песок,
-    # поэтому шум оставлен только на первые ~20 мс, а тело удара - чистый
-    # нисходящий тон со вторым гармоником (слышно и на маленьких динамиках).
+        # Punch: a short muffled click plus a low chirp push 200 -> 60 Hz.
+        # It used to be a long burst of white noise - it sounded like falling sand,
+        # so the noise stays on the first ~20 ms and the body is a clean falling tone
+        # with a second harmonic (audible on small speakers too).
     def punch(t: float, i: int) -> float:
         snap = 0.35 * nz(t * 3.1) * math.exp(-t * 110)
         ph = 2 * math.pi * (200 * t - 345 * t * t)
@@ -78,17 +78,17 @@ def main() -> int:
         return 0.85 * (snap + body + h2)
     save("punch.wav", synth(0.20, punch))
 
-    # Рывок: свист шума, громкость горбом, тон вверх.
+        # Dash: a noise whistle, volume in a hump, the tone going up.
     save("dash.wav", synth(0.35, lambda t, i:
                            math.sin(math.pi * min(1.0, t / 0.35)) ** 1.5 *
                            (0.5 * nz(t * (1 + t * 2)) + 0.25 * math.sin(2 * math.pi * (300 + 900 * t) * t))))
 
-    # Захват Астры: зум 900 -> 180 с вибрато.
+        # Astra grab: a zoom 900 -> 180 with vibrato.
     save("grab.wav", synth(0.40, lambda t, i:
                            env(t, 0.40, 0.01) * 0.55 *
                            math.sin(2 * math.pi * (900 - 1750 * t) * t + 0.6 * math.sin(2 * math.pi * 30 * t))))
 
-    # Подарок Санты: три колокольчика E5-G5-C6.
+        # Santa gift: three bells E5-G5-C6.
     def gift(t: float, i: int) -> float:
         v = 0.0
         for start, freq in ((0.0, 659.25), (0.12, 783.99), (0.24, 1046.5)):
@@ -99,7 +99,7 @@ def main() -> int:
         return v
     save("gift.wav", synth(0.55, gift))
 
-    # Станция буКа: лязг (пара негармонических частичных) + короткий бип.
+        # ebuc station: a clang (a pair of inharmonic partials) plus a short beep.
     def station(t: float, i: int) -> float:
         clang = math.exp(-t * 16) * (0.4 * math.sin(2 * math.pi * 620 * t) +
                                      0.3 * math.sin(2 * math.pi * 935 * t) +
@@ -108,14 +108,14 @@ def main() -> int:
         return clang + beep * env(t, 0.35)
     save("station.wav", synth(0.35, station))
 
-    # Оверклок: разгон 180 -> 1400 Гц с искрами.
+        # Overclock: a sweep 180 -> 1400 Hz with sparks.
     save("overclock.wav", synth(0.50, lambda t, i:
                                 env(t, 0.50, 0.02) * (0.45 * math.sin(2 * math.pi * (180 + 2440 * t) * t) +
                                                       0.18 * math.sin(2 * math.pi * (720 + 9760 * t) * t))))
 
-    # Зомби-удар: тот же толчок, что у обычного удара, плюс рык - пила
-    # 105 -> 50 Гц с тремоло - и немного "хряща". Раньше рык уезжал до 18 Гц
-    # (не слышно на маленьких динамиках) и оставался один шипящий шум.
+        # Zombie punch: the same push as the normal punch plus a growl - a saw
+        # 105 -> 50 Hz with tremolo - and a bit of crunch. The growl used to slide to
+        # 18 Hz (inaudible on small speakers) and left only hissing noise.
     def zpunch(t: float, i: int) -> float:
         ph = 2 * math.pi * (210 * t - 387 * t * t)
         thump = 0.8 * math.sin(ph) * math.exp(-t * 13)
@@ -126,7 +126,7 @@ def main() -> int:
         return env(t, 0.38, 0.004) * 0.95 * (thump + growl + grit)
     save("zombie_punch.wav", synth(0.38, zpunch))
 
-    # Зомби-рывок: стон — синус 320 -> 85 с тремоло + шумовое дыхание.
+        # Zombie dash: a moan - a sine 320 -> 85 with tremolo plus noisy breath.
     def zdash(t: float, i: int) -> float:
         f = 320 - 470 * t
         moan = math.sin(2 * math.pi * f * t) * (0.65 + 0.35 * math.sin(2 * math.pi * 9 * t))

@@ -20,8 +20,9 @@ static double astra_ability_of_slot(double slot) {
     return astra_ability_of(arr_get(remotes, b + 10), arr_get(remotes, b + 11));
 }
 
-/* Dev-права принадлежат профилю, а не паролю (см. is_admin в ui/chat.inc):
- * ник вошедшего аккаунта решает всё, смена пароля ни на что не влияет. */
+/* Dev rights belong to the profile, not the password (see is_admin in
+ * ui/chat.inc): the nick of the signed-in account decides, a password change
+ * changes nothing. */
 static double astra_ability_is_dev(void) {
     if (net_login_status() != 2) {
         return 0;

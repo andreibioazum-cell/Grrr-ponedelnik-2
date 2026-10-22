@@ -1,9 +1,9 @@
-/* Обработка кадра боя: виньетка, красный отлив при уроне и смаз движения.
- * Живёт отдельно, чтобы battle_render.inc не разрастался. */
+/* Battle frame post-processing: vignette, red tint on damage and motion blur.
+ * Kept apart so battle_render.inc does not grow. */
 
-/* Размытие полосы - та же свёртка, что и у тени: центр, кольцо из шести
- * отступов поближе и кольцо подальше. Край полосы получается мягким, поэтому
- * не видно ни ступенек, ни прямых углов. */
+/* Blurred band: the same convolution as the shadow - the centre, a ring of six
+ * closer offsets and a farther ring. The edge of the band comes out soft, so
+ * there are no steps and no hard corners. */
 static void vignette_band(double x, double y, double w, double h, double a, double blur) {
     const double kw[3] = {0.25, 0.09, 0.06};
     const double kr[3] = {0.0, 0.55, 1.0};
@@ -28,8 +28,9 @@ static void vignette_band(double x, double y, double w, double h, double a, doub
     }
 }
 
-/* Ультра: виньетка затемняет края экрана. Полосы идут по периметру и каждая
- * размыта свёрткой, поэтому это плавный уход в темноту, а не набор рамок. */
+/* Ult: the vignette darkens the edges of the screen. The bands run around the
+ * perimeter, each blurred by that convolution, so it is a smooth fade into the
+ * dark, not a stack of frames. */
 static void draw_vignette(void) {
     int steps = 8;
     double sx = screen_w * 0.08 / steps;
@@ -54,9 +55,9 @@ static void draw_vignette(void) {
     }
 }
 
-/* Полученный урон: экран едва заметно краснеет приглушённым, не кислотным
- * оттенком. Прозрачность 0 в движке означает «совсем непрозрачный», поэтому
- * пустой отлив не рисуем. */
+/* Damage taken: the screen turns very slightly red, in a muted tone, not a
+ * neon one. Alpha 0 means "fully opaque" in the engine, so an empty tint is
+ * never drawn. */
 #define HURT_FLASH_ALPHA 0.07
 #define HURT_FLASH_RGB 0xB04848
 
@@ -68,13 +69,13 @@ static void draw_hurt_flash(void) {
     rect(0, 0, screen_w, screen_h, (((uint32_t)a) << 24) | HURT_FLASH_RGB);
 }
 
-/* Обработка кадра до интерфейса: виньетка по краям. */
+/* Frame post-processing before the interface: the vignette at the edges. */
 static void draw_screen_fx(void) {
     draw_vignette();
 }
 
-/* Смаз движения считается по фактическому смещению за кадр: рывок даёт
- * длинный шлейф, спокойная ходьба - короткий. */
+/* Motion blur comes from the actual per-frame offset: a dash leaves a long
+ * trail, a calm walk a short one. */
 static void motion_blur_track(void) {
     if (mb_ok == 0) {
         mb_px = player->x;

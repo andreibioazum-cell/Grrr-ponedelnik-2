@@ -1,18 +1,18 @@
-/* «Правовая информация»: окно документов поверх любого экрана (из
- * предупреждения при запуске, со входа в аккаунт и из настроек), согласие
- * на обработку персональных данных, вход в удаление аккаунта и знак 12+.
+/* Legal information: a documents window over any screen (the start-up warning,
+ * the login screen, the settings), personal data consent, the way into account
+ * deletion, and the 12+ badge.
  *
- * Окно - оверлей, а не отдельный экран: его открывают и из предупреждения,
- * которое само висит поверх всего, и со входа, где нельзя терять введённый
- * ник. Оно рисуется последним (под админским шаром) и первым забирает
- * касания и кнопку «назад». */
+  * It is an overlay, not a screen: it opens from the warning, which itself sits
+  * over everything, and from the login screen, where the typed nick must not be
+  * lost. It is drawn last (under the admin orb) and takes touches and the back
+  * button first. */
 
 static double docs_page;
-/* 1 - окно спрашивает согласие у уже вошедшего игрока (аккаунт создан до
- * появления согласия или редакция документов сменилась). */
+/* 1 - the window asks consent from a player who is already signed in (the
+ * account was created before consent existed, or the documents changed). */
 static double docs_ask;
 static double docs_asked;
-/* Галочка согласия на экране входа. */
+/* The consent checkbox on the login screen. */
 static double login_consent;
 
 static double consent_ok(void) { return settings_pd_consent_version() >= LEGAL_DOCS_VERSION ? 1 : 0; }
@@ -60,7 +60,7 @@ static void docs_refuse(void) {
     docs_close();
 }
 
-/* --- раскладка --------------------------------------------------------- */
+/* --- layout ------------------------------------------------------------ */
 
 static double docs_top(void) { return clamp(screen_h / 2 - 236, back_y + btn_h + 20, screen_h); }
 static double docs_line_y(double i) { return docs_top() + 50 + i * 26; }
@@ -79,7 +79,7 @@ static double docs_has_mid(void) {
     return docs_page == LEGAL_PAGE_RIGHTS && net_login_status() == 2;
 }
 
-/* В режиме вопроса вторая кнопка «Отказаться» стоит строкой ниже. */
+/* In question mode the second button, Decline, sits one row lower. */
 static double docs_refuse_y(void) { return docs_row_y() + btn_h + 14; }
 
 static double hit_docs_close(double x, double y) { return back_hit(x, y); }
@@ -97,7 +97,7 @@ static double hit_docs_refuse(double x, double y) {
            hit_button(x, y, docs_mid_x(), docs_refuse_y(), docs_mid_w(), btn_h) == 1;
 }
 
-/* --- отрисовка --------------------------------------------------------- */
+/* --- drawing ----------------------------------------------------------- */
 
 static void docs_text(const char *s, double y, double max_scale) {
     ctext_scaled(s, y, text_color, fit_text_scale(s, fit_w(screen_w), max_scale));
@@ -147,7 +147,7 @@ static void draw_docs(void) {
     press_overlay = 0;
 }
 
-/* --- касания ----------------------------------------------------------- */
+/* --- touches ----------------------------------------------------------- */
 
 static double docs_button_hit(double x, double y) {
     return hit_docs_close(x, y) == 1 || hit_docs_prev(x, y) == 1 || hit_docs_next(x, y) == 1 ||
@@ -178,22 +178,22 @@ static void touch_docs(double x, double y, double action) {
             start_action_transition(docs_agree);
             return;
         }
-        /* Удаление - на экране аккаунта: пароль и свайп вправо. */
+                /* Deletion lives on the account screen: password and swipe right. */
         start_action_transition(acct_delete_window);
         return;
     }
     if (hit_docs_refuse(x, y) == 1) {
-        /* Без согласия обработка прекращается: игрок выходит из аккаунта и
-         * играет дальше без облака. Удалить данные можно на стр. 7. */
+                /* Without consent processing stops: the player signs out and keeps
+                 * playing without the cloud. Data can be deleted on page 7. */
         start_action_transition(docs_refuse);
     }
 }
 
-/* --- кадр -------------------------------------------------------------- */
+/* --- frame ------------------------------------------------------------- */
 
 static void docs_tick(void) {
-    /* Аккаунт, вошедший до появления согласия, спрашиваем один раз за
-     * запуск, когда игрок спокойно стоит в лобби. */
+        /* An account signed in before consent existed is asked once per launch,
+         * while the player is calmly sitting in the lobby. */
     if (docs_open == 0 && acct_open == 0 && docs_asked == 0 && warn_open == 0 && studio_open == 0 &&
         t_dir == 0 &&
         game_state == ST_LOBBY && net_login_status() == 2 && consent_ok() == 0) {
@@ -202,14 +202,14 @@ static void docs_tick(void) {
     }
 }
 
-/* --- знак 12+ ---------------------------------------------------------- */
+/* --- 12+ badge --------------------------------------------------------- */
 
 static void draw_age_mark(double x, double y, double size, uint32_t c) {
     roundrect_outline(x, y, size, size * 0.62, size * 0.14, 2, c);
     text_in_box(tr_age_mark(), x, y, size, size * 0.62, c, fit_text_scale(tr_age_mark(), size * 0.78, 0.7));
 }
 
-/* --- галочка согласия на экране входа ------------------------------------ */
+/* --- consent checkbox on the login screen ------------------------------- */
 
 static double login_consent_y(void) { return login_msg_y() + 40; }
 static double login_box_sz(void) { return 40; }
@@ -242,10 +242,10 @@ static void draw_login_consent(void) {
                   fit_text_scale(tr_consent_more(), login_more_w() - 24, 0.5));
 }
 
-/* --- предупреждение при запуске ------------------------------------------ */
+/* --- start-up warning --------------------------------------------------- */
 
-/* Русский блок первым, английский - его дубль ниже (168-ФЗ). Язык ещё мог
- * не быть выбран, поэтому оба текста видны всегда. */
+/* The Russian block comes first, the English copy below it (168-FZ). The
+ * language may not be picked yet, so both texts are always shown. */
 static const char *const warn_ru[] = {"ВНИМАНИЕ", "В игре есть яркие вспышки и быстрая",
                                       "смена цветов (диско-режим в онлайне).", "При эпилепсии или чувствительности",
                                       "к свету играйте осторожно.", "Нажимая кнопку согласия, вы принимаете",
@@ -276,9 +276,9 @@ static void warn_block(const char *const *lines, double y, uint32_t body) {
     }
 }
 
-/* Кнопка предупреждения отвечает на касание, как любая другая. Экран под
- * предупреждением нарисован раньше, поэтому он не трогает это касание
- * (press_overlay), и нажатие забирают только эти кнопки. */
+/* The warning button reacts to a press like any other. The screen under the
+ * warning is drawn earlier, so it does not take this press (press_overlay), and
+ * only these buttons get it. */
 static void warn_button(const char *label, double bx, double bw) {
     double by = warn_btn_y();
     double scale = fit_text_scale(label, bw - 24, 0.8);
@@ -298,7 +298,7 @@ static void draw_warning(void) {
     rect(0, 0, screen_w, screen_h, warn_rgb(0));
     uint32_t body = warn_rgb(text_color);
     double y = clamp(screen_h / 2 - 244, 8, screen_h);
-    /* Сначала текст на языке игры (он выбран по языку телефона), под ним дубль. */
+        /* Game language first (picked from the phone language), the copy below. */
     warn_block(language == 1 ? warn_ru : warn_en, y, body);
     warn_block(language == 1 ? warn_en : warn_ru, y + 214, body);
     draw_age_mark(screen_w - screen_margin - 96, back_y, 96, body);
@@ -335,7 +335,7 @@ static void legal_accept(void) {
 }
 
 static void touch_warn(double x, double y, double action) {
-    /* Кнопки предупреждения срабатывают на нажатие, как и все остальные. */
+        /* Warning buttons fire on press, like every other button. */
     if (action != 0) {
         return;
     }

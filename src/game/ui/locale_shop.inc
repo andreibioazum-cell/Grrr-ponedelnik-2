@@ -66,10 +66,10 @@ static const char *tr_class_codecracker(void) { return "CodeCracker"; }
 
 static const char *tr_class_codecracker_desc(void) { return "Stop-The-World"; }
 
-static const char *tr_class_buk(void) {
+static const char *tr_class_ebuc(void) {
     return "буК";
 }
 
-static const char *tr_class_buk_desc(void) {
+static const char *tr_class_ebuc_desc(void) {
     return "Tr4pp3d";
 }

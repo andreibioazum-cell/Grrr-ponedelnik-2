@@ -1,7 +1,7 @@
-/* Ветки уровней отдельных классов. Обычный куб, Азум, Дед Мороз и буК живут
- * в общем файле прогресса, а у Astra и CodeCracker свои пары «уровень /
- * открытые уровни»: у CodeCracker ветка своя, это отдельный класс, а не
- * обычный куб под другим именем. */
+/* Level branches of the individual classes. The ordinary cube, Azum, Santa and
+ * ebuc live in the shared progress file, while Astra and CodeCracker have their
+ * own "level / unlocked levels" pairs: CodeCracker gets its own branch, it is a
+ * separate class, not the ordinary cube under another name. */
 
 double net_load_astra(void) {
     double v;
@@ -57,7 +57,7 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
     k = pg.cls;
     a = pg.azum;
     sn = pg.santa;
-    eu = pg.buk;
+    eu = pg.ebuc;
     plv = pg.level;
     plu = pg.levels_unlocked;
     ol = pg.ordinary_level;
@@ -66,8 +66,8 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
     au = pg.azum_levels_unlocked;
     sl = pg.santa_level;
     su = pg.santa_levels_unlocked;
-    el = pg.buk_level;
-    eul = pg.buk_levels_unlocked;
+    el = pg.ebuc_level;
+    eul = pg.ebuc_levels_unlocked;
     bp = pg.bp_level;
     sk = pg.azum_skin;
     ccl = pg.codecracker_level;
@@ -83,7 +83,7 @@ void net_save_astra(double owned, double level, double levels_unlocked) {
                    (int)net_load_bp_xp(), ccl, ccu);
 }
 
-/* Ветка уровней CodeCracker: своя, не общая с обычным кубом. */
+/* CodeCracker level branch: its own, not shared with the ordinary cube. */
 
 double net_load_codecracker_level(void) {
     double v;
@@ -103,9 +103,8 @@ double net_load_codecracker_levels_unlocked(void) {
     return v;
 }
 
-/* Сохраняет ветку уровней CodeCracker. Как и у остальных классов, уровень
- * никогда не откатывается назад: купленное на устройстве не теряется при
- * следующей записи. */
+/* Saves the CodeCracker level branch. As with the other classes the level never
+ * rolls back: what was bought on the device is not lost by the next write. */
 void net_save_codecracker(double level, double levels_unlocked) {
     int lv = (int)level, lu = (int)levels_unlocked;
     int c, cd, k, a, sn, eu, plv, plu, ol, ou, al, au, sl, su, el, eul, bp, sk, at, atl, atu;
@@ -124,7 +123,7 @@ void net_save_codecracker(double level, double levels_unlocked) {
     k = pg.cls;
     a = pg.azum;
     sn = pg.santa;
-    eu = pg.buk;
+    eu = pg.ebuc;
     plv = pg.level;
     plu = pg.levels_unlocked;
     ol = pg.ordinary_level;
@@ -133,8 +132,8 @@ void net_save_codecracker(double level, double levels_unlocked) {
     au = pg.azum_levels_unlocked;
     sl = pg.santa_level;
     su = pg.santa_levels_unlocked;
-    el = pg.buk_level;
-    eul = pg.buk_levels_unlocked;
+    el = pg.ebuc_level;
+    eul = pg.ebuc_levels_unlocked;
     bp = pg.bp_level;
     sk = pg.azum_skin;
     at = pg.astra;
@@ -151,9 +150,9 @@ void net_save_codecracker(double level, double levels_unlocked) {
                    (int)net_load_bp_xp(), lv, lu);
 }
 
-/* Локально купленные уровни CodeCracker не теряются, когда приходит
- * облачный профиль: остаётся большее из локального и облачного. Вызывается
- * под замком pg, возвращает 1, если облако было поправлено. */
+/* CodeCracker levels bought locally are not lost when the cloud profile
+ * arrives: the greater of the local and the cloud number stays. Called under the
+ * pg lock, returns 1 if the cloud was corrected. */
 int codecracker_merge_local(int local_level, int local_unlocked) {
     int changed = 0;
     if (local_level > pg.codecracker_level) {

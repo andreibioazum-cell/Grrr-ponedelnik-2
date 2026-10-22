@@ -43,6 +43,9 @@ void game_pc_pads(float *ax, float *ay, float *a2x, float *a2y, float *bx, float
         *radius = (float)battle_pad_r();
 }
 
+/* The super pad is drawn (and armed) only for classes that have a super. */
+int game_pc_has_super(void) { return class_has_super(player_class) == 1 ? 1 : 0; }
+
 double game_pc_player_hp(void) { return player ? player->hp : 0.0; }
 
 void game_pc_login_fields(float *nick_x, float *nick_y, float *pass_x, float *pass_y, float *btn_x, float *btn_y,

@@ -1,12 +1,12 @@
-/* Хитбоксы кнопок и отклик на нажатие. Одна и та же проверка формы решает,
- * сработала ли кнопка и сжалась ли она, поэтому нажатие без отклика (или
- * отклик без нажатия) невозможно. Отдельный файл, чтобы core/ui.inc не
- * разрастался. */
+/* Button hitboxes and the press feedback. The same shape test decides whether a
+ * button fired and whether it squashed, so a press without feedback (or
+ * feedback without a press) cannot happen. Kept in its own file so core/ui.inc
+ * does not grow. */
 
-/* Точная форма скруглённого прямоугольника: та же, что рисуют roundrect() и
- * cb_button_gradient(). Радиус ужимается так же, как при рисовании, поэтому
- * узкая кнопка-«пилюля» и круглая боевая кнопка проверяются по своему
- * настоящему контуру, а прозрачные уголки ничего не нажимают. */
+/* The exact shape of a rounded rectangle, the same one roundrect() and
+ * cb_button_gradient() draw. The radius shrinks the same way as when drawing, so
+ * a narrow pill button and a round battle button are tested against their real
+ * outline, and the transparent corners press nothing. */
 static double hit_round(double px, double py, double x, double y, double w, double h, double rad) {
     if (hit_rect(px, py, x, y, w, h) == 0) {
         return 0;
@@ -27,9 +27,9 @@ static double hit_round(double px, double py, double x, double y, double w, doub
     return dx * dx + dy * dy <= rad * rad ? 1 : 0;
 }
 
-/* Хитбокс кнопки - ровно то, что видно на экране, без невидимых полей вокруг.
- * Им же проверяется и эффект нажатия (button_press_k), поэтому кнопка либо
- * нажимается и сжимается, либо не делает ни того, ни другого. */
+/* The hitbox is exactly what is on screen, no invisible border around it. The
+ * press effect (button_press_k) uses the same test, so a button either fires and
+ * squashes or does neither. */
 static double hit_button(double px, double py, double x, double y, double w, double h) {
     return hit_round(px, py, x, y, w, h, btn_radius);
 }
@@ -104,9 +104,9 @@ static double button_press_k_round(double x, double y, double w, double h, doubl
         /* The same control squeezes again from wherever it is now. */
         press_phase = 1;
     }
-    /* Пульс принадлежит тому экрану, где его взяли: на следующем экране в тех
-     * же координатах часто стоит своя кнопка (ряды меню и настроек совпадают),
-     * и на низком fps недосжавшийся пульс мигал бы уже на ней. */
+        /* A pulse belongs to the screen that took it: the next screen often has its
+         * own button at the same spot (menu and settings rows line up), and on a low
+         * fps a still-moving pulse would flash on that one. */
     if (press_btn_live == 1 && press_phase != 0 && press_btn_gen == ui_nav_gen && x == press_btn_x &&
         y == press_btn_y && w == press_btn_w && h == press_btn_h) {
         /* Smoothstep: the squeeze eases in and the spring back eases out. */

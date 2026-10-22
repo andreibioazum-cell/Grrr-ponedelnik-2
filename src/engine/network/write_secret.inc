@@ -1,18 +1,19 @@
-/* Секреты базы: «пароль на запись» и хвост пароля аккаунта.
+/* Database secrets: the "write password" and the password suffix of an
+ * account.
  *
- * Аутентификации самой по себе мало. Пароль аккаунта = «пароль игрока + хвост»,
- * поэтому любой, кто знает хвост и публичный ключ API, может создать аккаунт с
- * чужим ником и писать в базу от его имени. Раньше хвостом была строка "|cb4v1"
- * — её угадывали за секунду. Теперь это 32 случайных символа.
+  * Authentication alone is not enough. An account password is "player password
+  * + suffix", so anyone who knows the suffix and the public API key can create
+  * an account with someone else's nick and write to the database as them. The
+  * suffix used to be "|cb4v1", guessed in a second. Now it is 32 random chars.
  *
- * Второй барьер — поле "w", которое клиент добавляет в КАЖДОЕ тело записи:
- * правила firebase.rules.json отвергают любую запись, где
- * newData.child('w').val() не равен секрету записи. Скрипт, у которого есть
- * только ключ API, не пройдёт, даже залогинившись.
+  * The second barrier is the "w" field the client adds to EVERY write body:
+  * firebase.rules.json rejects any write where newData.child('w').val() is not
+  * the write secret. A script with only the API key gets nowhere, even signed
+  * in.
  *
- * Оба значения живут в engine/network.h кусками, каждый байт xor 0x5a: так
- * строку не находит grep по собранному apk. Новые значения генерирует
- * tools/rotate_db_secret.py — она же синхронно правит firebase.rules.json. */
+  * Both values live in engine/network.h in pieces, each byte xored with 0x5a,
+  * so a grep over the built apk does not find the string. New values come from
+  * tools/rotate_db_secret.py, which also edits firebase.rules.json. */
 
 static const char *net_secret(char *buf, size_t cap, const char *const *chunks, size_t count) {
     size_t i, at = 0;
@@ -27,7 +28,7 @@ static const char *net_secret(char *buf, size_t cap, const char *const *chunks, 
     return buf;
 }
 
-/* Поле "w": то, что проверяют правила базы. */
+/* The "w" field: what the database rules check. */
 static const char *net_write_secret(void) {
     static const char *chunks[] = {NET_WRITE_SECRET_0, NET_WRITE_SECRET_1, NET_WRITE_SECRET_2};
     static char secret[NET_WRITE_SECRET_LEN + 1];
@@ -36,7 +37,7 @@ static const char *net_write_secret(void) {
     return secret;
 }
 
-/* Хвост пароля аккаунта. В базу не уходит никогда. */
+/* Account password suffix. It never goes to the database. */
 static const char *net_pass_suffix(void) {
     static const char *chunks[] = {NET_PASS_SECRET_0, NET_PASS_SECRET_1, NET_PASS_SECRET_2};
     static char secret[NET_PASS_SECRET_LEN + 1];
@@ -45,16 +46,16 @@ static const char *net_pass_suffix(void) {
     return secret;
 }
 
-/* Старый хвост пароля: по нему считали пароли всех аккаунтов, созданных до
- * перехода на NET_PASS_SECRET, и он уже утек в открытый репозиторий. Новые
- * аккаунты им не пользуются; старые пускают по нему ровно один раз и тут же
- * переписывают пароль на новый хвост (fb_update_password). Когда игроки
- * переедут — удалить эту строку, вызов fb_sign_in_legacy() и сам макрос. */
+/* Old password suffix: every account created before NET_PASS_SECRET was
+ * hashed with it, and it has leaked into the public repository. New accounts do
+ * not use it; old ones are let in with it exactly once and the password is
+ * immediately rewritten to the new suffix (fb_update_password). Once players
+ * are moved, delete this string, the fb_sign_in_legacy() call and the macro. */
 #define FB_LEGACY_PASS_SUFFIX "|cb4v1"
 
-/* Добавить поле "w" в тело записи. Тело приходит как JSON-объект от движка,
- * поэтому достаточно убрать закрывающую скобку и дописать своё поле.
- * Секрет состоит только из букв и цифр, экранировать его не нужно. */
+/* Append the "w" field to a write body. The body arrives as a JSON object from
+ * the engine, so dropping the closing brace and appending our field is enough.
+ * The secret is letters and digits only, no escaping needed. */
 static int net_seal_body(char *body, size_t cap) {
     size_t n;
     const char *secret = net_write_secret();
@@ -63,7 +64,7 @@ static int net_seal_body(char *body, size_t cap) {
     n = strlen(body);
     if (n < 2 || body[n - 1] != '}')
         return 0;
-    /* ,"w":" секрет "} и завершающий ноль; если не влезает — тело не трогаем */
+        /* ,"w":" secret "} and the terminator; if it does not fit, leave the body */
     if (n + strlen(secret) + 8 > cap)
         return 0;
     body[--n] = 0;
@@ -71,7 +72,7 @@ static int net_seal_body(char *body, size_t cap) {
     return 1;
 }
 
-/* Собрать оба секрета заранее, пока игра ещё в один поток. */
+/* Build both secrets up front, while the game is still single threaded. */
 static void net_secret_prepare(void) {
     (void)net_write_secret();
     (void)net_pass_suffix();

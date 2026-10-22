@@ -8,10 +8,10 @@ static void load_textures(void) {
     azum_zombie_punch_tex_ok = png_load(AZUM_ZOMBIE_PUNCH_TEX);
     santa_tex_ok = png_load(SANTA_TEX);
     santa_punch_tex_ok = png_load(SANTA_PUNCH_TEX);
-    buk_tex_ok = png_load(BUK_TEX);
-    buk_punch_tex_ok = png_load(BUK_PUNCH_TEX);
-    buk_elf_tex_ok = png_load(BUK_ELF_TEX);
-    buk_elf_punch_tex_ok = png_load(BUK_ELF_PUNCH_TEX);
+    ebuc_tex_ok = png_load(EBUC_TEX);
+    ebuc_punch_tex_ok = png_load(EBUC_PUNCH_TEX);
+    ebuc_elf_tex_ok = png_load(EBUC_ELF_TEX);
+    ebuc_elf_punch_tex_ok = png_load(EBUC_ELF_PUNCH_TEX);
     png_load(DESPENSER_TEX);
     candy_tex_ok = png_load(CANDY_TEX);
     png_load(SNOWFLAKE_TEX);
@@ -39,10 +39,10 @@ static void recheck_texture_flags(void) {
     azum_zombie_punch_tex_ok = flag_live(azum_zombie_punch_tex_ok, AZUM_ZOMBIE_PUNCH_TEX);
     santa_tex_ok = flag_live(santa_tex_ok, SANTA_TEX);
     santa_punch_tex_ok = flag_live(santa_punch_tex_ok, SANTA_PUNCH_TEX);
-    buk_tex_ok = flag_live(buk_tex_ok, BUK_TEX);
-    buk_punch_tex_ok = flag_live(buk_punch_tex_ok, BUK_PUNCH_TEX);
-    buk_elf_tex_ok = flag_live(buk_elf_tex_ok, BUK_ELF_TEX);
-    buk_elf_punch_tex_ok = flag_live(buk_elf_punch_tex_ok, BUK_ELF_PUNCH_TEX);
+    ebuc_tex_ok = flag_live(ebuc_tex_ok, EBUC_TEX);
+    ebuc_punch_tex_ok = flag_live(ebuc_punch_tex_ok, EBUC_PUNCH_TEX);
+    ebuc_elf_tex_ok = flag_live(ebuc_elf_tex_ok, EBUC_ELF_TEX);
+    ebuc_elf_punch_tex_ok = flag_live(ebuc_elf_punch_tex_ok, EBUC_ELF_PUNCH_TEX);
     candy_tex_ok = flag_live(candy_tex_ok, CANDY_TEX);
     if (winter_theme == 1) {
         snow_tex_ok = flag_live(snow_tex_ok, SNOW_TEX);
@@ -50,7 +50,7 @@ static void recheck_texture_flags(void) {
 }
 
 static double textures_all_ok(void) {
-    if (grass_tex_ok == 0 || ordinary_tex_ok == 0 || santa_tex_ok == 0 || buk_tex_ok == 0) {
+    if (grass_tex_ok == 0 || ordinary_tex_ok == 0 || santa_tex_ok == 0 || ebuc_tex_ok == 0) {
         return 0;
     }
     if (ordinary_punch_tex_ok == 0 || azum_tex_ok == 0 || azum_punch_tex_ok == 0) {
@@ -59,7 +59,7 @@ static double textures_all_ok(void) {
     if (azum_zombie_tex_ok == 0 || azum_zombie_punch_tex_ok == 0) {
         return 0;
     }
-    if (santa_punch_tex_ok == 0 || buk_punch_tex_ok == 0 || candy_tex_ok == 0) {
+    if (santa_punch_tex_ok == 0 || ebuc_punch_tex_ok == 0 || candy_tex_ok == 0) {
         return 0;
     }
     if (winter_theme == 1 && snow_tex_ok == 0) {
@@ -93,8 +93,8 @@ static void reload_textures(void) {
     if (santa_tex_ok == 0) {
         santa_tex_ok = png_load(SANTA_TEX);
     }
-    if (buk_tex_ok == 0) {
-        buk_tex_ok = png_load(BUK_TEX);
+    if (ebuc_tex_ok == 0) {
+        ebuc_tex_ok = png_load(EBUC_TEX);
     }
     if (ordinary_punch_tex_ok == 0) {
         ordinary_punch_tex_ok = png_load(PUNCH_TEX);
@@ -114,14 +114,14 @@ static void reload_textures(void) {
     if (santa_punch_tex_ok == 0) {
         santa_punch_tex_ok = png_load(SANTA_PUNCH_TEX);
     }
-    if (buk_punch_tex_ok == 0) {
-        buk_punch_tex_ok = png_load(BUK_PUNCH_TEX);
+    if (ebuc_punch_tex_ok == 0) {
+        ebuc_punch_tex_ok = png_load(EBUC_PUNCH_TEX);
     }
-    if (buk_elf_tex_ok == 0) {
-        buk_elf_tex_ok = png_load(BUK_ELF_TEX);
+    if (ebuc_elf_tex_ok == 0) {
+        ebuc_elf_tex_ok = png_load(EBUC_ELF_TEX);
     }
-    if (buk_elf_punch_tex_ok == 0) {
-        buk_elf_punch_tex_ok = png_load(BUK_ELF_PUNCH_TEX);
+    if (ebuc_elf_punch_tex_ok == 0) {
+        ebuc_elf_punch_tex_ok = png_load(EBUC_ELF_PUNCH_TEX);
     }
     if (candy_tex_ok == 0) {
         candy_tex_ok = png_load(CANDY_TEX);

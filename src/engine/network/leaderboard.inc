@@ -139,7 +139,7 @@ double net_leaderboard_cups(double idx) {
 static void *http_post_job(void *arg) {
     HttpJob *j = (HttpJob *)arg;
     if (j) {
-        /* Чат в комнате: база принимает запись только с полем "w". */
+                /* Chat in the room: the database accepts a write only with the "w" field. */
         if (fb_enabled())
             net_seal_body(j->body, sizeof(j->body));
         http("POST", j->url, j->body, NULL, 0);
@@ -164,7 +164,7 @@ static void http_post_async(const char *url, const char *body) {
 static void *http_delete_job(void *arg) {
     char *url = (char *)arg;
     if (url) {
-        /* fb_http сам допишет свежий токен и повторит запрос при 401. */
+                /* fb_http adds a fresh token itself and retries the request on 401. */
         fb_http("DELETE", url, NULL, NULL, 0);
         free(url);
     }

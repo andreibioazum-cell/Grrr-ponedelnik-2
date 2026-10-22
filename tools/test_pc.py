@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Проверка ПК-версии Cubic Battle 4: сборка и прогон без окна.
+"""Checks of the PC build: it compiles and plays without a window.
 
-Собирает Linux-харнесс (gcc) из тех же исходников, что и .exe, и гоняет
-настоящую игру фиксированными кадрами: экран предупреждения -> лобби ->
-«Играть» -> «Соло» -> бой, стик и удар через тот же слой, что и клавиатура на
-ПК. Отдельным прогоном проверяется вход в аккаунт против подставной базы
-test/fake_firebase.py по настоящему HTTP (это единственный способ увидеть
-весь сетевой путь: WinHTTP в песочнице не запустить, а POSIX-транспорт в
-харнессе повторяет его поведение).
+Builds the Linux harness (gcc) from the same sources as the .exe and runs the real
+game with fixed frames: the warning screen -> lobby -> Play -> Solo -> battle, the
+stick and a punch through the same layer the PC keyboard uses. A separate run
+checks signing in against the fake database in test/fake_firebase.py over real
+HTTP (the only way to see the whole network path: WinHTTP cannot run in the
+sandbox, and the POSIX transport in the harness behaves like it).
 
-Запуск: python3 tools/test_pc.py            (нужен gcc + g++)
-        python3 tools/test_pc.py --no-build (уже собранный харнесс)
+Run: python3 tools/test_pc.py            (needs gcc + g++)
+     python3 tools/test_pc.py --no-build (harness already built)
 """
 
 from __future__ import annotations
@@ -187,6 +186,87 @@ def test_menu_and_battle(assets: Path) -> None:
         check("кадр боя не пустой (много цветов)", len(colors) > 50, f"{len(colors)} цветов")
 
 
+def test_controls(assets: Path) -> None:
+    """PC keys: E holds the block, Q does not touch the screen for a class with no
+    super.
+
+    The ladder of taps leads into a solo fight with the ordinary cube (it has no
+    super). Q used to press empty screen, the game read that as the stick and
+    teleported the player into the corner of the arena.
+    """
+    print("\n== 3b. PC controls (mouse / block / super) ==")
+    start = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",   # consent
+        "--touch", "400:270:336:0", "--touch", "403:270:336:1",   # Play
+        "--touch", "460:270:404:0", "--touch", "463:270:404:1",   # Solo
+    ]
+
+    def play(name: str, extra: list[str]) -> dict[int, dict[str, str]]:
+        result = harness(
+            assets,
+            SCRATCH / name,
+            ["--frames", "1300", *start, "--report", "600", "--report", "800", "--report", "1000", *extra],
+        )
+        return parse_reports(result.stdout)
+
+    plain = play("ctl_plain", [])
+    held = play("ctl_block", ["--blk", "600:1"])
+    check(
+        "E (block) reduces damage taken",
+        float(held.get(1000, {}).get("hp", "0")) > float(plain.get(1000, {}).get("hp", "0")),
+        f"no block {plain.get(1000, {}).get('hp')}, with block {held.get(1000, {}).get('hp')}",
+    )
+    super_run = play("ctl_super", ["--super", "700:1", "--super", "720:0"])
+    check(
+        "Q does not move a player whose class has no super",
+        super_run.get(800, {}).get("x") == plain.get(800, {}).get("x")
+        and super_run.get(800, {}).get("y") == plain.get(800, {}).get("y"),
+        f"without Q {plain.get(800, {}).get('x')},{plain.get(800, {}).get('y')}; "
+        f"with Q {super_run.get(800, {}).get('x')},{super_run.get(800, {}).get('y')}",
+    )
+
+
+def test_walk_feel(assets: Path) -> None:
+    """The cube ramps up and stops in about 0.08 s instead of tearing off.
+
+    A released stick used to stop the cube in the same frame; now the speed fades
+    over walk_stop_time and the ramp takes walk_accel_time, both 0.08 s. Checked
+    from the per-frame reports: the first frame after the press moves much less
+    than a steady walk, and after the release the cube still moves for a few
+    frames and then stands.
+    """
+    print("\n== 3c. Cube ramp up and brake ==")
+    start = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:336:0", "--touch", "403:270:336:1",
+        "--touch", "460:270:404:0", "--touch", "463:270:404:1",
+    ]
+    events = ["--frames", "760", *start, "--stick", "600:1:0"]
+    events += [item for frame in range(600, 641) for item in ("--report", str(frame))]
+    events += ["--stick", "640:0:0"]
+    events += [item for frame in range(641, 661) for item in ("--report", str(frame))]
+    reports = parse_reports(harness(assets, SCRATCH / "walk", events).stdout)
+
+    def x(frame: int) -> float:
+        return float(reports.get(frame, {}).get("x", "nan"))
+
+    steady = x(639) - x(638)                  # steady walk, px per frame
+    first = x(601) - x(600)                   # the first frame after the press
+    check("the cube starts softly instead of jumping to full speed",
+          0 < first < steady * 0.5, f"first frame {first:.2f} px, steady {steady:.2f} px")
+    ramp = next((f for f in range(600, 640) if x(f) - x(f - 1) > steady * 0.9), None)
+    check("the ramp takes about 0.08-0.15 s",
+          ramp is not None and 4 <= ramp - 600 <= 10,
+          f"full speed on frame {ramp} ({(ramp - 600) / 60 if ramp else -1:.3f} s)")
+
+    moved = [f for f in range(641, 661) if x(f) > x(f - 1) + 0.01]
+    stop = max(moved) if moved else 640
+    check("after the release the cube stops in about 0.08 s",
+          3 <= stop - 640 <= 8, f"stopped after {(stop - 640 + 1) / 60:.3f} s")
+    check("after stopping the cube stands still",
+          abs(x(660) - x(stop)) < 0.01, f"{x(stop):.2f} -> {x(660):.2f}")
+
+
 def wait_port(port: int, timeout: float = 5.0) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -270,6 +350,8 @@ def main() -> int:
     assets = stage_assets()
     test_pixels(assets)
     test_menu_and_battle(assets)
+    test_controls(assets)
+    test_walk_feel(assets)
     test_login(assets)
 
     print()

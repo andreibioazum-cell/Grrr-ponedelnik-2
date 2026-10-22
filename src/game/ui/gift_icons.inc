@@ -19,7 +19,7 @@ static const char *gift_tex(double id) {
     return "gift_poop.png";
 }
 
-/* Оттенок изумруда: 0 - обычная радуга, 1..7 - тот, что выбрал админ. */
+/* Emerald hue: 0 is the plain rainbow, 1..7 the one the admin picked. */
 static double gift_emerald_base_hue(void) {
     double h = net_gift_hue();
     if (h < 0) h = 0;
@@ -27,12 +27,12 @@ static double gift_emerald_base_hue(void) {
     return h / 8.0;
 }
 
-/* Оттенок медленно плывёт: изумруд переливается. */
+/* The hue drifts slowly: the emerald shimmers. */
 static double gift_emerald_phase(void) {
     return gift_emerald_base_hue() + ds_frame_seconds() * 0.08;
 }
 
-/* Цвет оттенка - то же колесо, что и у радужных букв. */
+/* The hue colour comes from the same wheel as the rainbow letters. */
 static uint32_t gift_hue_color(double hue) {
     double h = hue - floor(hue);
     double r = fabs(h * 6 - 3) - 1, g = 2 - fabs(h * 6 - 2), b = 2 - fabs(h * 6 - 4);

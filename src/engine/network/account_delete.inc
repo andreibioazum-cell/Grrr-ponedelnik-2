@@ -1,19 +1,19 @@
-/* Удаление аккаунта и всех данных игрока по его требованию.
+/* Deleting the account and all player data on request.
  *
- * 152-ФЗ, ст. 9 ч. 2 и ст. 21 ч. 5: субъект вправе отозвать согласие, и тогда
- * оператор прекращает обработку и уничтожает персональные данные. В игре это
- * экран «Аккаунт → Удалить аккаунт»: игрок вводит пароль и проводит
- * ползунок вправо. Удаление идёт в своём потоке:
- *   0. введённый пароль должен совпасть с паролем сессии;
- *   1. свежий вход этим паролем (Firebase удаляет учётку только после
- *      недавнего входа; заодно сервер ещё раз проверяет пароль);
- *   2. профиль users/<ник> удаляется из базы; если на сервере ещё старые
- *      правила без права на самоудаление, профиль обнуляется;
- *   3. учётная запись Firebase Auth удаляется (accounts:delete);
- *   4. на устройстве стираются сессия, прогресс, достижения, промокод и
- *      отметка о согласии на обработку данных.
- * Статус: 0 — ничего не идёт, 1 — идёт, 2 — удалено, 3 — ошибка сети или
- * сервера (ничего не стёрто, можно повторить), 4 — неверный пароль. */
+  * 152-FZ, art. 9 part 2 and art. 21 part 5: the subject may withdraw consent,
+  * and then the operator stops processing and destroys the personal data. In the
+  * game this is Account -> Delete account: the player types the password and
+  * drags the knob right. Deletion runs on its own thread:
+  *   0. the typed password must match the session password;
+  *   1. a fresh sign-in with that password (Firebase deletes an account only
+  *      after a recent login, and the server checks the password once more);
+  *   2. the users/<nick> profile is deleted from the database; if the server
+  *      still has old rules without self-deletion, the profile is zeroed;
+  *   3. the Firebase Auth account is deleted (accounts:delete);
+  *   4. on the device the session, progress, achievements, promo code and the
+  *      consent mark are erased.
+  * Status: 0 - idle, 1 - running, 2 - deleted, 3 - network or server error
+  * (nothing was erased, a retry is fine), 4 - wrong password. */
 
 static volatile int s_acct_del_status = 0;
 static char s_acct_del_pass[64];
@@ -76,8 +76,8 @@ static void *acct_delete_job(void *arg) {
         snprintf(url, sizeof(url), "%s/users/%s.json", net.base, nick);
         code = fb_http("DELETE", url, NULL, NULL, 0);
         if (code != 200) {
-            /* Старые правила базы не дают удалить свой профиль: тогда в нём
-             * не остаётся ничего, кроме ника и нулей. */
+                        /* Old database rules do not allow deleting your own profile: then
+                         * nothing is left in it but the nick and zeroes. */
             if (code == 0 || put_default_user(url, nick, NULL) != 200) {
                 if (net_log_ok())
                     LOGERR("account delete: profile HTTP %d", code);
@@ -119,7 +119,7 @@ void net_delete_account(const char *password) {
     s_acct_del_status = 3;
 }
 
-/* Прочитать статус; готовый результат (2, 3 или 4) отдаётся один раз. */
+/* Read the status; a finished result (2, 3 or 4) is returned once. */
 double net_delete_account_status(void) {
     int s = s_acct_del_status;
     if (s >= 2)

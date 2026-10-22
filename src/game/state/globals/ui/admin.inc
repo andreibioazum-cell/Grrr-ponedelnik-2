@@ -18,8 +18,8 @@ double cheat_speed;
 double cheat_nocd;
 double cheat_cc;
 double cheat_estun;
-/* Метка: стан врагу поставила панель админки, а не игра. Такой стан не
- * рисует оранжевый кружок - ни пока чит включён, ни после выключения,
- * пока доставшийся от него стан ещё тикает. Снимается настоящим станом
- * (stun_enemy) и началом нового боя. */
+/* Mark: the admin panel put this stun on the enemy, not the game. Such a stun
+ * draws no orange ring - neither while the cheat is on nor after it is off while
+ * the leftover stun still ticks. Cleared by a real stun (stun_enemy) and by the
+ * start of a new fight. */
 double cheat_estun_mark;

@@ -254,22 +254,6 @@ static unsigned long num_ulong(const char *json, const char *path, unsigned long
         return fb_value;
     return (unsigned long)v;
 }
-static void strv(const char *json, const char *path, char *out, size_t cap) {
-    const char *v;
-    size_t i = 0;
-    if (!out || !cap)
-        return;
-    out[0] = 0;
-    v = path_val(json, path);
-    if (!v || *v != '\"')
-        return;
-    for (v++; *v && *v != '\"' && i + 1 < cap; v++) {
-        if (*v == '\\' && v[1])
-            v++;
-        out[i++] = *v;
-    }
-    out[i] = 0;
-}
 static void json_escape(const char *src, char *dst, size_t cap) {
     size_t o = 0;
     if (cap == 0)
@@ -298,9 +282,9 @@ static void json_escape(const char *src, char *dst, size_t cap) {
 
 #define FB_EMAIL_DOMAIN "@cb4.game"
 
-/* Хвост пароля аккаунта больше не константа: он собирается в рантайме
- * функцией net_pass_suffix() из engine/network.h (NET_PASS_SECRET_*).
- * Раньше здесь была строка "|cb4v1" — её угадывали, и базу ломали. */
+/* The account password suffix is no longer a constant: net_pass_suffix() builds it
+ * at runtime from engine/network.h (NET_PASS_SECRET_*). It used to be the string
+ * "|cb4v1" here - people guessed it and broke the database. */
 typedef struct {
     DSMutex lock;
     char key[128];

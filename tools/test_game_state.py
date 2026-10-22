@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Собирает и проверяет создание и сброс игрового состояния."""
+"""Builds and checks creation and reset of the game state."""
 
 from __future__ import annotations
 

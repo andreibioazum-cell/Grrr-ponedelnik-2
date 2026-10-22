@@ -20,9 +20,9 @@ static void tick_universe(void) {
         return;
     }
     universe_t = universe_t + dt;
-    if (universe_t >= buk_universe_collapse_time) {
+    if (universe_t >= ebuc_universe_collapse_time) {
         universe_active = 0;
-        universe_collapse(buk_universe_damage_for(player_level));
+        universe_collapse(ebuc_universe_damage_for(player_level));
     }
 }
 
@@ -114,13 +114,13 @@ static void update_remote_universe(void) {
             if (arr_get(remote_universe, b + 1) == 1) {
                 double t = arr_get(remote_universe, b + 4) + dt;
                 arr_set(remote_universe, b + 4, t);
-                if (t >= buk_universe_collapse_time) {
+                if (t >= ebuc_universe_collapse_time) {
                     double ux = arr_get(remote_universe, b + 2);
                     double uy = arr_get(remote_universe, b + 3);
                     arr_set(remote_universe, b + 1, 0);
                     arr_set(remote_universe, b, 0);
                     double rlevel = net_player_level(s);
-                    universe_collapse_remote(buk_universe_damage_for(rlevel), ux, uy);
+                    universe_collapse_remote(ebuc_universe_damage_for(rlevel), ux, uy);
                     if (finished != 0) {
                         return;
                     }

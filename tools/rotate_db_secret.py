@@ -1,30 +1,29 @@
 #!/usr/bin/env python3
-"""Меняет оба секрета базы: хвост пароля аккаунта и «пароль на запись».
+"""Rotates both database secrets: the account password suffix and the write password.
 
-Запуск без аргументов:
-    python3 tools/rotate_db_secret.py
+Run with no arguments.
 
-Что делает:
-  1. Придумывает два новых секрета по 32 случайных символа [A-Za-z0-9]
-     (генератор случайных чисел криптографический, secrets модуль).
-  2. Переписывает куски NET_PASS_SECRET_* и NET_WRITE_SECRET_* в
-     src/engine/network.h — в клиенте секреты хранятся не строкой, а кусками,
-     каждый байт xor 0x5a, чтобы строку не находил grep по собранному apk.
-  3. Меняет старый секрет записи на новый в firebase.rules.json.
+What it does:
+  1. Picks two new secrets of 32 random [A-Za-z0-9] chars each (the random
+     generator is cryptographic, the secrets module).
+  2. Rewrites the NET_PASS_SECRET_* and NET_WRITE_SECRET_* pieces in
+     src/engine/network.h - the client keeps secrets as pieces with every byte
+     xored by 0x5a, so a grep over the built apk finds no string.
+  3. Replaces the old write secret with the new one in firebase.rules.json.
 
-После запуска обязательно:
-  * открыть firebase.rules.json в консоли Firebase и опубликовать правила
-    (Realtime Database → Rules → Publish), иначе база будет отвергать записи
-    нового клиента;
-  * собрать и выпустить новую версию игры.
+After running you must:
+  * open firebase.rules.json in the Firebase console and publish the rules
+    (Realtime Database -> Rules -> Publish), or the database rejects writes from
+    the new client;
+  * build and release a new version of the game.
 
-Важно про хвост пароля. Пароль аккаунта = «пароль игрока + хвост», поэтому
-смена хвоста меняет пароли всех аккаунтов. Клиент умеет пускать старые
-аккаунты по предыдущему хвосту (FB_LEGACY_PASS_SUFFIX в write_secret.inc) и
-сразу переписывает пароль на новый. Лестница знает только ОДИН старый хвост —
-тот, что был раньше ("|cb4v1"). Если покрутить секрет ещё раз, аккаунты,
-созданные в промежутке, не войдут: перед вторым запуском либо дайте игрокам
-переехать, либо допишите ещё одну ступеньку в fb_sign_in().
+About the password suffix. An account password is "player password + suffix", so
+a new suffix changes the password of every account. The client lets old accounts
+in with the previous suffix (FB_LEGACY_PASS_SUFFIX in write_secret.inc) and
+rewrites the password right away. The ladder knows exactly ONE old suffix, the
+one from before ("|cb4v1"). Rotating the secret once more locks out accounts
+created in between: before a second run either let the players move or add one
+more step to fb_sign_in().
 """
 
 from __future__ import annotations
@@ -47,7 +46,7 @@ MASK = 0x5A
 
 
 def encode(secret: str, mask: int = MASK, chunk: int = CHUNK) -> list[str]:
-    """Режет секрет на куски и кодирует каждый байт в восьмеричный escape."""
+    """Splits a secret into pieces and encodes every byte as an octal escape."""
     parts = []
     for start in range(0, len(secret), chunk):
         piece = secret[start:start + chunk]
@@ -88,11 +87,11 @@ def write_secret(header: str, prefix: str, secret: str) -> str:
         pattern = re.compile(r'#define\s+%s_%d\s+"(?:\\?[0-7]{3})*"' % (prefix, index))
         if not pattern.search(header):
             raise SystemExit(f"В network.h нет макроса {prefix}_{index}")
-        # Замену вставляем через лямбду: в кусках есть escape-последовательности,
-        # и re.sub иначе съест обратные слеши.
+                # The replacement goes through a lambda: the pieces contain escape
+                # sequences, and re.sub would eat the backslashes otherwise.
         header = pattern.sub(lambda _m, line="#define %s_%d %s" % (prefix, index, chunk): line,
                              header, count=1)
-    # Удаляем хвостовые куски, оставшиеся от более длинного секрета.
+        # Drop the tail pieces left over from a longer secret.
     index = len(chunks)
     while True:
         pattern = re.compile(r'#define\s+%s_%d\s+"(?:\\?[0-7]{3})*"\n' % (prefix, index))
@@ -143,7 +142,7 @@ def main() -> int:
         raise SystemExit("Секреты должны быть разными: секрет записи лежит в базе открыто")
     hits = rules_text.count(old_write)
     if hits < 6:
-        raise SystemExit("В firebase.rules.json меньше 6 вхождений старого секрета записи — файл правился вручную?")
+        raise SystemExit("В firebase.rules.json меньше 6 вхождений старого секрета записи - файл правился вручную?")
 
     print("Старый секрет записи: %s" % old_write)
     print("Новый секрет записи:  %s" % new_write)

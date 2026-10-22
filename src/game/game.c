@@ -1,4 +1,4 @@
-/* Полная игровая логика Cubic Battle 4 на C. */
+/* All of the Cubic Battle 4 game logic in C. */
 #include "game/game.h"
 #include "engine/runtime.h"
 #include "engine/network.h"
@@ -22,6 +22,7 @@
 #include "ui/progress_rewards.inc"
 #include "ui/promo.inc"
 #include "ui/layout.inc"
+#include "ui/account_msg.inc"
 #include "ui/account.inc"
 #include "ui/legal.inc"
 #include "ui/chat.inc"
@@ -78,6 +79,6 @@
 #include "lifecycle.inc"
 
 #ifdef CB_PC
-/* Мост для клавиатуры и мыши: см. platform/pc/pc_main.c. */
+/* Bridge for the keyboard and mouse: see platform/pc/pc_main.c. */
 #include "pc_pads.inc"
 #endif

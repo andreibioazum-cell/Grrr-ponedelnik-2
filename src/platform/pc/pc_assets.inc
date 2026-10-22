@@ -93,9 +93,9 @@ int AAsset_close(AAsset *asset) {
     return 0;
 }
 
-/* Лог идёт и в stderr (виден в консоли и в выводе харнесса), и в файл рядом
- * с exe: собранный как GUI-приложение бинарник консоли не имеет, а разбирать
- * жалобы без лога невозможно. */
+/* The log goes to stderr (visible in the console and in harness output) and to a
+ * file next to the exe: built as a GUI app the binary has no console, and sorting
+ * out complaints without a log is impossible. */
 static FILE *pc_log_file = NULL;
 static int pc_log_tried = 0;
 

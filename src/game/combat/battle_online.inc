@@ -327,7 +327,7 @@ static void push_self(void) {
     net_publish_block(player_block);
     net_publish_codecracker_super(codecracker_super_t > 0 ? 1 : 0);
     net_publish_punch(punch->x / screen_w, punch->y / screen_h, punch->dx, punch->dy, punch->shot);
-    if (player_class == CLASS_BUK) {
+    if (player_class == CLASS_EBUC) {
         double x1 = 0;
         double y1 = 0;
         double h1 = 0;

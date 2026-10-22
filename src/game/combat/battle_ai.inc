@@ -341,7 +341,7 @@ static void update_enemy(void) {
         enemy->flank = enemy_flank_time;
     }
     if (enemy_block_left <= 0 && enemy_block_cd <= 0 && rand() % 1000 < 5) {
-        /* Occasionally turtle up out of nowhere — reads like a cautious human
+        /* Occasionally turtle up out of nowhere - reads like a cautious human
          * catching their breath between exchanges. */
         enemy_block_left = 0.5 + (rand() % 100) / 100.0 * 0.7;
         return;
