@@ -229,6 +229,16 @@ static void progress_reset_on_signout(void) {
     ebuc_skin = SKIN_NORMAL;
     achievement_mask = 0;
     azum_revive_count = 0;
+    cheat_god = 0;
+    cheat_damage = 0;
+    cheat_speed = 0;
+    cheat_nocd = 0;
+    cheat_cc = 0;
+    cheat_estun = 0;
+    cheat_chaos = 0;
+    cheat_stain = 0;
+    cheat_estun_mark = 0;
+    admin_panel_open = 0;
     sync_selected_class();
     save_progress();
     net_mark_progress_synced();

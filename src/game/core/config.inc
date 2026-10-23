@@ -27,10 +27,9 @@ static double admin_slot(const char *nick) {
     return 0;
 }
 
-/* Admin by the nick of the signed-in account. The game never spends this
- * player's cups: classes and levels are free, a loss takes nothing, and stickers
- * in the shop are bought without a charge (the engine keeps the same list in
- * gifts.inc). */
+/* Admin by the nick of the signed-in account. Shop classes, levels and
+ * stickers are bought without spending cups (the engine keeps the same list in
+ * gifts.inc); battle win/loss cups follow admin_cups_allowed() instead. */
 static double admin_playing(void) {
     if (net_login_status() != 2) {
         return 0;

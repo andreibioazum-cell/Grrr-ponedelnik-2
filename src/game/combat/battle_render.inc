@@ -122,10 +122,10 @@ static void finish_game(double result) {
     }
 }
 
-/* Battle payout. If the admin cheat was on at least once during this fight, the
- * fight changes nothing in the wallet: a win pays no cups (and no win
- * achievements), a loss takes none. The cheat may be off again right away - the
- * mark stays until the end of the fight. */
+/* Battle payout. If any admin panel switch was on at least once during this
+ * fight, the fight changes nothing in the wallet: a win pays no cups (and no
+ * win achievements), a loss takes none. With all panel switches off, wins and
+ * losses change cups normally even for an admin. */
 static void award_battle_result(double result) {
     if (result == 1) {
         if (admin_cups_allowed() == 0) {
@@ -142,17 +142,11 @@ static void award_battle_result(double result) {
         save_progress();
         grant_achievement(ACH_FIRST_WIN);
         /* Flawless win: keep full health and take no hits during the battle.
-                  * player_was_hit includes damage intercepted by ebuc's turrets. */
+         * player_was_hit includes damage intercepted by ebuc's turrets. */
         if (player->hp >= player->max_hp && player_was_hit == 0) {
             grant_achievement(ACH_LAST_HP);
         }
         ds_log("win +%g cups +%g candies", cup_win, candy_win);
-        return;
-    }
-    if (dev_access() == 1) {
-                /* The admin does not lose cups on a loss: a win still pays, a loss
-                 * takes nothing. */
-        ds_log("lose: no cups taken away, admin mode");
         return;
     }
     if (admin_cups_allowed() == 0) {
@@ -361,12 +355,10 @@ static void draw_result(const char *title) {
         reward = 0 - cup_lose;
     }
     ctext_scaled(title, y + 36, 0xFFFFFF, 1.12);
-    if (finished == 2 && dev_access() == 1) {
-        ctext_scaled(tr_cups_admin(), y + 126, 0xFFFFFF, 0.9);
+    if (admin_cups_allowed() == 0) {
+        ctext_scaled(finished == 2 ? tr_cups_admin() : tr_cups_cheated(), y + 126, 0xFFFFFF, 0.9);
     } else if (finished == 2) {
         ctext_scaled(tr_cups_lose(reward), y + 126, 0xFFFFFF, 0.9);
-    } else if (admin_cups_allowed() == 0) {
-        ctext_scaled(tr_cups_cheated(), y + 126, 0xFFFFFF, 0.9);
     } else {
         ctext_scaled(tr_cups_reward(reward), y + 126, 0xFFFFFF, 0.9);
     }

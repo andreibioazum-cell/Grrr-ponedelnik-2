@@ -259,7 +259,9 @@ static void draw_online(void) {
     draw_chat();
     draw_plates_hud();
     draw_alone_wait();
-    if (finished == 2) {
+    if (finished == 1) {
+        draw_result(tr_victory());
+    } else if (finished == 2) {
         draw_result(tr_defeat());
     }
     draw_banner();

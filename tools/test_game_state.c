@@ -3646,30 +3646,61 @@ int main(void) {
     assert(admin_cups_allowed() == 0);
     cups = 0;
     cup_win = 50;
+    cup_lose = 3;
     player->hp = player->max_hp;
     player_was_hit = 0;
     award_battle_result(1);
     assert(cups == 0);
-    /* A fresh battle with every switch off pays normally again. */
+    cups = 30;
+    award_battle_result(2);
+    assert(cups == 30); /* stained fight: loss also takes no Cups */
+    finished = 1;
+    adm_reset_log();
+    draw_result(tr_victory());
+    assert(adm_has_text(tr_cups_cheated()) == 1);
+    finished = 2;
+    adm_reset_log();
+    draw_result(tr_defeat());
+    assert(adm_has_text(tr_cups_admin()) == 1);
+    finished = 0;
+
+    /* A fresh battle with every switch off awards and deducts Cups normally,
+     * even for the admin account. */
     admin_battle_stain_reset();
     assert(admin_cups_allowed() == 1);
     cups = 0;
     award_battle_result(1);
     assert(cups == 50);
-    /* In admin mode a loss does not take the cups away. */
-    if (dev_access() == 1) {
-        cups = 30;
+    cups = 30;
+    award_battle_result(2);
+    assert(cups == 27);
+    finished = 1;
+    adm_reset_log();
+    draw_result(tr_victory());
+    assert(adm_has_text(tr_cups_reward(50)) == 1);
+    finished = 2;
+    adm_reset_log();
+    draw_result(tr_defeat());
+    assert(adm_has_text(tr_cups_lose(-3)) == 1);
+    finished = 0;
+    cup_lose = 1;
+
+    /* Every single one of the 7 admin panel switches blocks both cup awards
+     * and cup deductions while enabled. */
+    for (int i = 0; i < 7; i++) {
+        cheat_stain = 0;
+        admin_press_cheat(i);
+        admin_battle_stain_reset();
+        assert(admin_any_cheat_on() == 1 && admin_cups_allowed() == 0);
+        cups = 10;
+        award_battle_result(1);
+        assert(cups == 10);
         award_battle_result(2);
-        assert(cups == 30);
+        assert(cups == 10);
+        admin_press_cheat(i);
+        admin_battle_stain_reset();
+        assert(admin_any_cheat_on() == 0 && admin_cups_allowed() == 1);
     }
-    /* Entering a battle with a cheat already on stains it as well. */
-    cheat_stain = 0;
-    cheat_speed = 1;
-    admin_battle_stain_reset();
-    assert(admin_cups_allowed() == 0);
-    cheat_speed = 0;
-    admin_battle_stain_reset();
-    assert(admin_cups_allowed() == 1);
     cups = 0;
 
     net_ban_set("remote_guy", 0);
