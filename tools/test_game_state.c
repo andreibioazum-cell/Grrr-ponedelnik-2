@@ -2986,7 +2986,7 @@ int main(void) {
     assert(fabs(class_power_of(CLASS_ASTRA) - punch_damage * 0.93) < 1e-9);
     classes_scroll = 0;
     codecracker_refresh();
-    assert(codecracker_allowed() == 1 && codecracker_allowed() == astra_ability_allowed());
+    assert(class_visible(CLASS_CODECRACKER) == 1 && astra_ability_allowed() == 1);
     assert(player_max_hp_for(CLASS_CODECRACKER) == 12 * round_hp_mult() && codecracker_hp == 12);
     assert(codecracker_speed_mult == 3 && codecracker_touch_damage == 1.55 && codecracker_touch_heal == 0.529);
     assert(codecracker_super_time == 7 && codecracker_super_absorb == 0.5);
@@ -3345,7 +3345,7 @@ int main(void) {
     astra_ability_refresh();
     codecracker_refresh();
     set_class_owned(CLASS_CODECRACKER, 0);
-    assert(astra_ability_allowed() == 0 && codecracker_allowed() == 1);
+    assert(astra_ability_allowed() == 0 && class_visible(CLASS_CODECRACKER) == 1);
     assert(class_visible(CLASS_ASTRA) == 1);
     assert(class_owned_of(CLASS_CODECRACKER) == 0 && class_visible(CLASS_CODECRACKER) == 1);
     assert(class_visible_index(CLASS_ASTRA) >= 0 && classes_visible_count() == 5);

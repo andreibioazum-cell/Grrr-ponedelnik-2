@@ -30,8 +30,6 @@ static const double codecracker_tint_a = 0.35;
 /* CodeCracker is available to every player in the shop now. */
 static void codecracker_refresh(void) { codecracker_ok = 1; }
 
-static double codecracker_allowed(void) { return 1; }
-
 static double codecracker_on(void) { return player_class == CLASS_CODECRACKER; }
 
 static double codecracker_of_slot(double slot) {
