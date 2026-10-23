@@ -59,6 +59,7 @@ def check_firebase_rules() -> None:
     missing = profile - user
     assert not missing, f"В правилах профиля нет полей: {sorted(missing)}"
     assert {"astra", "astra_level", "astra_levels"} <= profile
+    assert {"codecracker", "codecracker_level", "codecracker_levels"} <= profile
 
     missing = body_keys("player_api.inc") - message
     assert not missing, f"В правилах чата нет полей: {sorted(missing)}"
@@ -68,7 +69,7 @@ def check_firebase_rules() -> None:
     ban_write = rules["bans"]["$nick"][".write"]
     assert "newData.exists()" in ban_write
     assert "$nick.toLowerCase() != 'dimasi4ek229'" in ban_write
-    assert "$nick.toLowerCase() != 'qwertyuiopaj1234'" in ban_write
+    assert "qwertyuiopaj1234" not in ban_write.lower()
 
 
 def check_write_secret() -> None:
