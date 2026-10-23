@@ -186,6 +186,20 @@ static const char *tr_achievement_eax229(void) { return "mov eax, 0x229"; }
 
 static const char *tr_achievement_eax229_desc(void) { return "???"; }
 
+static const char *tr_achievement_buk(void) {
+    if (language == 1) {
+        return "Подарок буКа";
+    }
+    return "Gift from буК";
+}
+
+static const char *tr_achievement_buk_desc(void) {
+    if (language == 1) {
+        return "Быть на ивенте Дедом Морозом в онлайне";
+    }
+    return "Be at the event as Santa online";
+}
+
 static const char *tr_achievement_open(void) {
     if (language == 1) {
         return "Получено";

@@ -23,6 +23,26 @@ static void check_achievements(void) {
         grant_achievement(ACH_ALL_CHARACTERS);
     }
     check_meet_eax229();
+    check_buk_elf_achievement();
+}
+
+static void check_buk_elf_achievement(void) {
+    if (has_achievement(ACH_BUK_GIFT) == 1) {
+        return;
+    }
+    if (game_state != ST_ONLINE) {
+        return;
+    }
+    if (event_mode != 3) {
+        return;
+    }
+    if (player_class != CLASS_SANTA) {
+        return;
+    }
+    if (online_ready != 1) {
+        return;
+    }
+    grant_achievement(ACH_BUK_GIFT);
 }
 
 static double nick_is_dimasi229(const char *nick) {

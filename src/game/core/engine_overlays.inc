@@ -62,6 +62,9 @@ static const char *achievement_toast_text(void) {
     if (ach_toast_bit == ACH_EAX229) {
         return tr_achievement_eax229();
     }
+    if (ach_toast_bit == ACH_BUK_GIFT) {
+        return tr_achievement_buk();
+    }
     return tr_achievement_legends();
 }
 

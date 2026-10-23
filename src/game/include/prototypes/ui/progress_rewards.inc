@@ -3,6 +3,7 @@ static void show_achievement_toast(double bit);
 static double grant_achievement(double bit);
 static void check_achievements(void);
 static void check_meet_eax229(void);
+static void check_buk_elf_achievement(void);
 static void save_progress(void);
 static void progress_reset_on_signout(void);
 static double skin_flags(void);

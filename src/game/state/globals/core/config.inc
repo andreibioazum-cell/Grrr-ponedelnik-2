@@ -73,6 +73,7 @@ double ACH_ALL_CHARACTERS;
 double ACH_LEGENDS;
 double ACH_LAST_HP;
 double ACH_EAX229;
+double ACH_BUK_GIFT;
 double ACH_LEGENDS_NEED;
 double azum_revive_count;
 double ach_toast_bit;
@@ -411,6 +412,7 @@ const char *login_pass;
 char login_nick_buf[128];
 char login_pass_buf[128];
 const char *LOBBY_MUSIC;
+const char *SERAPHIM_MUSIC;
 const char *BUTTON_CLICK_SOUND;
 double button_click_ok;
 /* 1 = the new look (purple, gradients, centred menu, NPC cube),

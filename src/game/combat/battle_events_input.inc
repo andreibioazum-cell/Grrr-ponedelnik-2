@@ -34,6 +34,12 @@ static void update_event(void) {
     }
     tick_plates_event();
     update_dice_event();
+    /* New achievement: be at Ded Moroz event (3) as Santa online – gives elf skin of буКа (genitive буКа). */
+    if (game_state == ST_ONLINE && event_mode == 3 && player_class == CLASS_SANTA && online_ready == 1) {
+        if (has_achievement(ACH_BUK_GIFT) == 0) {
+            grant_achievement(ACH_BUK_GIFT);
+        }
+    }
 }
 
 static double banner_named_color(const char *name) {
@@ -350,9 +356,9 @@ static void touch_game(double x, double y, double action, double id) {
         ult_mode_toggle();
         return;
     }
-    /* Aiming the brick: the finger that tapped the pad may drag anywhere on
-     * the arena, and the throw follows it. Lifting the finger keeps the aim,
-     * the countdown runs to zero on its own. */
+    /* Aiming the magic projectile: the finger that tapped the pad may drag only
+     * around the player (not anywhere), and the throw follows it. Lifting the
+     * finger keeps the aim, the countdown runs to zero on its own. */
     if (ball.aim_on == 1 && id == ball.aim_id) {
         if (action == 2) {
             ball_aim_point(x, y);
@@ -395,7 +401,7 @@ static void touch_game(double x, double y, double action, double id) {
         }
         if (class_has_super(player_class) == 1) {
             /* The ult pad belongs to its own finger and fires on the press:
-             * nothing in the game waits for a hold. In brick mode the press
+             * nothing in the game waits for a hold. In projectile mode the press
              * only starts the countdown, and the throw comes later. */
             if (action == 0 && dsu <= pr && dsu <= dp && player_block == 0 && ball.aim_on == 0) {
                 if (player_class == CLASS_EBUC && ball_mode == 1 &&
