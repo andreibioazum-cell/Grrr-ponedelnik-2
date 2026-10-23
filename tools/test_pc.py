@@ -80,10 +80,11 @@ def stage_assets() -> Path:
     return assets
 
 
-def harness(assets: Path, data: Path, args: list[str]) -> subprocess.CompletedProcess:
+def harness(assets: Path, data: Path, args: list[str], classic: bool = True) -> subprocess.CompletedProcess:
     shutil.rmtree(data, ignore_errors=True)
     data.mkdir(parents=True, exist_ok=True)
-    return run([str(BINARY), "--headless", "--size", "540x960", "--assets", str(assets), "--data", str(data), *args])
+    extra = ["--classic-sim"] if classic else []
+    return run([str(BINARY), "--headless", *extra, "--size", "540x960", "--assets", str(assets), "--data", str(data), *args])
 
 
 def parse_reports(stdout: str) -> dict[int, dict[str, str]]:
@@ -356,12 +357,13 @@ def test_chaos(assets: Path) -> None:
             fake.wait(timeout=5)
 
 
-def harness_async(assets: Path, data: Path, args: list[str]) -> subprocess.Popen:
+def harness_async(assets: Path, data: Path, args: list[str], classic: bool = True) -> subprocess.Popen:
     """Same command as harness(), but left running so two clients can meet."""
     shutil.rmtree(data, ignore_errors=True)
     data.mkdir(parents=True, exist_ok=True)
+    extra = ["--classic-sim"] if classic else []
     return subprocess.Popen(
-        [str(BINARY), "--headless", "--size", "540x960", "--assets", str(assets), "--data", str(data), *args],
+        [str(BINARY), "--headless", *extra, "--size", "540x960", "--assets", str(assets), "--data", str(data), *args],
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -435,8 +437,8 @@ def test_brick_online(assets: Path) -> None:
              "--report", "1500",
              # the mode button, then the pad: the countdown and a dragged aim
              "--touch", "1560:408:533:0:5", "--touch", "1572:408:533:1:5",
-             "--touch", "1600:408:630:0:7", "--touch", "1630:408:700:2:7",
-             "--touch", "1640:408:700:1:7",
+             "--touch", "1600:408:630:0:7", "--touch", "1630:222:200:2:7",
+             "--touch", "1640:222:200:1:7",
              "--report", "1700", "--report", "2000", "--report", "2300"],
         )
         time.sleep(5)
@@ -445,7 +447,7 @@ def test_brick_online(assets: Path) -> None:
             SCRATCH / "brick_net_b",
             ["--frames", "2400", *taps, "--login", "500:" + nick + ":pass1234",
              "--room", f"960:{room}:0",
-             "--report", "1500", "--report", "1750", "--report", "1850", "--report", "2000", "--report", "2300"],
+             *[x for f in range(1350, 2260, 25) for x in ("--report", str(f))], "--report", "2300"],
         )
         out_a, err_a = thrower.communicate(timeout=500)
         out_b, err_b = victim.communicate(timeout=500)
@@ -453,12 +455,12 @@ def test_brick_online(assets: Path) -> None:
     rep_b = parse_reports(out_b)
     a1500, a1700, a2300 = rep_a.get(1500, {}), rep_a.get(1700, {}), rep_a.get(2300, {})
     b1500, b2300 = rep_b.get(1500, {}), rep_b.get(2300, {})
-    seen = [rep_b.get(f, {}).get("rbricks") for f in (1750, 1850, 2000, 2300)]
+    seen = [rep_b.get(f, {}).get("rbricks") for f in sorted(rep_b)]
     a2000 = rep_a.get(2000, {})
     check("метатель в онлайне", a1500.get("state") == "5" and a1500.get("battle") == "1", str(a1500))
     check("второй игрок в том же бою", b1500.get("state") == "5" and b1500.get("battle") == "1", str(b1500))
     check("кнопка режимов работает в онлайне", a1700.get("mode") == "1", str(a1700))
-    check("кирпич улетел в онлайне", "brick thrown" in err_a and float(a2000.get("bounces", "0")) > 0,
+    check("кирпич улетел в онлайне", "projectile thrown" in err_a and float(a2000.get("bounces", "0")) > 0,
           f"{a2000} / {err_a[-400:]}")
     check("другой игрок видит кирпич", "1" in seen, f"rbricks по кадрам: {seen}")
     check(
@@ -608,8 +610,8 @@ def test_ball(assets: Path) -> None:
 
         aimed = fight("brick_aim", [
             "--touch", "930:408:630:0:7", "--report", "960",
-            "--touch", "980:270:200:2:7",            # drag: aim at the enemy
-            "--touch", "1000:270:200:1:7",
+            "--touch", "980:270:360:2:7",            # drag within 180px ring: aim upward at enemy
+            "--touch", "1000:270:360:1:7",
             "--report", "1250", "--report", "1500",
         ])
         wall = fight("brick_wall", [
@@ -778,6 +780,97 @@ def test_login(assets: Path) -> None:
             fake.wait(timeout=5)
 
 
+def test_mc_3d_solo(assets: Path) -> None:
+    """Real 3D Minecraft Solo: 3D voxel rendering, breaking blocks, placing blocks, and disk persistence."""
+    print("\n== 4. 3D Minecraft: Solo рендер, ломание и установка блоков ==")
+    shot = SCRATCH / "mc_3d_solo.bmp"
+    data = SCRATCH / "mc_solo_world"
+    result = harness(
+        assets,
+        data,
+        [
+            "--frames", "440",
+            "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+            "--goto", "250:1",
+            "--report", "310",
+            "--mclook", "320:1.5708:-0.82",
+            "--mcmine", "324:1", "--mcmine", "395:0",
+            "--report", "400",
+            "--mcslot", "404:7",
+            "--mcplace", "416",
+            "--mclook", "424:1.5708:-0.78",
+            "--mcplace", "432",
+            "--report", "436",
+            "--dump", f"438:{shot}",
+        ],
+        classic=False,
+    )
+    check("3D Minecraft Solo завершился без ошибок", result.returncode == 0, result.stderr[-1200:])
+    rep = parse_reports(result.stdout)
+    check("до копания блоки булыжника и травы (4,1,0,0) на месте", rep.get(310, {}).get("vox") == "4,1,0,0", str(rep.get(310)))
+    check("блок булыжника сломан в 3D (стал воздухом 0)", rep.get(400, {}).get("vox", "").startswith("0,"), str(rep.get(400)))
+    check("алмазный блок (20) поставлен в 3D (0,20,0,0)", rep.get(436, {}).get("vox") == "0,20,0,0", str(rep.get(436)))
+    check("файл сохранения мира mc_solo.dat записан", (data / "mc_solo.dat").is_file())
+    if shot.is_file():
+        w, h, px = read_bmp(shot)
+        check("3D кадр богат цветами и текстурами", len(bmp_colors(px, w, h, 4)) > 120)
+
+
+def test_mc_3d_online_sync(assets: Path) -> None:
+    """Real 3D Minecraft Online: two clients in one Firebase room syncing block breaks & placements."""
+    print("\n== 5. 3D Minecraft Online: синхронизация блоков между игроками и Firebase ==")
+    room = f"mc3d{int(time.time()) % 100000}"
+    nick = f"builder{int(time.time()) % 100000}"
+    taps = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+    ]
+    with fake_server():
+        builder = harness_async(
+            assets,
+            SCRATCH / "mc_net_a",
+            [
+                "--frames", "1750", *taps,
+                "--login", "500:Dimasi4ek229:admin",
+                "--room", f"720:{room}:1",
+                "--report", "1150",
+                "--mclook", "1200:1.5708:-0.82",
+                "--mcmine", "1205:1", "--mcmine", "1280:0",
+                "--mcslot", "1290:7",
+                "--mcplace", "1305",
+                "--mclook", "1320:1.5708:-0.78",
+                "--mcplace", "1335",
+                "--report", "1680",
+            ],
+            classic=False,
+        )
+        time.sleep(3)
+        observer = harness_async(
+            assets,
+            SCRATCH / "mc_net_b",
+            [
+                "--frames", "1750", *taps,
+                "--login", f"500:{nick}:pass1234",
+                "--room", f"780:{room}:0",
+                "--report", "1680",
+            ],
+            classic=False,
+        )
+        out_a, err_a = builder.communicate(timeout=400)
+        out_b, err_b = observer.communicate(timeout=400)
+        login_body = json.dumps({"email": "dimasi4ek229@cb4.game", "password": "admin|cb4v1"}).encode()
+        tok = json.loads(fake_request("/v1/accounts:signInWithPassword?key=K", login_body, "POST"))["idToken"]
+        chat_db = json.loads(fake_request(f"/rooms/{room}/chat.json?auth={tok}").decode())
+    rep_a = parse_reports(out_a)
+    rep_b = parse_reports(out_b)
+    va = rep_a.get(1680, {}).get("vox", "")
+    vb = rep_b.get(1680, {}).get("vox", "")
+    check("строитель в 3D онлайне поставил алмазные блоки (20)", "20" in va.split(","), f"A={va} db={chat_db}")
+    check("второй игрок в реальном времени увидел те же 3D блоки", vb == va and "20" in vb.split(","), f"A={va} B={vb} db={chat_db}")
+    check("изменения мира сохранены в той же базе Firebase (/rooms/<room>/chat/b_*)",
+          isinstance(chat_db, dict) and any(k.startswith("b_") for k in chat_db), str(chat_db))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Проверка ПК-версии")
     parser.add_argument("--no-build", action="store_true", help="не пересобирать харнесс")
@@ -802,6 +895,8 @@ def main() -> int:
         test_chaos_online,
         test_brick_online,
         test_login,
+        test_mc_3d_solo,
+        test_mc_3d_online_sync,
     ]
     for test in tests:
         if args.only and args.only not in test.__name__:

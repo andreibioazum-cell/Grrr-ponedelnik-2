@@ -315,5 +315,8 @@ const char *net_chat_text(double idx);
 const char *net_chat_uid(double idx);
 
 const char *net_chat_key(double idx);
+void net_mc_block_write(int x, int y, int z, int block_id, int is_natural);
+int net_mc_poll_edit(int *x, int *y, int *z, int *block_id);
+void net_mc_solo_path(char *out, size_t cap);
 
 #endif

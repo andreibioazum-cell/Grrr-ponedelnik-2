@@ -150,9 +150,9 @@ static void logic_update(void) {
         }
     }
     if (game_state == ST_SOLO) {
-        update_game();
+        if (!mc_is_classic_sim()) mc_update_gameplay(); else update_game();
     } else if (game_state == ST_ONLINE) {
-        update_online();
+        if (!mc_is_classic_sim()) mc_update_gameplay(); else update_online();
     } else if (game_state == ST_LOGIN && acct_open == 0) {
         update_login();
     } else if (game_state == ST_PROMO) {
@@ -168,7 +168,7 @@ static void draw_screen(void) {
     if (game_state == ST_LOBBY) {
         draw_lobby();
     } else if (game_state == ST_SOLO) {
-        draw_game();
+        if (!mc_is_classic_sim()) mc_run_gameplay_frame(); else draw_game();
     } else if (game_state == ST_MODES) {
         draw_modes();
     } else if (game_state == ST_SETTINGS) {
@@ -192,7 +192,7 @@ static void draw_screen(void) {
     } else if (game_state == ST_ROOMS) {
         draw_rooms();
     } else {
-        draw_online();
+        if (!mc_is_classic_sim()) mc_run_gameplay_frame(); else draw_online();
     }
 }
 
@@ -378,6 +378,11 @@ static void logic_touch(double x, double y, double action, double id) {
      * the squeeze and the action all happen on touch down, and the control
      * springs back on its own, so nothing has to be held or released gently. */
     if (game_state == ST_SOLO || game_state == ST_ONLINE) {
+        if (!mc_is_classic_sim() && !(game_state == ST_ONLINE && (chat_open == 1 ||
+            hit_button(x, y, chat_btn_x(), chat_btn_y(), chat_btn_w(), chat_btn_h()) == 1))) {
+            mc_handle_touch((float)x, (float)y, (int)action, (int)id);
+            return;
+        }
         /* The in-battle back button, the results tap and the chat controls
          * all give their feedback on the touch. */
         if (action == 0 && menu_button_hit(x, y) == 1) {

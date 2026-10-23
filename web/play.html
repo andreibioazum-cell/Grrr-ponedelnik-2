@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Cubic Battle 4 — 3D Minecraft Online</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b101b; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #f1f5f9; }
+  #gameCanvas { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+  #bootOverlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 38%, #1a2942 0%, #090d16 78%); z-index: 30; gap: 16px; transition: opacity 0.35s ease;
+  }
+  #bootOverlay.hidden { opacity: 0; pointer-events: none; }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: 0.5px; color: #f8fafc; text-shadow: 0 3px 18px rgba(56,189,248,0.45); }
+  .sub { font-size: 14px; color: #94a3b8; }
+  .barWrap { width: min(360px, 78vw); height: 10px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255,255,255,0.16); }
+  .barFill { height: 100%; width: 8%; background: linear-gradient(90deg, #22c55e, #38bdf8); transition: width 0.15s ease; }
+  #topTools {
+    position: fixed; right: 12px; bottom: 12px; z-index: 20; display: flex; gap: 8px; align-items: center;
+  }
+  .pill {
+    background: rgba(15, 23, 42, 0.82); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.32);
+    border-radius: 10px; padding: 6px 11px; font-size: 12px; font-weight: 600; cursor: pointer; backdrop-filter: blur(8px);
+    text-decoration: none;
+  }
+  .pill:hover { background: rgba(30, 41, 59, 0.95); border-color: #38bdf8; }
+  #lockHint {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 18;
+    background: rgba(15, 23, 42, 0.84); border: 1px solid rgba(56, 189, 248, 0.45); color: #e0f2fe;
+    padding: 5px 14px; border-radius: 999px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.25s;
+  }
+  #lockHint.show { opacity: 1; }
+  #kbModal {
+    position: fixed; inset: 0; background: rgba(5, 10, 20, 0.68); backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center; z-index: 40;
+  }
+  #kbModal.open { display: flex; }
+  .kbCard {
+    width: min(430px, 90vw); background: #111827; border: 1px solid #38bdf8; border-radius: 16px;
+    padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.65);
+  }
+  .kbCard label { font-size: 13px; color: #93c5fd; font-weight: 600; }
+  .kbCard input {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid #334155; background: #0f172a;
+    color: #ffffff; font-size: 16px; outline: none; user-select: text; -webkit-user-select: text;
+  }
+  .kbCard input:focus { border-color: #38bdf8; }
+  .kbBtns { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="bootOverlay">
+  <div class="logo">CUBIC BATTLE 4 — 3D MINECRAFT</div>
+  <div class="sub" id="bootText">Загрузка 3D-мира, текстур и базы Firebase…</div>
+  <div class="barWrap"><div class="barFill" id="bootBar"></div></div>
+</div>
+
+<div id="lockHint">Кликни по 3D-миру для захвата мыши · WASD ходить · ЛКМ ломать · ПКМ ставить · 1-9 / [E] блоки · [F] полёт · [V] вид</div>
+
+<div id="topTools">
+  <button class="pill" id="btnSound">🔊 Звук</button>
+  <button class="pill" id="btnFull">⛶ Экран</button>
+  <a class="pill" href="admin.html" target="_blank">⚙ Админ-панель</a>
+</div>
+
+<div id="kbModal">
+  <div class="kbCard">
+    <label>Ввод текста (ник / пароль / комната / чат / промокод):</label>
+    <input id="kbInput" type="text" autocomplete="off" spellcheck="false" placeholder="Введите текст и нажмите Enter…">
+    <div class="kbBtns">
+      <button class="pill" id="kbCancel">Закрыть</button>
+      <button class="pill" id="kbOk" style="border-color:#22c55e;color:#bbf7d0;">Готово (Enter)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("gameCanvas");
+  const bootOverlay = document.getElementById("bootOverlay");
+  const bootBar = document.getElementById("bootBar");
+  const bootText = document.getElementById("bootText");
+  const lockHint = document.getElementById("lockHint");
+  const kbModal = document.getElementById("kbModal");
+  const kbInput = document.getElementById("kbInput");
+
+  const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+  const sizePx = () => ({
+    width: Math.max(320, Math.round(window.innerWidth * dpr())),
+    height: Math.max(240, Math.round(window.innerHeight * dpr())),
+  });
+
+  const saves = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("cb4_data/")) saves[k] = localStorage.getItem(k);
+  }
+
+  const worker = new Worker("worker.js");
+  const offscreen = canvas.transferControlToOffscreen();
+  const initSz = sizePx();
+  worker.postMessage({ type: "boot", canvas: offscreen, saves, width: initSz.width, height: initSz.height }, [offscreen]);
+
+  let gameWantsLock = 0;
+  let audioCtx = null;
+  let soundMuted = false;
+  let nextAudioTime = 0;
+
+  function ensureAudio() {
+    if (audioCtx) {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = new AC({ sampleRate: 44100 });
+    setInterval(() => {
+      if (!soundMuted && audioCtx && audioCtx.state === "running") {
+        worker.postMessage({ type: "audio_pull" });
+      }
+    }, 21);
+  }
+
+  worker.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.type === "progress") {
+      bootBar.style.width = `${Math.round((m.done / m.total) * 100)}%`;
+      bootText.textContent = `Загрузка ресурсов: ${m.done} / ${m.total}`;
+    } else if (m.type === "ready") {
+      bootOverlay.classList.add("hidden");
+    } else if (m.type === "save_put") {
+      try { localStorage.setItem(m.key, m.b64); } catch (_e) {}
+    } else if (m.type === "save_del") {
+      try { localStorage.removeItem(m.key); } catch (_e) {}
+    } else if (m.type === "lock_state") {
+      gameWantsLock = m.want;
+      if (!m.want && document.pointerLockElement === canvas) document.exitPointerLock();
+      lockHint.classList.toggle("show", !!m.want && document.pointerLockElement !== canvas);
+    } else if (m.type === "kb_state") {
+      if (m.open) {
+        if (document.pointerLockElement) document.exitPointerLock();
+        kbInput.value = "";
+        kbModal.classList.add("open");
+        setTimeout(() => kbInput.focus(), 20);
+      } else {
+        kbModal.classList.remove("open");
+      }
+    } else if (m.type === "audio_pcm" && audioCtx && !soundMuted) {
+      const i16 = new Int16Array(m.pcm);
+      const frames = i16.length >> 1;
+      const buf = audioCtx.createBuffer(2, frames, 44100);
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      for (let i = 0; i < frames; i++) {
+        L[i] = i16[i * 2] / 32768.0;
+        R[i] = i16[i * 2 + 1] / 32768.0;
+      }
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      const t0 = Math.max(audioCtx.currentTime + 0.012, nextAudioTime);
+      src.start(t0);
+      nextAudioTime = t0 + buf.duration;
+    }
+  };
+
+  window.addEventListener("resize", () => {
+    const s = sizePx();
+    worker.postMessage({ type: "resize", width: s.width, height: s.height });
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    lockHint.classList.toggle("show", !!gameWantsLock && document.pointerLockElement !== canvas);
+  });
+
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  const toCanvasXY = (clientX, clientY) => {
+    const r = canvas.getBoundingClientRect();
+    const k = dpr();
+    return { x: (clientX - r.left) * k, y: (clientY - r.top) * k };
+  };
+
+  let mouseDown0 = false;
+  canvas.addEventListener("mousedown", (e) => {
+    ensureAudio();
+    if (kbModal.classList.contains("open")) return;
+    if (gameWantsLock && document.pointerLockElement !== canvas) {
+      const p = toCanvasXY(e.clientX, e.clientY);
+      /* Allow clicking HUD buttons around screen edges even before locking cursor */
+      if (e.clientY > window.innerHeight * 0.14 && e.clientY < window.innerHeight * 0.84) {
+        if (canvas.requestPointerLock) canvas.requestPointerLock();
+      }
+      worker.postMessage({ type: "touch", x: p.x, y: p.y, action: 0, id: 0 });
+      mouseDown0 = true;
+      return;
+    }
+    if (document.pointerLockElement === canvas) {
+      worker.postMessage({ type: "mbtn", btn: e.button === 2 ? 1 : 0, down: 1 });
+    } else if (e.button === 0) {
+      const p = toCanvasXY(e.clientX, e.clientY);
+      mouseDown0 = true;
+      worker.postMessage({ type: "touch", x: p.x, y: p.y, action: 0, id: 0 });
+    } else if (e.button === 2) {
+      worker.postMessage({ type: "mbtn", btn: 1, down: 1 });
+    }
+  });
+
+  window.addEventListener("mouseup", (e) => {
+    if (document.pointerLockElement === canvas) {
+      worker.postMessage({ type: "mbtn", btn: e.button === 2 ? 1 : 0, down: 0 });
+    } else {
+      if (e.button === 2) worker.postMessage({ type: "mbtn", btn: 1, down: 0 });
+      if (mouseDown0) {
+        mouseDown0 = false;
+        const p = toCanvasXY(e.clientX, e.clientY);
+        worker.postMessage({ type: "touch", x: p.x, y: p.y, action: 1, id: 0 });
+      }
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement === canvas) {
+      worker.postMessage({ type: "mdelta", dx: e.movementX, dy: e.movementY });
+    } else if (mouseDown0) {
+      const p = toCanvasXY(e.clientX, e.clientY);
+      worker.postMessage({ type: "touch", x: p.x, y: p.y, action: 2, id: 0 });
+    }
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    worker.postMessage({ type: "wheel", delta: e.deltaY < 0 ? 120 : -120 });
+  }, { passive: false });
+
+  /* Multi-touch support for mobile & tablet browsers */
+  for (const [evName, act] of [["touchstart", 0], ["touchmove", 2], ["touchend", 1], ["touchcancel", 1]]) {
+    canvas.addEventListener(evName, (e) => {
+      ensureAudio();
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const p = toCanvasXY(t.clientX, t.clientY);
+        worker.postMessage({ type: "touch", x: p.x, y: p.y, action: act, id: t.identifier % 10 });
+      }
+    }, { passive: false });
+  }
+
+  const codeToVk = (e) => {
+    const c = e.code;
+    if (c.startsWith("Key") && c.length === 4) return c.charCodeAt(3);
+    if (c.startsWith("Digit") && c.length === 6) return c.charCodeAt(5);
+    if (c === "Space") return 32;
+    if (c === "ShiftLeft" || c === "ShiftRight") return 16;
+    if (c === "ArrowLeft") return 37;
+    if (c === "ArrowUp") return 38;
+    if (c === "ArrowRight") return 39;
+    if (c === "ArrowDown") return 40;
+    if (c === "Enter") return 13;
+    if (c === "Backspace") return 8;
+    return e.keyCode || 0;
+  };
+
+  window.addEventListener("keydown", (e) => {
+    if (kbModal.classList.contains("open")) return;
+    const vk = codeToVk(e);
+    if ([32, 37, 38, 39, 40].includes(vk)) e.preventDefault();
+    worker.postMessage({ type: "key", vk, down: 1 });
+  });
+  window.addEventListener("keyup", (e) => {
+    if (kbModal.classList.contains("open")) return;
+    worker.postMessage({ type: "key", vk: codeToVk(e), down: 0 });
+  });
+
+  kbInput.addEventListener("input", () => {
+    worker.postMessage({ type: "text", text: kbInput.value, submit: false });
+  });
+  kbInput.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      worker.postMessage({ type: "text", text: kbInput.value, submit: true });
+      kbModal.classList.remove("open");
+    } else if (e.key === "Escape") {
+      kbModal.classList.remove("open");
+    }
+  });
+  document.getElementById("kbOk").onclick = () => {
+    worker.postMessage({ type: "text", text: kbInput.value, submit: true });
+    kbModal.classList.remove("open");
+  };
+  document.getElementById("kbCancel").onclick = () => kbModal.classList.remove("open");
+
+  document.getElementById("btnSound").onclick = (e) => {
+    ensureAudio();
+    soundMuted = !soundMuted;
+    e.currentTarget.textContent = soundMuted ? "🔇 Без звука" : "🔊 Звук";
+  };
+  document.getElementById("btnFull").onclick = () => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  };
+})();
+</script>
+</body>
+</html>

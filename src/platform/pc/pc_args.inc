@@ -33,7 +33,7 @@ typedef struct {
     int frames;
     int warmup;
     int width, height;
-    int headless;
+    int headless, classic_sim;
     char assets[PC_PATH_LEN];
     char data[PC_PATH_LEN];
     int eventc;
@@ -100,6 +100,10 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
             a->headless = 1;
             continue;
         }
+        if (strcmp(k, "--classic-sim") == 0) {
+            a->classic_sim = 1;
+            continue;
+        }
         if (!*v)
             continue;
         if (strcmp(k, "--frames") == 0) {
@@ -130,6 +134,8 @@ static void pc_args_parse(const char *cmdline, PcArgs *a) {
                    strcmp(k, "--report") == 0 || strcmp(k, "--stick") == 0 || strcmp(k, "--atk") == 0 ||
                    strcmp(k, "--blk") == 0 || strcmp(k, "--super") == 0 || strcmp(k, "--login") == 0 ||
                    strcmp(k, "--class") == 0 || strcmp(k, "--room") == 0 ||
+                   strcmp(k, "--mclook") == 0 || strcmp(k, "--mcmine") == 0 ||
+                   strcmp(k, "--mcplace") == 0 || strcmp(k, "--mcslot") == 0 ||
                    strcmp(k, "--logininfo") == 0) {
             pc_args_push_event(a, k + 2, v);
             i++;

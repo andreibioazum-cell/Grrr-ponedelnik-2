@@ -235,6 +235,19 @@ def deep_del(node, parts):
     if isinstance(node, dict) and parts[-1] in node:
         del node[parts[-1]]
         return True
+    if len(path) == 3 and path[0] == "rooms" and path[2] == "meta":
+        if not isinstance(new, dict) or not _w_ok(new):
+            return False
+        if not (isinstance(cur, dict) and cur.get("owner") == uid):
+            if auth is None or not _is_str(new.get("owner"), 1, 64) or new.get("owner") != uid:
+                return False
+        if not _is_str(new.get("name"), 1, 24) or new.get("name") != path[1]:
+            return False
+        if not _is_num(new.get("priv")) or new.get("priv") not in (0, 1):
+            return False
+        if not _is_str(new.get("pass"), 0, 64):
+            return False
+        return True
     return False
 
 
@@ -390,7 +403,16 @@ class Handler(BaseHTTPRequestHandler):
         if method == "GET":
             node = deep_get(DB, parts) if parts else DB
             raw = b"null" if node is None else json.dumps(node, separators=(",", ":")).encode()
-            self._send(200, raw, etag=node_etag(node))
+            etag = node_etag(node)
+            inm = self.headers.get("If-None-Match")
+            if inm is not None and inm.strip() == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Content-Length", "0")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+            self._send(200, raw, etag=etag)
         elif method == "DELETE":
             deep_del(DB, parts)
             self._send(200, b"null")

@@ -1,35 +1,21 @@
-/* Ebuc (буК) has two ults, picked by the small button above the pad: dispenser
- * and magic blue projectile (renamed from brick). The projectile is aimed by
- * hand - the tap starts a 3-2-1 countdown over the cube, a dragged finger
- * points the throw (only when touching near the cube), and the projectile
- * leaves that way when the count hits zero and bounces off the walls (ten
- * bounces, then it just bursts). Lifting the finger early keeps the aim. Ebuc
- * only, and nothing in the game charges by holding. */
-
-#define BALL_COUNT_FROM 3.0      /* countdown digits: 3, 2, 1 */
-#define BALL_COUNT_STEP 0.7      /* seconds per digit */
-#define BALL_SPEED 620.0       /* px per second */
+/* Ebuc (буК) secondary ult: 3-2-1 countdown + aimed bouncing magic projectile. */
+#define BALL_COUNT_FROM 3.0
+#define BALL_COUNT_STEP 0.7
+#define BALL_SPEED 620.0
 #define BALL_RADIUS 24.0
 #define BALL_DAMAGE 10.0
 #define BALL_MAX_BOUNCES 10.0
-#define BALL_MAX_TIME 8.0      /* safety net: the ball always goes away */
+#define BALL_MAX_TIME 8.0
 #define BALL_TRAIL 12
 
 typedef struct {
-    double active;
-    double x, y, vx, vy;
+    double active, x, y, vx, vy;
     double bounces, t, spin, shot;
-    /* Aiming: the countdown runs in aim_t, the throw follows aim_dx/aim_dy. */
     double aim_on, aim_id, aim_t, aim_dx, aim_dy;
     double trail_x[BALL_TRAIL], trail_y[BALL_TRAIL], trail_a[BALL_TRAIL];
 } UltBall;
 
 static UltBall ball;
-
-/* The ult mode of a class that has two of them. Ebuc (the cube called "буК",
- * genitive "буКа") can throw either his dispenser or this magic blue projectile,
- * and the small button above the pad switches between them: 0 - dispenser (blue),
- * 1 - projectile (yellow indicator). */
 static double ball_mode;
 
 static double ult_mode_r(void) { return 26; }
@@ -37,8 +23,7 @@ static double ult_mode_x(void) { return atk2_x; }
 static double ult_mode_y(void) { return atk2_y - battle_pad_r() - ult_mode_r() - 10; }
 
 static double ult_mode_hit(double x, double y) {
-    double dx = x - ult_mode_x();
-    double dy = y - ult_mode_y();
+    double dx = x - ult_mode_x(), dy = y - ult_mode_y();
     return sqrt(dx * dx + dy * dy) <= ult_mode_r() + 14;
 }
 
@@ -47,9 +32,6 @@ static void ult_mode_toggle(void) {
     play_button_click();
 }
 
-/* Shown only where both modes exist, so the pad keeps its meaning everywhere
- * else. No text – just color: yellow = magic blue projectile (former brick),
- * blue = dispenser. Only black outline, no white. */
 static void draw_ult_mode(void) {
     double x = ult_mode_x();
     double y = ult_mode_y();

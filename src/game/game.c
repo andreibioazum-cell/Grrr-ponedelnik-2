@@ -3,6 +3,9 @@
 #include "engine/runtime.h"
 #include "engine/network.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "types.inc"
 #include "state.inc"
@@ -28,6 +31,11 @@
 #include "ui/chat.inc"
 #include "ui/npc_cube.inc"
 #include "ui/class_stars.inc"
+static int mc_is_classic_sim(void);
+static void mc_update_and_draw_lobby_panorama(void);
+static void mc_update_gameplay(void);
+static void mc_run_gameplay_frame(void);
+static int mc_handle_touch(float x, float y, int type, int tid);
 #include "ui/menu_screens.inc"
 #include "ui/battle_pass.inc"
 #include "ui/rooms.inc"
@@ -77,6 +85,15 @@
 #include "core/engine_overlays.inc"
 #include "core/transitions.inc"
 #include "core/engine.inc"
+#include "mc/mc_defs.inc"
+#include "mc/mc_worldgen.inc"
+#include "mc/mc_math3d.inc"
+#include "mc/mc_render_blocks.inc"
+#include "mc/mc_render_world.inc"
+#include "mc/mc_world_edit.inc"
+#include "mc/mc_physics.inc"
+#include "mc/mc_hud.inc"
+#include "mc/mc_input.inc"
 #include "ui/chat_bubbles.inc"
 #include "lifecycle.inc"
 

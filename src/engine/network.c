@@ -5,7 +5,9 @@
 #include "engine/network/progress_file.inc"
 #include "engine/network/progress_levels.inc"
 #include "engine/network/auth_json.inc"
-#ifdef CB_PC
+#if defined(CB_WASM)
+#include "platform/web/network_http_web.inc"
+#elif defined(CB_PC)
 #include "platform/pc/network_http_pc.inc"
 #else
 #include "platform/android/network_http.inc"
@@ -29,6 +31,7 @@
 #include "engine/network/room_directory.inc"
 #include "engine/network/room_sync.inc"
 #include "engine/network/room_stream.inc"
+#include "engine/network/room_blocks.inc"
 #include "engine/network/room_chat.inc"
 #include "engine/network/room_threads.inc"
 #include "engine/network/player_api.inc"

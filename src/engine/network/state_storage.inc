@@ -58,6 +58,11 @@ typedef pthread_mutex_t DSMutex;
 #define ds_mutex_lock(m) pthread_mutex_lock(&(m))
 #define ds_mutex_unlock(m) pthread_mutex_unlock(&(m))
 typedef pthread_t DSThread;
+#ifdef CB_WASM
+static DSThread ds_wasm_spawn(void *(*fn)(void *), void *arg);
+#define ds_thread_start(fn, arg) ds_wasm_spawn(fn, arg)
+static void ds_thread_detach(DSThread t) { (void)t; }
+#else
 static DSThread ds_thread_start(void *(*fn)(void *), void *arg) {
     pthread_t t;
     if (pthread_create(&t, NULL, fn, arg) != 0)
@@ -68,6 +73,7 @@ static void ds_thread_detach(DSThread t) {
     if (t)
         pthread_detach(t);
 }
+#endif
 
 typedef struct {
     double x, y, a, hp, alive;

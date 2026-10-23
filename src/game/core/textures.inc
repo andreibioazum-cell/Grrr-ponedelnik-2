@@ -15,6 +15,7 @@ static void load_textures(void) {
     png_load(DESPENSER_TEX);
     candy_tex_ok = png_load(CANDY_TEX);
     png_load(SNOWFLAKE_TEX);
+    png_load("mc_atlas.png");
     tex_reload_t = 0;
     tex_reload_left = 60;
 }
@@ -86,6 +87,9 @@ static void reload_textures(void) {
     }
     if (grass_tex_ok == 0) {
         grass_tex_ok = png_load(GRASS);
+    }
+    if (tex_ready("mc_atlas.png") == 0) {
+        png_load("mc_atlas.png");
     }
     if (ordinary_tex_ok == 0) {
         ordinary_tex_ok = png_load(ORDINARY_TEX);

@@ -86,6 +86,32 @@ static void pc_event_parse(PcArgs *a) {
         } else if (strcmp(name, "enter") == 0) {
             e->kind = 3;
             e->frame = atoi(rest);
+        } else if (strcmp(name, "mclook") == 0) {
+            int frame = 0;
+            float yaw = 0.0f, pitch = 0.0f;
+            if (sscanf(rest, "%d:%f:%f", &frame, &yaw, &pitch) != 3)
+                continue;
+            e->kind = 20;
+            e->frame = frame;
+            e->x = yaw;
+            e->y = pitch;
+        } else if (strcmp(name, "mcmine") == 0) {
+            int frame = 0, down = 0;
+            if (sscanf(rest, "%d:%d", &frame, &down) != 2)
+                continue;
+            e->kind = 21;
+            e->frame = frame;
+            e->action = down;
+        } else if (strcmp(name, "mcplace") == 0) {
+            e->kind = 22;
+            e->frame = atoi(rest);
+        } else if (strcmp(name, "mcslot") == 0) {
+            int frame = 0, s = 0;
+            if (sscanf(rest, "%d:%d", &frame, &s) != 2)
+                continue;
+            e->kind = 23;
+            e->frame = frame;
+            e->action = s;
         } else if (strcmp(name, "back") == 0) {
             e->kind = 4;
             e->frame = atoi(rest);
@@ -161,11 +187,13 @@ static void pc_report_state(int frame) {
     double px = 0, py = 0;
     game_pc_player_xy(&px, &py);
     printf("frame %d: state=%.0f battle=%d hp=%.2f foe=%.2f finished=%.0f x=%.1f y=%.1f login=%.0f nick=%s chaos=%.0f "
-           "ball=%.0f bounces=%.0f rbricks=%.0f charge=%.0f cls=%.0f block=%.0f mode=%.0f error=%d\n",
+           "ball=%.0f bounces=%.0f rbricks=%.0f charge=%.0f cls=%.0f block=%.0f mode=%.0f vox=%d,%d,%d,%d error=%d\n",
            frame,
            game_pc_state(), game_pc_in_battle(), game_pc_player_hp(), game_pc_enemy_hp(), game_pc_finished(), px, py,
            game_pc_login_status(), game_pc_login_nick()[0] ? game_pc_login_nick() : "-", game_pc_chaos(),
            game_pc_ball(), game_pc_bounces(), game_pc_remote_bricks(), game_pc_charge(), game_pc_class(), game_pc_block(), game_pc_ult_mode(),
+           game_mc_block_at(33, 11, 29), game_mc_block_at(34, 11, 29),
+           game_mc_block_at(32, 12, 29), game_mc_block_at(33, 12, 29),
            ds_game_has_error() ? 1 : 0);
     fflush(stdout);
 }
@@ -241,6 +269,19 @@ static void pc_apply_event(PcEvent *e, int frame) {
         break;
     case 13:
         game_pc_pick_class(e->state);
+        break;
+    case 20:
+        game_mc_set_look(e->x, e->y);
+        break;
+    case 21:
+        game_mc_mouse_btn(0, e->action);
+        break;
+    case 22:
+        game_mc_mouse_btn(1, 1);
+        game_mc_mouse_btn(1, 0);
+        break;
+    case 23:
+        game_mc_select_slot(e->action);
         break;
     case 11: {
         float nx = 0, ny = 0, px = 0, py = 0, bx = 0, by = 0, bw = 0, bh = 0;
@@ -332,6 +373,7 @@ static int pc_run_headless(PcArgs *args) {
     pc_fixed_step_ms = 16;
     pc_event_parse(args);
     pc_boot(args);
+    game_mc_set_classic_sim(args->classic_sim);
     if (!init_done) {
         fprintf(stderr, "harness: renderer did not start: %s\n", ds_graphics_failure());
         return 2;

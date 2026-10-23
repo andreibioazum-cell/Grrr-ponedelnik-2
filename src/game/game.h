@@ -12,6 +12,17 @@ int game_back(void);
 void game_reset(void);
 void game_bye(void);
 
+/* 3D Minecraft voxel input & state hooks (shared by PC Win32, Headless, and WebAssembly) */
+void game_mc_key(int vk, int down);
+void game_mc_mouse_delta(float dx, float dy);
+void game_mc_mouse_btn(int btn, int down);
+void game_mc_wheel(int delta);
+int game_mc_wants_cursor_lock(void);
+int game_mc_block_at(int x, int y, int z);
+void game_mc_set_look(float yaw, float pitch);
+void game_mc_select_slot(int s);
+void game_mc_set_classic_sim(int on);
+
 #ifdef CB_PC
 /* Read-only window into the game state for the PC input bridge
  * (src/game/pc_pads.inc): joystick and combat pad geometry, plus a few

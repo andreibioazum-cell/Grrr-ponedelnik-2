@@ -538,6 +538,48 @@ void text_rainbow(const char *s, float x, float y, float scale, float hue) {
     if (s && rainbow_text_n < 16)
         snprintf(rainbow_text[rainbow_text_n++], sizeof(rainbow_text[0]), "%s", s);
 }
+void ds_gfx_quad(const char *tex_name, float x0, float y0, float u0, float v0, uint32_t c0, float x1, float y1,
+                 float u1, float v1, uint32_t c1, float x2, float y2, float u2, float v2, uint32_t c2, float x3,
+                 float y3, float u3, float v3, uint32_t c3) {
+    (void)tex_name;
+    (void)x0;
+    (void)y0;
+    (void)u0;
+    (void)v0;
+    (void)x1;
+    (void)y1;
+    (void)u1;
+    (void)v1;
+    (void)c1;
+    (void)x2;
+    (void)y2;
+    (void)u2;
+    (void)v2;
+    (void)c2;
+    (void)x3;
+    (void)y3;
+    (void)u3;
+    (void)v3;
+    (void)c3;
+    (void)c0;
+}
+void net_mc_block_write(int x, int y, int z, int block_id, int is_natural) {
+    (void)x;
+    (void)y;
+    (void)z;
+    (void)block_id;
+    (void)is_natural;
+}
+int net_mc_poll_edit(int *x, int *y, int *z, int *block_id) {
+    (void)x;
+    (void)y;
+    (void)z;
+    (void)block_id;
+    return 0;
+}
+void net_mc_solo_path(char *out, size_t cap) {
+    snprintf(out, cap, "%s", "/tmp/mc_solo_test.dat");
+}
 
 int text_ink_width(const char *s) {
     return s ? (int)(9 * strlen(s)) : 0;
@@ -2011,7 +2053,7 @@ static void test_eax229_and_rooms(void) {
     game_reset();
     screen_w = 1280;
     screen_h = 720;
-    assert(achievement_count() == 5);
+    assert(achievement_count() == 6);
     assert(strcmp(tr_achievement_eax229(), "mov eax, 0x229") == 0);
     assert(strcmp(tr_achievement_eax229_desc(), "???") == 0);
 
@@ -2128,6 +2170,29 @@ const char *net_leaderboard_nick(double idx) { (void)idx; return ""; }
 double net_leaderboard_cups(double idx) { (void)idx; return 0; }
 double net_player_codecracker_super(double slot) { (void)slot; return 0; }
 double net_player_block(double slot) { (void)slot; return 0; }
+double net_player_class(double slot) { (void)slot; return 0; }
+double net_player_skin(double slot) { (void)slot; return 0; }
+double net_player_hp(double slot) { (void)slot; return 10; }
+double net_player_alive(double slot) { (void)slot; return 0; }
+double net_player_x(double slot) { (void)slot; return 0.5; }
+double net_player_y(double slot) { (void)slot; return 0.5; }
+double net_player_angle(double slot) { (void)slot; return 0; }
+double net_player_punch(double slot) { (void)slot; return 0; }
+double net_player_brick(double slot) { (void)slot; return 0; }
+double net_player_station_hp(double slot) { (void)slot; return 1; }
+double net_player_snow(double slot) { (void)slot; return 0; }
+double net_player_universe_x(double slot) { (void)slot; return 0.35; }
+double net_player_universe_y(double slot) { (void)slot; return 0.5; }
+double net_player_universe(double slot) { (void)slot; return 0; }
+void net_publish(double x, double y, double a, double hp, double al) { (void)x; (void)y; (void)a; (void)hp; (void)al; }
+void net_publish_punch(double x, double y, double dx, double dy, double p) { (void)x; (void)y; (void)dx; (void)dy; (void)p; }
+void net_publish_block(double on) { (void)on; }
+void net_publish_turrets(double a, double b, double c, double d, double e, double f, double g, double h, double i, double j) {
+    (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; (void)i; (void)j;
+}
+void net_publish_snow(double a, double b, double c, double d, double e) { (void)a; (void)b; (void)c; (void)d; (void)e; }
+void net_publish_universe(double a, double b, double c) { (void)a; (void)b; (void)c; }
+void net_publish_brick(double a, double b, double c, double d, double e) { (void)a; (void)b; (void)c; (void)d; (void)e; }
 const char *net_banner_text(void) { return ""; }
 const char *net_banner_color(void) { return "white"; }
 
@@ -2784,7 +2849,7 @@ int main(void) {
         finish_game(1);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        assert(achievement_count() == 5);
+        assert(achievement_count() == 6);
         assert(achievement_bit(3) == ACH_LAST_HP);
         finished = 0;
         cups_awarded = 0;

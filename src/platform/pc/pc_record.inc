@@ -147,10 +147,14 @@ static void pc_tri(int pipeline, const uint32_t *tex, int tw, int th, GeoVert a,
                                    (unsigned)((a.c >> 16) & 0xff), (unsigned)((a.c >> 24) & 0xff));
                 }
             } else {
-                sr = (unsigned)(r + 0.5f);
-                sg = (unsigned)(g + 0.5f);
-                sb = (unsigned)(bb + 0.5f);
-                sa = (unsigned)(al + 0.5f);
+                int sri = (int)(r + 0.5f);
+                int sgi = (int)(g + 0.5f);
+                int sbi = (int)(bb + 0.5f);
+                int sai = (int)(al + 0.5f);
+                sr = (unsigned)(sri < 0 ? 0 : (sri > 255 ? 255 : sri));
+                sg = (unsigned)(sgi < 0 ? 0 : (sgi > 255 ? 255 : sgi));
+                sb = (unsigned)(sbi < 0 ? 0 : (sbi > 255 ? 255 : sbi));
+                sa = (unsigned)(sai < 0 ? 0 : (sai > 255 ? 255 : sai));
                 if (pipeline != 0) {
                     unsigned txi = (unsigned)(uu * (float)tw);
                     unsigned tyi = (unsigned)(vv * (float)th);
@@ -198,6 +202,9 @@ static void pc_tri(int pipeline, const uint32_t *tex, int tw, int th, GeoVert a,
 }
 
 static void pc_draw_range(int pipeline, const uint32_t *tex, int tw, int th, size_t first, size_t count) {
+#ifdef CB_WASM
+    web_gpu_draw_range(pipeline, tex, tw, th, first, count);
+#else
     size_t i;
     if (!count)
         return;
@@ -207,6 +214,7 @@ static void pc_draw_range(int pipeline, const uint32_t *tex, int tw, int th, siz
         GeoVert vc = geo_verts[geo_idx[i + 2]];
         pc_tri(pipeline, tex, tw, th, va, vb, vc);
     }
+#endif
 }
 
 static void pc_render_frame(void) {
@@ -214,12 +222,16 @@ static void pc_render_frame(void) {
     size_t i;
     if (!b || b->width < 1 || b->height < 1)
         return;
+#ifdef CB_WASM
+    web_gpu_frame_begin(b->width, b->height);
+#else
     if (!pc_fb || pc_fb_w != b->width || pc_fb_h != b->height)
         if (!ds_vk_begin_frame_backend((uint32_t)b->width, (uint32_t)b->height, (uint32_t)b->width,
                                        (uint32_t)b->height))
             return;
     b->pixels = pc_fb;
     b->stride = pc_fb_w;
+#endif
 
     geo_reset();
     for (i = 0; i < cmd_n; i++) {
@@ -310,7 +322,41 @@ static void pc_render_frame(void) {
                 geo_text_rainbow(c->v.tr.s, c->v.tr.x, c->v.tr.y, c->v.tr.sc, c->v.tr.hue, font);
             }
             break;
+        case DS_CMD_QUAD3D: {
+            Texture *t = c->v.q3.tx;
+            if (!t || (t->gpu.uploaded && t->pixels)) {
+                GeoVert q[4];
+                int k;
+                for (k = 0; k < 4; k++) {
+                    q[k].x = c->v.q3.x[k];
+                    q[k].y = c->v.q3.y[k];
+                    q[k].u = c->v.q3.u[k];
+                    q[k].v = c->v.q3.v[k];
+                    q[k].c = c->v.q3.c[k];
+                }
+                if (t) {
+                    pipeline = 1;
+                    tex = t->pixels;
+                    tw = t->w;
+                    th = t->h;
+                }
+                geo_quad(q);
+            }
+            break;
+        }
         }
         pc_draw_range(pipeline, tex, tw, th, is, geo_in - is);
+        /* Flush cleanly if approaching uint16 index ceiling (high-altitude 3D flight!) */
+        if (geo_vn > 56000) {
+#ifdef CB_WASM
+            web_gpu_frame_end(geo_verts, geo_vn, geo_idx, geo_in);
+            g_web_batch_n = 0;
+#endif
+            geo_reset();
+        }
     }
+#ifdef CB_WASM
+    if (g_web_batch_n > 0)
+        web_gpu_frame_end(geo_verts, geo_vn, geo_idx, geo_in);
+#endif
 }

@@ -33,7 +33,7 @@ static int parse_chat_list(const char *json, ChatMsg *tmp, int cap) {
                 /* A message with no text (a broken record in the database, an old
                  * command with no body) is not shown at all: it used to leave a bare nick
                  * on the line as "Broken". */
-        if (tmp[tmp_cnt].text[0]) {
+        if (tmp[tmp_cnt].text[0] && !(key[0] == 'b' && key[1] == '_')) {
             tmp[tmp_cnt].valid = 1;
             tmp_cnt++;
         }
@@ -83,10 +83,17 @@ static void parse_and_store_chat(const char *json, unsigned gen) {
     for (i = 0; i < nextra; i++) chat_delete_key_async(extra[i]);
 }
 static int pull_chat(char *resp, size_t cap) {
-    char url[URL];
-    snprintf(url, sizeof(url), "%s/rooms/%s/chat.json?orderBy=%%22$key%%22&limitToLast=%d", net.base, net.room,
-             CHAT_MAX);
-    return fb_http("GET", url, NULL, resp, cap) == 200;
+    char url[URL], fresh[96];
+    int c;
+    snprintf(url, sizeof(url), "%s/rooms/%s/chat.json", net.base, net.room);
+    fresh[0] = 0;
+    if (mc_room_etag[0])
+        c = fb_http_ex("GET", url, NULL, resp, cap, "if-none-match", mc_room_etag, fresh, sizeof(fresh));
+    else
+        c = fb_http_ex("GET", url, NULL, resp, cap, "X-Firebase-ETag", "true", fresh, sizeof(fresh));
+    if (fresh[0])
+        snprintf(mc_room_etag, sizeof(mc_room_etag), "%s", fresh);
+    return c == 200;
 }
 static void prune_old_chat(unsigned gen) {
     char url[URL], resp[CHAT_RESP];
@@ -112,7 +119,7 @@ static void prune_old_chat(unsigned gen) {
     n = parse_chat_list(resp, oldm, 16);
     for (i = 0; i < n; i++) {
         int kept = 0;
-        if (!oldm[i].key[0])
+        if (!oldm[i].key[0] || (oldm[i].key[0] == 'b' && oldm[i].key[1] == '_'))
             continue;
         for (j = 0; j < nk; j++)
             if (!strcmp(oldm[i].key, keepkeys[j])) {

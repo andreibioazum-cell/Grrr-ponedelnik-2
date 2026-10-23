@@ -41,7 +41,7 @@ static void draw_lobby_money(void) {
 
 static void draw_lobby(void) {
     check_achievements();
-    screen_fill();
+    if (!mc_is_classic_sim()) mc_update_and_draw_lobby_panorama(); else screen_fill();
     text("Cubic Battle 4", lobby_label_x(text_ink_width("Cubic Battle 4")), lobby_title_y(), text_color);
     if (newyear_active() == 1) {
         const char *banner = tr_newyear_banner();

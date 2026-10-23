@@ -133,15 +133,36 @@ static LRESULT CALLBACK pc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             }
         }
         return 0;
-    case WM_MOUSEMOVE:
+    case WM_MOUSEMOVE: {
+        float mx = (float)GET_X_LPARAM(lp), my = (float)GET_Y_LPARAM(lp);
+        if (game_mc_wants_cursor_lock() && GetFocus() == hwnd) {
+            RECT rc;
+            POINT pt;
+            int cx, cy;
+            GetClientRect(hwnd, &rc);
+            cx = (rc.right - rc.left) / 2;
+            cy = (rc.bottom - rc.top) / 2;
+            if ((int)mx != cx || (int)my != cy) {
+                game_mc_mouse_delta(mx - (float)cx, my - (float)cy);
+                pt.x = cx;
+                pt.y = cy;
+                ClientToScreen(hwnd, &pt);
+                SetCursorPos(pt.x, pt.y);
+            }
+            return 0;
+        }
         if (pc_mouse_down && !pc_mouse_punch)
-            pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 2, PC_TOUCH_MOUSE);
+            pc_touch(mx, my, 2, PC_TOUCH_MOUSE);
         return 0;
+    }
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
         pc_mouse_down = 1;
-        /* In a fight the left button IS the punch; the raw cursor touch is
-         * kept only for the chat controls (chat button, open chat panel). */
+        if (game_mc_wants_cursor_lock() && game_pc_battle_mouse_ui((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp)) == 0) {
+            game_mc_mouse_btn(0, 1);
+            pc_mouse_punch = 1;
+            return 0;
+        }
         pc_mouse_punch = pc_mouse_combat() &&
                          game_pc_battle_mouse_ui((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp)) == 0;
         if (!pc_mouse_punch)
@@ -150,13 +171,25 @@ static LRESULT CALLBACK pc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_LBUTTONUP:
         pc_mouse_down = 0;
         ReleaseCapture();
+        game_mc_mouse_btn(0, 0);
         if (!pc_mouse_punch)
             pc_touch((float)GET_X_LPARAM(lp), (float)GET_Y_LPARAM(lp), 1, PC_TOUCH_MOUSE);
         pc_mouse_punch = 0;
         return 0;
+    case WM_RBUTTONDOWN:
+        if (game_pc_in_battle())
+            game_mc_mouse_btn(1, 1);
+        return 0;
+    case WM_RBUTTONUP:
+        game_mc_mouse_btn(1, 0);
+        return 0;
+    case WM_MOUSEWHEEL:
+        game_mc_wheel(GET_WHEEL_DELTA_WPARAM(wp));
+        return 0;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
         pc_keys[wp & 0xff] = 1;
+        game_mc_key((int)(wp & 0xff), 1);
         if (msg == WM_SYSKEYDOWN)
             return 0; /* Alt+Tab etc. stay with the system */
         if (wp == VK_F12) {
@@ -178,6 +211,7 @@ static LRESULT CALLBACK pc_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_KEYUP:
     case WM_SYSKEYUP:
         pc_keys[wp & 0xff] = 0;
+        game_mc_key((int)(wp & 0xff), 0);
         if (msg == WM_SYSKEYUP)
             return 0;
         return 0;
