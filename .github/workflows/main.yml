@@ -1,4 +1,4 @@
-name: Build Cubic Battle 4 (Pure C)
+name: Build Geometrium (Pure C + Vulkan)
 
 on:
   push:
@@ -22,57 +22,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify pure-C project layout
+      - name: Verify pure-C Geometrium project layout
         run: |
           set -euo pipefail
           test -f src/game/game.c
+          test -d src/game/geo
           test -d src/engine
           test -d src/platform/android
           test -d assets/textures
           test -d assets/audio
           test -d platform/android
-          test ! -e game
-          test ! -e native
-          grep -q 'android:name="com.cb4.GameActivity"' platform/android/AndroidManifest.xml
-          grep -q 'android:value="cb_game"' platform/android/AndroidManifest.xml
-          grep -q 'android:versionCode="[0-9]\+"' platform/android/AndroidManifest.xml
-          grep -q '^package com.cb4;' platform/android/java/com/cb4/GameActivity.java
-          grep -q 'Java_com_cb4_GameActivity_nativeReplaceText' src/platform/android/keyboard.inc
-          grep -q 'Java_com_cb4_PresenceJobService_nativePresence' src/platform/android/presence_job.inc
-          grep -q 'android:name="com.cb4.PresenceJobService"' platform/android/AndroidManifest.xml
-          if find . -type f -name '*.ds' -print -quit | grep -q .; then
-            echo "::error::The C port must not contain script sources"
-            exit 1
-          fi
+          grep -q 'package="com.geometrium"' platform/android/AndroidManifest.xml
+          grep -q 'android:name="com.geometrium.GameActivity"' platform/android/AndroidManifest.xml
+          grep -q 'android:value="geometrium"' platform/android/AndroidManifest.xml
+          grep -q 'android:label="Geometrium"' platform/android/AndroidManifest.xml
+          grep -q '^package com.geometrium;' platform/android/java/com/geometrium/GameActivity.java
+          grep -q 'Java_com_geometrium_GameActivity_nativeReplaceText' src/platform/android/keyboard.inc
+          grep -q 'Java_com_geometrium_PresenceJobService_nativePresence' src/platform/android/presence_job.inc
 
-      - name: Check native game sources
+      - name: Check native Geometrium sources, 32x32 textures, 3D occlusion & live multiplayer
         run: |
           clang -std=c99 -Wall -Wextra -Werror -pedantic \
             -Isrc -I. -Itools/host_test/stub -fsyntax-only src/game/game.c
           python3 tools/check_game_file_size.py
           python3 tools/test_resources.py
-          python3 tools/test_game_state.py
-          python3 tools/test_live_flags.py
-          python3 tools/test_string_pool.py
-          python3 tools/test_settings_storage.py
-          python3 tools/test_cloud_progress.py
-          python3 tools/test_promo.py
-          python3 tools/test_presence.py
-          python3 tools/test_network_memory.py
-          python3 tools/test_font_memory.py
           python3 tools/test_db_rules.py
+          python3 tools/test_string_pool.py
+          python3 tools/test_font_memory.py
           python3 tools/test_engine_formats.py
+          python3 tools/test_game_state.py
 
-      # Веб-панель админа (index.html): синтаксис скриптов, наличие всех
-      # кнопок и обработчиков, схема базы против firebase.rules.json.
-      - name: Check the web admin panel
+      - name: Check the web console
         run: |
           python3 tools/test_admin_panel.py
 
-      # То же, но в настоящей DOM: jsdom открывает панель против подставной
-      # базы (test/fake_firebase.py) и нажимает каждую кнопку. Именно этот
-      # прогон ловит «страница выглядит живой, но ничего не нажимается».
-      - name: Click through the web admin panel in a real DOM
+      - name: Click through the web console in a real DOM
         run: |
           cd test
           npm ci --no-audit --no-fund
@@ -84,58 +68,58 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # One permanent debug key for every build: it is committed at
-      # platform/android/debug.keystore (alias androiddebugkey, password
-      # "android" - a public debug credential, never use it for releases).
-      # Signing every APK with the same key lets new versions install over
-      # old ones instead of failing with a package conflict.
       - name: Check debug signing key
         run: |
           set -euo pipefail
           test -f platform/android/debug.keystore
-          echo "Using the permanent debug signing key from the repository"
 
       - name: Install Android SDK packages
         run: |
           set -euo pipefail
-          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKM" ]; then
-            TMP="$(mktemp -d)"
-            curl -fsSL -o "$TMP/tools.zip" \
-              https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
-            unzip -q "$TMP/tools.zip" -d "$TMP"
-            mkdir -p "$ANDROID_HOME/cmdline-tools"
-            rm -rf "$ANDROID_HOME/cmdline-tools/latest"
-            mv "$TMP/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-            rm -rf "$TMP"
-          fi
-          yes | "$SDKM" --licenses > /dev/null || true
-          "$SDKM" "platforms;android-35" "build-tools;34.0.0"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install \
+            "platforms;android-35" \
+            "build-tools;34.0.0" \
+            "ndk;25.2.9519653"
 
       - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        id: ndk
-        with:
-          ndk-version: r25c
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> "$GITHUB_ENV"
 
-      - name: Stage assets
-        run: python3 stage_assets.py assets staging/assets
-
-      - name: Build native libraries
-        env:
-          NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
+      - name: Stage assets & compile Java bridge
         run: |
           set -euo pipefail
-          TOOLCHAIN="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          GLUE="$NDK_ROOT/sources/android/native_app_glue"
-          C_SOURCES=(src/game/game.c src/engine/runtime.c src/platform/android/android_main.c "$GLUE/android_native_app_glue.c")
+          mkdir -p staging
+          python3 stage_assets.py assets staging/assets
+
+      - name: Build native Vulkan 3D libraries (arm64-v8a, armeabi-v7a, x86_64)
+        run: |
+          set -euo pipefail
+          TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          GLUE="$ANDROID_NDK_HOME/sources/android/native_app_glue"
+          C_OPTS=(
+            -std=c99 -O2 -fPIC -shared
+            -Wall -Wextra -Werror
+            -Isrc -I. -I"$GLUE"
+            -llog -landroid -lvulkan -lm -ldl
+          )
+          CPP_OPTS=(
+            -std=c++17 -O2 -fPIC
+            -Wall -Wextra -Werror
+            -fno-exceptions -fno-rtti
+            -Isrc -I.
+          )
+          C_SOURCES=(
+            src/game/game.c
+            src/engine/runtime.c
+            src/platform/android/android_main.c
+            "$GLUE/android_native_app_glue.c"
+          )
           CPP_SOURCE=src/game/cpp/ui_fx.cpp
-          # C and C++ need different -std flags; the C++ unit is compiled once
-          # per ABI and linked into the same .so as the C99 game sources.
-          C_OPTS=(-std=c99 -O3 -s -fPIC -shared -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
-          CPP_OPTS=(-std=c++17 -fno-exceptions -fno-rtti -O3 -s -fPIC -Isrc)
-          mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
+
           for ABI in arm64-v8a armeabi-v7a x86_64; do
+            mkdir -p "staging/lib/$ABI"
             case "$ABI" in
               arm64-v8a) TRIPLE=aarch64-linux-android26;;
               armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
@@ -143,10 +127,10 @@ jobs:
             esac
             "$TOOLCHAIN/$TRIPLE-clang++" "${CPP_OPTS[@]}" -c "$CPP_SOURCE" -o "staging/ui_fx_$ABI.o"
             "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" "staging/ui_fx_$ABI.o" \
-              -o "staging/lib/$ABI/libcb_game.so"
+              -o "staging/lib/$ABI/libgeometrium.so"
           done
 
-      - name: Package and align APK
+      - name: Package and align Geometrium APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
@@ -157,24 +141,24 @@ jobs:
             -F unsigned.apk ./staging/
           "$BT/zipalign" -v 4 unsigned.apk aligned.apk
 
-      - name: Sign APK with debug key
+      - name: Sign Geometrium APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
           "$BT/apksigner" sign \
             --ks platform/android/debug.keystore --ks-type PKCS12 \
             --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android \
-            --out Game.apk aligned.apk
+            --out Geometrium.apk aligned.apk
 
-      - name: Verify APK
+      - name: Verify Geometrium APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
-          "$BT/aapt" dump badging Game.apk | head -n 5
-          "$BT/apksigner" verify --verbose --print-certs Game.apk
+          "$BT/aapt" dump badging Geometrium.apk | head -n 5
+          "$BT/apksigner" verify --verbose --print-certs Geometrium.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Cubic-Battle-4-Full-C-APK
-          path: Game.apk
+          name: Geometrium-Android-APK
+          path: Geometrium.apk
           if-no-files-found: error

@@ -396,7 +396,7 @@ int keyboard_handle_key(int keycode, int action, int meta) {
     return 0;
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeReplaceText(JNIEnv *env, jobject self, jstring value) {
+JNIEXPORT void JNICALL Java_com_geometrium_GameActivity_nativeReplaceText(JNIEnv *env, jobject self, jstring value) {
     (void)self;
     pthread_mutex_lock(&kb_mutex);
     kb_text[0] = '\0';
@@ -419,7 +419,7 @@ JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeReplaceText(JNIEnv *env, 
     pthread_mutex_unlock(&kb_mutex);
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeSubmitText(JNIEnv *env, jobject self) {
+JNIEXPORT void JNICALL Java_com_geometrium_GameActivity_nativeSubmitText(JNIEnv *env, jobject self) {
     (void)env;
     (void)self;
     pthread_mutex_lock(&kb_mutex);
@@ -427,7 +427,7 @@ JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeSubmitText(JNIEnv *env, j
     pthread_mutex_unlock(&kb_mutex);
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeKeyboardHidden(JNIEnv *env, jobject self) {
+JNIEXPORT void JNICALL Java_com_geometrium_GameActivity_nativeKeyboardHidden(JNIEnv *env, jobject self) {
     (void)env;
     (void)self;
     pthread_mutex_lock(&kb_mutex);

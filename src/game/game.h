@@ -1,5 +1,5 @@
-#ifndef CB_GAME_H
-#define CB_GAME_H
+#ifndef GEOMETRIUM_GAME_H
+#define GEOMETRIUM_GAME_H
 
 struct AAssetManager;
 struct Buffer;
