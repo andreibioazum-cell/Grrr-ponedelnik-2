@@ -47,6 +47,7 @@ static void mc_setup_camera(float eye_x, float eye_y, float eye_z, float yaw, fl
     }
     mc.aspect = (float)(screen_w > 1 ? screen_w : 1) / (float)(screen_h > 1 ? screen_h : 1);
     mc.tan_half_vfov = (mc.aspect < 1.0f) ? 0.84f : 0.65f;
+    mc.quad_count = 0;
 }
 
 static void mc_world_to_cam(float wx, float wy, float wz, float *cx, float *cy, float *cz) {
@@ -131,6 +132,9 @@ static void mc_emit_clipped_quad(const McClipVert in_v[4], const char *tex_name)
     uint32_t col[8];
     int vis_any = 0;
 
+    if (mc.quad_count >= 13500)
+        return;
+
     for (i = 0; i < 4; i++) {
         const McClipVert *a = &in_v[i];
         const McClipVert *b = &in_v[(i + 1) & 3];
@@ -169,12 +173,14 @@ static void mc_emit_clipped_quad(const McClipVert in_v[4], const char *tex_name)
         return;
 
     if (n == 4) {
+        mc.quad_count++;
         ds_gfx_quad(tex_name, sx[0], sy[0], out_v[0].u, out_v[0].v, col[0], sx[1], sy[1], out_v[1].u, out_v[1].v,
                     col[1], sx[2], sy[2], out_v[2].u, out_v[2].v, col[2], sx[3], sy[3], out_v[3].u, out_v[3].v,
                     col[3]);
         return;
     }
     for (i = 1; i + 1 < n; i++) {
+        mc.quad_count++;
         if (i + 2 < n) {
             ds_gfx_quad(tex_name, sx[0], sy[0], out_v[0].u, out_v[0].v, col[0], sx[i], sy[i], out_v[i].u,
                         out_v[i].v, col[i], sx[i + 1], sy[i + 1], out_v[i + 1].u, out_v[i + 1].v, col[i + 1],

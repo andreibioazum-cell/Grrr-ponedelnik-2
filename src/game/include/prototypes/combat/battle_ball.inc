@@ -11,8 +11,5 @@ static void ball_online_tick(void);
 static void draw_remote_bricks(void);
 static void remote_bricks_reset(void);
 static void ball_clear_after_finish(void);
-#ifdef CB_PC
-static double remote_bricks_live(void);
-#endif
 static double ult_mode_hit(double x, double y);
 static void ult_mode_toggle(void);

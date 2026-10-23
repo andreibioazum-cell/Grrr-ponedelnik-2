@@ -96,8 +96,3 @@ static int mc_handle_touch(float x, float y, int type, int tid);
 #include "mc/mc_input.inc"
 #include "ui/chat_bubbles.inc"
 #include "lifecycle.inc"
-
-#ifdef CB_PC
-/* Bridge for the keyboard and mouse: see platform/pc/pc_main.c. */
-#include "pc_pads.inc"
-#endif

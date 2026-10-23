@@ -538,6 +538,7 @@ void text_rainbow(const char *s, float x, float y, float scale, float hue) {
     if (s && rainbow_text_n < 16)
         snprintf(rainbow_text[rainbow_text_n++], sizeof(rainbow_text[0]), "%s", s);
 }
+static int quad_3d_calls = 0;
 void ds_gfx_quad(const char *tex_name, float x0, float y0, float u0, float v0, uint32_t c0, float x1, float y1,
                  float u1, float v1, uint32_t c1, float x2, float y2, float u2, float v2, uint32_t c2, float x3,
                  float y3, float u3, float v3, uint32_t c3) {
@@ -562,6 +563,7 @@ void ds_gfx_quad(const char *tex_name, float x0, float y0, float u0, float v0, u
     (void)v3;
     (void)c3;
     (void)c0;
+    quad_3d_calls++;
 }
 void net_mc_block_write(int x, int y, int z, int block_id, int is_natural) {
     (void)x;
@@ -4085,6 +4087,73 @@ int main(void) {
         bp_xp = 0;
         bp_claimed = 0;
         stub_bpx = 0;
+    }
+
+    /* 3D Minecraft voxel world, Vulkan quad emission, break/place blocks, TNT & solo persistence */
+    {
+        int tx, ty, tz, i;
+        remove("/tmp/mc_solo_test.dat");
+
+        mc.classic_sim = 0;
+        game_state = ST_SOLO;
+        mc_init_session(0, "");
+
+        quad_3d_calls = 0;
+        mc_setup_camera(mc.px, mc.py + MC_EYE_H, mc.pz, mc.yaw, mc.pitch, 0);
+        mc_render_world_scene(0);
+        assert(quad_3d_calls > 200);
+
+        tx = 48;
+        tz = 48;
+        ty = mc_top_solid_y(tx, tz) + 2;
+        assert(mc_in_bounds(tx, ty, tz));
+        mc_fill_box(tx - 2, ty - 1, tz - 3, tx + 2, ty + 2, tz + 2, MC_AIR);
+
+        /* Place diamond block, verify 3D DDA raycast hits it, then mine/break it back to air */
+        mc_set_world_block(tx, ty, tz, MC_DIAMOND_BLOCK, 0);
+        assert(mc_get(tx, ty, tz) == MC_DIAMOND_BLOCK);
+        mc.px = (float)tx + 0.5f;
+        mc.py = (float)ty + 0.5f - MC_EYE_H;
+        mc.pz = (float)tz - 2.2f;
+        mc.yaw = 0.0f;
+        mc.pitch = 0.0f;
+        mc_setup_camera(mc.px, mc.py + MC_EYE_H, mc.pz, mc.yaw, mc.pitch, 0);
+        mc_update_raycast();
+        assert(mc.hit == 1 && mc.bx == tx && mc.by == ty && mc.bz == tz);
+
+        mc_set_world_block(tx, ty, tz, MC_AIR, 0);
+        assert(mc_get(tx, ty, tz) == MC_AIR);
+
+        /* Place block via player hotbar against solid floor and persist across solo reload */
+        mc_set_world_block(tx, ty - 1, tz, MC_STONE, 0);
+        mc.hotbar[0] = MC_BRICK;
+        mc.slot = 0;
+        mc.px = (float)tx + 0.5f;
+        mc.py = (float)ty;
+        mc.pz = (float)tz - 1.8f;
+        mc.yaw = 0.0f;
+        mc.pitch = -0.78f;
+        mc_setup_camera(mc.px, mc.py + MC_EYE_H, mc.pz, mc.yaw, mc.pitch, 0);
+        mc_update_raycast();
+        assert(mc.hit == 1);
+        mc_try_place_block();
+        assert(mc_get(mc.bx + mc.nx, mc.by + mc.ny, mc.bz + mc.nz) == MC_BRICK);
+
+        /* Verify solo world save + reload preserves placed blocks */
+        mc_set_world_block(20, 22, 20, MC_GOLD_BLOCK, 0);
+        mc_solo_save();
+        mc_raw_set(20, 22, 20, MC_AIR);
+        assert(mc_get(20, 22, 20) == MC_AIR);
+        mc_solo_load();
+        assert(mc_get(20, 22, 20) == MC_GOLD_BLOCK);
+
+        /* TNT fuse + blast carves real 3D crater */
+        mc_set_world_block(12, 10, 12, MC_STONE, 0);
+        mc_prime_tnt(12, 11, 12, 0.25f);
+        for (i = 0; i < 40; i++)
+            mc_update_entities_and_mining(0.02f, 0, 0);
+        assert(mc_get(12, 10, 12) == MC_AIR);
+        remove("/tmp/mc_solo_test.dat");
     }
 
     state_destroy();

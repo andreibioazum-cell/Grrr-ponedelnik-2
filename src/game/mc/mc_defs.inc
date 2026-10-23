@@ -183,7 +183,7 @@ typedef struct {
     int look_tid, joy_tid;
     float look_lx, look_ly, joy_cx, joy_cy, joy_x, joy_y;
     int pad_mine, pad_place_tap, pad_jump;
-    int kills_this_run, classic_sim;
+    int kills_this_run, classic_sim, quad_count;
 } McState;
 
 static McState mc;

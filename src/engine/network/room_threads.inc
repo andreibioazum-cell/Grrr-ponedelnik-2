@@ -1,10 +1,6 @@
 static void wait_ban_list(void) {
-#ifdef CB_WASM
-    (void)ban_sync();
-#else
     long long deadline = now_ms() + BAN_WAIT;
     while (net.run && !ban_synced() && now_ms() < deadline) sleep_ms(50);
-#endif
 }
 
 static void net_fail_sleep(int fails) {
@@ -194,11 +190,7 @@ static void make_uid(void) {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     a = (unsigned long)time(NULL) ^ ((unsigned long)t.tv_nsec << 8);
-#ifdef CB_WASM
-    b = 0x51c3u ^ (unsigned long)(uintptr_t)&local;
-#else
     b = (unsigned long)getpid() ^ (unsigned long)(uintptr_t)&local;
-#endif
     snprintf(net.uid, sizeof(net.uid), "%08lx%08lx", a & 0xfffffffful, b & 0xfffffffful);
 }
 void net_connect(const char *url, const char *room) {
@@ -271,66 +263,6 @@ void net_connect(const char *url, const char *room) {
     net.rthread = ds_thread_start(reader_thread, (void *)(uintptr_t)gen);
     net.sthread = ds_thread_start(stream_thread, (void *)(uintptr_t)gen);
 }
-
-#ifdef CB_WASM
-static DSThread ds_wasm_spawn(void *(*fn)(void *), void *arg) {
-    if (fn == thread_main || fn == reader_thread || fn == stream_thread)
-        return (DSThread)1;
-    (void)fn(arg);
-    return (DSThread)1;
-}
-
-void net_wasm_room_step(void) {
-    static char resp[RESP], event_resp[RESP], banner_resp[512];
-    static char *chat_buf = NULL;
-    static long long next_chat = 0, next_event = 0, next_banner = 0, next_ban = 0;
-    unsigned gen = net.gen;
-    long long now = now_ms();
-    int slot;
-    if (!net.started || !net.run)
-        return;
-    if (!chat_buf)
-        chat_buf = (char *)malloc(MC_CHAT_BUF_SIZE);
-    if (now >= next_ban) {
-        (void)ban_sync();
-        next_ban = now + 4000;
-    }
-    if (net.slot < 0) {
-        slot = claim_slot(gen);
-        if (slot < 0)
-            return;
-        net.slot = slot;
-        net.seq = 0;
-        net.players[slot] = net.me;
-        net.players[slot].online = 1;
-        LOG("slot %d claimed", slot);
-    }
-    if (push_state())
-        status(NET_PLAYING);
-    if (pull_state(resp, sizeof(resp)) == 1 && net_gen_ok(gen))
-        read_players(resp, gen);
-    if (chat_buf && now >= next_chat) {
-        if (pull_chat(chat_buf, MC_CHAT_BUF_SIZE) && net_gen_ok(gen)) {
-            mc_blocks_ingest_json(chat_buf, gen);
-            parse_and_store_chat(chat_buf, gen);
-        }
-        next_chat = now + 450;
-    }
-    if (now >= next_event) {
-        if (pull_event(event_resp, sizeof(event_resp)) && net_gen_ok(gen)) {
-            int ev = num_int(event_resp, "", 0);
-            if (ev >= 0 && ev <= 4 && now_ms() >= event_local_until_ms)
-                net.event = ev;
-        }
-        next_event = now + 1500;
-    }
-    if (now >= next_banner) {
-        if (pull_banner(banner_resp, sizeof(banner_resp)) && net_gen_ok(gen))
-            parse_and_store_banner(banner_resp, gen);
-        next_banner = now + 1500;
-    }
-}
-#endif
 /* Streaming reader: keeps one SSE connection on players.json open and
  * reconnects when it drops. While it is live the polling reader skips
  * pull_state(), so state arrives pushed, not polled. */

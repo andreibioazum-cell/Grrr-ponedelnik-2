@@ -220,12 +220,8 @@ static long long now_ms(void) {
     return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
 }
 static void sleep_ms(int ms) {
-#ifdef CB_WASM
-    (void)ms;
-#else
     struct timespec t = {ms / 1000, (long)(ms % 1000) * 1000000L};
     nanosleep(&t, NULL);
-#endif
 }
 static double safe(double v) {
     if (v != v)

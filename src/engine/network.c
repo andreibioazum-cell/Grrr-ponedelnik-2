@@ -5,13 +5,7 @@
 #include "engine/network/progress_file.inc"
 #include "engine/network/progress_levels.inc"
 #include "engine/network/auth_json.inc"
-#if defined(CB_WASM)
-#include "platform/web/network_http_web.inc"
-#elif defined(CB_PC)
-#include "platform/pc/network_http_pc.inc"
-#else
 #include "platform/android/network_http.inc"
-#endif
 #include "engine/network/http_json.inc"
 #include "engine/network/json_unescape.inc"
 #include "engine/network/settings_storage.inc"

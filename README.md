@@ -1,113 +1,38 @@
-## RU
+# Cubic Battle 4
 
-Полная версия Cubic Battle 4 для Android. Игра написана на C, и немного на Java.
+<p align="center">
+  <img src="assets/icons/ic_launcher_xxh.png" alt="Cubic Battle 4" width="128" height="128">
+</p>
 
-- Минимум: Android 8
-- Цель: Android 15
-- Требуется: Vulkan 1.0
+## Русский
 
-## ПК-версия (Windows .exe)
+Cubic Battle 4 — нативная 3D-песочница в стиле Minecraft на чистом C99 и Vulkan для Android (8.0 – 15) с единой облачной системой аккаунтов, скинов, достижений, промокодов, подарков, комнат и живой мультиплеерной синхронизацией блоков через Firebase Realtime Database (`cubicbattleserver-19ae2-default-rtdb.firebaseio.com`).
 
-Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
+### Возможности 3D-движка и игры
 
-* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions -
-  `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
-* **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig собирает exe и на Linux, MSVC не нужен).
-* **Управление:** `WASD`/стрелки - движение, `ЛКМ` - удар, `E` - блок
-  (удерживать), `Q` - суперудар, мышь - меню и чат, `Esc` - назад, `F12` -
-  скриншот.
+- **Настоящий 3D-воксельный мир (`src/game/mc/`)**: процедурная генерация биомов (равнины, леса с дубами и берёзами, снежная тундра, пустыня с кактусами, пляжи, озёра, подземные пещеры, руды и постройки), 3D-рендеринг через Vulkan (`ds_gfx_quad`), плавное вершинное освещение (Ambient Occlusion), динамическое свечение факелов и светокамня, атмосферный туман и облака.
+- **Ломание и установка блоков**: 3D DDA-рейкастинг, 10 стадий трещин при добыче, горячая панель на 9 слотов и полный инвентарь блоков, физика AABB со скольжением по стенам, плавание в воде, творческий полёт, камера от 1-го и 3-го лица, живой динамит (TNT) с воронками взрыва и 3D-сущности персонажей с анимацией и всеми скинами.
+- **Онлайн-мультиплеер и сохранение мира**: ломание и установка любых блоков мгновенно синхронизируются между всеми игроками комнаты и сохраняются в комнате Firebase (`/rooms/<room>/chat/b_<x>_<y>_<z>.json`), а одиночный мир сохраняется на устройстве (`mc_solo.dat`).
+- **Полное сохранение экосистемы Cubic Battle 4**: оригинальное меню, регистрация и вход через Firebase Auth, облачный прогресс, кубки, конфеты, боевой пропуск, достижения, ежедневные награды, промокоды, подарки от разработчика, баннеры событий и веб-панель администратора (`index.html`).
 
-Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой - окно,
-программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
-клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
+### Сборка Android APK
 
-## Веб-панель админа
+Сборка подписанного APK (`arm64-v8a`, `armeabi-v7a`, `x86_64`) выполняется автоматически в GitHub Actions (`.github/workflows/main.yml`) с помощью Android SDK, Android NDK `r25c`, CMake/Ninja и Vulkan:
 
-Кроме APK в репозитории есть веб-версия - [index.html](index.html): панель
-админа для базы Firebase (вход по нику и паролю от игры, снимок базы, поиск и
-удаление мусора, ивенты 0..4, баннер, флаги магазина, шедевро-режим, баны, чистка чата и
-слотов, резервная копия). Сборка не нужна: открой файл в браузере.
+- Игровой код и 3D-движок: `src/game/` (`game.c`, `mc/*.inc`)
+- Рантайм, Vulkan-рендерер, звук и сеть: `src/engine/`
+- Слой платформы Android: `src/platform/android/`, `platform/android/`
+- Проверки и модульные тесты: `tools/`
+- Веб-панель администратора и её тесты: `index.html`, `firebase.rules.json`, `test/`
 
-Потренироваться без боевой базы можно так:
+---
 
-```
-python3 test/fake_firebase.py 8080
-```
+## English
 
-затем открой <http://localhost:8080/>, нажми «Тестовый режим» и войди как
-`Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
-проверки - в [docs/admin-panel.md](docs/admin-panel.md).
+Cubic Battle 4 is a pure-C99 native Vulkan 3D voxel sandbox game for Android (8.0 – 15) powered by the shared Firebase Auth & Realtime Database backend (`cubicbattleserver-19ae2-default-rtdb.firebaseio.com`).
 
-## Правовая информация
+### Key Features
 
-Возрастная категория 12+. Пользовательское соглашение, политика обработки
-персональных данных и согласие на обработку лежат в [docs/legal](docs/legal);
-там же список того, что владелец должен сделать вне кода (уведомление
-Роскомнадзора, локализация данных и т. д.).
-
-## Лицензия
-
-Copyright (C) 2026 Дима Густенёв
-
-Все права защищены. Код и материалы проекта нельзя копировать, использовать,
-изменять или распространять без письменного разрешения правообладателя.
-Полные условия - в файле [LICENSE](LICENSE).
-
-SPDX-License-Identifier: LicenseRef-Proprietary
-
-## EN
-
-Full version of Cubic Battle 4 for Android. The game is written in C, with a bit of Java.
-
-- Minimum: Android 8
-- Target: Android 15
-- Requires: Vulkan 1.0
-
-## PC version (Windows .exe)
-
-The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
-
-* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions -
-  `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
-* **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig cross-builds the exe on Linux too; MSVC is not needed).
-* **Controls:** `WASD`/arrows to move, `LMB` to punch, `E` to block (hold),
-  `Q` for the class super, mouse for menus and chat, `Esc` back, `F12`
-  screenshot.
-
-The game logic is shared with Android (`src/game`, `src/engine`); the PC layer
-is the window, a software rasterizer instead of Vulkan, WinHTTP instead of JNI
-and a keyboard-to-touch bridge. Details: [docs/pc-version.md](docs/pc-version.md).
-
-## Web admin panel
-
-Besides the APK the repository contains a web version - [index.html](index.html):
-the Firebase admin panel (sign in with the game nick and password, database
-snapshot, junk search and cleanup, events 0..4, banner, shop flags, bans, chat
-and slot cleanup, backup copy). No build step: open the file in a browser.
-
-To practise without touching the live database run
-
-```
-python3 test/fake_firebase.py 8080
-```
-
-then open <http://localhost:8080/>, press the test-mode button and sign in as
-`Dimasi4ek229` with the password `admin`. Details in
-[docs/admin-panel.md](docs/admin-panel.md).
-
-## Legal
-
-Age rating 12+. The Terms of Use, the personal data policy and the consent
-form (in Russian) are in [docs/legal](docs/legal).
-
-## License
-
-Copyright (C) 2026 Дима Густенёв
-
-All rights reserved. The code and materials of this project may not be
-copied, used, modified or distributed without the copyright holder's written
-permission. Full terms in the [LICENSE](LICENSE) file.
-
-SPDX-License-Identifier: LicenseRef-Proprietary
+- **Real 3D Voxel Engine (`src/game/mc/`)**: procedural multi-biome terrain, trees, caves, ores, water, smooth per-vertex ambient occlusion, torch/glowstone point lighting, distance fog, 3D animated character models with all character skins, live TNT craters, 1st/3rd-person camera, creative flight, and multi-touch controls.
+- **Block Breaking & Placing + Live Multiplayer Sync**: 3D DDA raycasting, 10-stage mining cracks, 9-slot hotbar + block inventory, persistent solo world (`mc_solo.dat`), and real-time persistent multiplayer block sync across rooms via Firebase RTDB.
+- **Full Account & Admin Ecosystem**: original menu & UI, Firebase Auth accounts, cloud progress, trophies, candies, Battle Pass, achievements, promo codes, developer gifts, live events, and the web admin panel (`index.html`).

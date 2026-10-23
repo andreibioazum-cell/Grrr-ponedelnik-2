@@ -1,6 +1,6 @@
 #ifndef NET_H
 #define NET_H
-#if defined(__ANDROID__) || defined(CB_PC)
+#ifdef __ANDROID__
 #include <jni.h>
 #endif
 

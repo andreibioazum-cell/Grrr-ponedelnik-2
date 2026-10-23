@@ -408,20 +408,6 @@ static void draw_remote_bricks(void) {
     }
 }
 
-#ifdef CB_PC
-/* How many bricks of other players are in the air right now (harness only). */
-static double remote_bricks_live(void) {
-    double s = 0, n = 0;
-    while (s < REMOTE_BRICKS) {
-        if (rb_on[(int)s] == 1) {
-            n = n + 1;
-        }
-        s = s + 1;
-    }
-    return n;
-}
-#endif
-
 /* The round is over: the projectile goes away and so do the ones in the air. */
 static void ball_clear_after_finish(void) {
     ball.active = 0;

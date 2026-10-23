@@ -1,6 +1,13 @@
 static int ds_vk_batch_push(int pipeline, const void *desc, size_t first, size_t count) {
     if (count == 0)
         return 1;
+    if (vk_batch_n > 0) {
+        GeoBatch *prev = &vk_batches[vk_batch_n - 1];
+        if (prev->pipeline == pipeline && prev->desc == desc && prev->first + prev->count == (uint32_t)first) {
+            prev->count += (uint32_t)count;
+            return 1;
+        }
+    }
     if (vk_batch_n == vk_batch_cap) {
         size_t cap = vk_batch_cap ? vk_batch_cap * 2 : 256;
         if (cap > SIZE_MAX / sizeof(GeoBatch))
