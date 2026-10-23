@@ -90,13 +90,14 @@ static void check_meet_eax229(void) {
 static void save_progress(void) {
     net_set_bp_xp(bp_xp);
     double bp_lv = bp_claimed;
-    net_save_codecracker(class_level_of(CLASS_CODECRACKER), class_unlocked_of(CLASS_CODECRACKER));
+    net_save_codecracker(class_owned_of(CLASS_CODECRACKER), class_level_of(CLASS_CODECRACKER),
+                         class_unlocked_of(CLASS_CODECRACKER));
+    net_save_astra(class_owned_of(CLASS_ASTRA), class_level_of(CLASS_ASTRA), class_unlocked_of(CLASS_ASTRA));
     net_save_progress_all(cups, candies, player_class, class_owned_of(CLASS_AZUM), class_owned_of(CLASS_SANTA),
                           class_owned_of(CLASS_EBUC), player_level, levels_unlocked, class_level_of(CLASS_ORDINARY),
                           class_unlocked_of(CLASS_ORDINARY), class_level_of(CLASS_AZUM), class_unlocked_of(CLASS_AZUM),
                           class_level_of(CLASS_SANTA), class_unlocked_of(CLASS_SANTA), class_level_of(CLASS_EBUC),
                           class_unlocked_of(CLASS_EBUC), bp_lv, skin_flags());
-    net_save_astra(class_owned_of(CLASS_ASTRA), class_level_of(CLASS_ASTRA), class_unlocked_of(CLASS_ASTRA));
     progress_push_to_net();
 }
 
@@ -145,8 +146,8 @@ static void progress_normalize(void) {
         set_class_progress(cls, lv, un);
         order = order + 1;
     }
-    if (player_class == CLASS_SANTA && dev_access() == 0 && bp_claimed < 7) {
-        /* Santa is developer-only until battle-pass tier 7 is claimed;
+    if (player_class == CLASS_SANTA && dev_access() == 0 && (is_admin() == 0 || bp_claimed < 7)) {
+        /* Santa is developer-only until the admin battle-pass tier 7 is claimed;
          * the ownership itself is kept either way. */
         player_class = CLASS_ORDINARY;
     }
@@ -173,6 +174,7 @@ static void progress_from_storage(void) {
     set_class_owned(CLASS_SANTA, net_load_santa());
     set_class_owned(CLASS_EBUC, net_load_ebuc());
     set_class_owned(CLASS_ASTRA, net_load_astra());
+    set_class_owned(CLASS_CODECRACKER, net_load_codecracker());
     player_level = net_load_level();
     levels_unlocked = net_load_levels_unlocked();
     set_class_progress(CLASS_ORDINARY, net_load_ordinary_level(), net_load_ordinary_levels_unlocked());
@@ -214,6 +216,7 @@ static void progress_reset_on_signout(void) {
     set_class_owned(CLASS_SANTA, 0);
     set_class_owned(CLASS_EBUC, 0);
     set_class_owned(CLASS_ASTRA, 0);
+    set_class_owned(CLASS_CODECRACKER, 0);
     double i = 0;
     while (i < class_count) {
         set_class_progress(class_at_order(i), 0, 0);

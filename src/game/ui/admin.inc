@@ -1,5 +1,5 @@
-/* Admin panel: a small black-and-white "CCP" orb that only the two admin
- * accounts see. Drag it anywhere, tap it to open a compact monochrome panel
+/* Admin panel: a small black-and-white "CCP" orb that only the admin
+ * account sees. Drag it anywhere, tap it to open a compact monochrome panel
  * with two tabs - cheats and players. The panel is drawn above every screen,
  * above the transition curtain and above the epilepsy warning, so it never
  * hides itself, and nothing here prints a status line under the panel.

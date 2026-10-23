@@ -356,10 +356,12 @@ def test_chaos(assets: Path) -> None:
             fake.wait(timeout=5)
 
 
-def harness_async(assets: Path, data: Path, args: list[str]) -> subprocess.Popen:
+def harness_async(assets: Path, data: Path, args: list[str], progress: str = "") -> subprocess.Popen:
     """Same command as harness(), but left running so two clients can meet."""
     shutil.rmtree(data, ignore_errors=True)
     data.mkdir(parents=True, exist_ok=True)
+    if progress:
+        (data / "progress.dat").write_text(progress, encoding="utf-8")
     return subprocess.Popen(
         [str(BINARY), "--headless", "--size", "540x960", "--assets", str(assets), "--data", str(data), *args],
         cwd=ROOT,
@@ -467,6 +469,75 @@ def test_brick_online(assets: Path) -> None:
         float(b2300.get("hp", "nan")) < float(b1500.get("hp", "nan")),
         f"до {b1500.get('hp')}, после {b2300.get('hp')} / {err_b[-300:]}",
     )
+
+
+def test_codecracker_online(assets: Path) -> None:
+    """Non-admin buys CodeCracker for 475 cups and fights with it in an online room."""
+    print("\n== 3k. CodeCracker for everyone in an online fight ==")
+    stamp = int(time.time()) % 100000
+    room = f"ccr{stamp}"
+    buyer_nick = f"ccb{stamp}"
+    victim_nick = f"ccv{stamp}"
+    taps = [
+        "--touch", "220:360:686:0", "--touch", "223:360:686:1",
+        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+    ]
+    with fake_server():
+        buyer = harness_async(
+            assets,
+            SCRATCH / "cc_net_a",
+            ["--frames", "2200", *taps, f"--login", f"500:{buyer_nick}:pass1234",
+             "--class", "720:6", "--room", f"900:{room}:1",
+             "--report", "1500",
+             "--stick", "1520:1:0",
+             "--super", "1650:1", "--super", "1655:0",
+             "--report", "1700", "--report", "2050"],
+            progress="500 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n",
+        )
+        time.sleep(5)
+        victim = harness_async(
+            assets,
+            SCRATCH / "cc_net_b",
+            ["--frames", "2200", *taps, f"--login", f"500:{victim_nick}:pass1234",
+             "--room", f"960:{room}:0",
+             "--report", "1500",
+             "--stick", "1520:1:0",
+             "--report", "1640", "--report", "2050"],
+        )
+        out_a, err_a = buyer.communicate(timeout=500)
+        out_b, err_b = victim.communicate(timeout=500)
+        login = json.dumps({"email": "dimasi4ek229@cb4.game", "password": "admin|cb4v1"}).encode()
+        token = json.loads(fake_request("/v1/accounts:signInWithPassword?key=K", login, "POST"))["idToken"]
+        cloud_user = json.loads(fake_request(f"/users/{buyer_nick}.json?auth={token}").decode())
+    rep_a = parse_reports(out_a)
+    rep_b = parse_reports(out_b)
+    a1500, a2050 = rep_a.get(1500, {}), rep_a.get(2050, {})
+    b1500, b1640, b2050 = rep_b.get(1500, {}), rep_b.get(1640, {}), rep_b.get(2050, {})
+    check(
+        "обычный игрок купил CodeCracker за 475 кубков и сохранил в облако",
+        isinstance(cloud_user, dict)
+        and cloud_user.get("codecracker") == 1
+        and cloud_user.get("cls") == 6
+        and cloud_user.get("cups") == 25,
+        str(cloud_user),
+    )
+    check(
+        "обычный игрок вошёл в онлайн-бой за CodeCracker (cls=6, hp=12)",
+        a1500.get("state") == "5" and a1500.get("battle") == "1"
+        and a1500.get("cls") == "6" and abs(float(a1500.get("hp", "0")) - 12.0) < 0.01,
+        f"{a1500} / {err_a[-300:]}",
+    )
+    check(
+        "второй игрок в той же комнате",
+        b1500.get("state") == "5" and b1500.get("battle") == "1",
+        f"{b1500} / {err_b[-300:]}",
+    )
+    check(
+        "ульта CodeCracker в онлайне наносит урон сопернику при касании",
+        float(b2050.get("hp", "nan")) < float(b1640.get("hp", "nan")),
+        f"до ульты {b1640.get('hp')}, после {b2050.get('hp')} / {err_b[-300:]}",
+    )
+    check("в онлайне за CodeCracker нет ошибок", a2050.get("error") == "0" and b2050.get("error") == "0", f"{a2050} / {b2050}")
 
 
 def fake_signs_in() -> bool:
@@ -802,6 +873,7 @@ def main() -> int:
         test_chaos,
         test_chaos_online,
         test_brick_online,
+        test_codecracker_online,
         test_login,
     ]
     for test in tests:

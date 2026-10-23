@@ -80,6 +80,9 @@ static void bp_grant(double t) {
 }
 
 static void bp_claim(double t) {
+    if (is_admin() != 1) {
+        return;
+    }
     if (t <= bp_claimed) {
         return;
     }
@@ -205,6 +208,9 @@ static void touch_bpass(double x, double y, double action) {
 static double bpass_any_hit(double x, double y) {
     if (back_hit(x, y) == 1) {
         return 1;
+    }
+    if (is_admin() != 1) {
+        return 0;
     }
     double t = 1;
     while (t <= BP_TIERS) {
