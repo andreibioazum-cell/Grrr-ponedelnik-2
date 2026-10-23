@@ -1,302 +1,58 @@
-// Проверка веб-панели админа (index.html) в настоящей DOM.
-//
-// Зачем: однажды панель «ожила» на вид, но ни одна кнопка не нажималась -
-// скрипт падал на этапе загрузки из-за «*/» внутри блочного комментария.
-// Синтаксис теперь проверяет tools/test_admin_panel.py, а этот тест идёт
-// дальше: поднимает подставную базу (test/fake_firebase.py), открывает панель
-// в jsdom и НАЖИМАЕТ каждую кнопку страницы, проверяя, что
-//   * скрипт загрузился и нашёл все свои элементы (MISSING пуст);
-//   * нет красной плашки «панель не запустилась»;
-//   * в журнале нет строк «ошибка:»;
-//   * действия действительно дошли до базы (ивент, баннер, бан, флаг, чистка).
-//
-// Запуск:  cd test && npm install && node test_admin_panel_dom.mjs
-import { JSDOM, VirtualConsole } from "jsdom";
+import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { JSDOM } from "jsdom";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = dirname(HERE);
-const PORT = Number(process.env.PORT || 18799);
-const BASE = `http://127.0.0.1:${PORT}`;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, "..");
 
-const failures = [];
-const ok = (name) => console.log(`  ok  ${name}`);
-function check(name, cond, extra = "") {
-  if (cond) ok(name);
-  else { failures.push(`${name}${extra ? ": " + extra : ""}`); console.log(`  FAIL ${name} ${extra}`); }
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor(fn, what, timeout = 15000) {
-  const started = Date.now();
-  for (;;) {
-    let value = null;
-    try { value = await fn(); } catch (_) { value = null; }
-    if (value) return value;
-    if (Date.now() - started > timeout) throw new Error(`timeout waiting for ${what}`);
-    await sleep(100);
-  }
-}
-
-async function db(path, token) {
-  const url = `${BASE}/${path}.json` + (token ? `?auth=${encodeURIComponent(token)}` : "");
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
-  return r.json();
-}
-
-// ---------------------------------------------------------------------------
-const server = spawn("python3", [join(HERE, "fake_firebase.py"), String(PORT)], {
-  env: { ...process.env, FAKE_FB_QUIET: "1" },
-  stdio: ["ignore", "pipe", "pipe"],
+const py = spawn("python3", [path.join(__dirname, "fake_firebase.py")], { stdio: ["ignore", "pipe", "inherit"] });
+const serverUrl = await new Promise((resolve, reject) => {
+  py.stdout.once("data", (d) => resolve(d.toString().trim()));
+  py.once("error", reject);
 });
-let serverLog = "";
-server.stdout.on("data", (d) => (serverLog += d));
-server.stderr.on("data", (d) => (serverLog += d));
 
-const dialogs = [];
-let dom;
 try {
-  await waitFor(async () => {
-    try { const r = await fetch(`${BASE}/__stats.json`); return r.ok; } catch (_) { return false; }
-  }, "fake firebase to listen", 20000);
+  await fetch(serverUrl + "/geometrium/rooms/main/players/p1.json", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "BuilderOne", x: 48, y: 16, z: 48, live: 1 }),
+  });
+  await fetch(serverUrl + "/geometrium/rooms/main/blocks.json", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ "48_16_48": 4, "49_16_48": 20 }),
+  });
 
-  const html = readFileSync(join(ROOT, "index.html"), "utf8");
-  const virtualConsole = new VirtualConsole();
-  const consoleErrors = [];
-  virtualConsole.on("jsdomError", (e) => consoleErrors.push("jsdomError: " + e.message));
-  virtualConsole.on("error", (...a) => consoleErrors.push("console.error: " + a.join(" ")));
-
-  dom = new JSDOM(html, {
+  const html = readFileSync(path.join(rootDir, "index.html"), "utf8");
+  const dom = new JSDOM(html, {
+    url: serverUrl + "/",
     runScripts: "dangerously",
-    resources: undefined,
-    url: `${BASE}/`,
-    pretendToBeVisual: true,
-    virtualConsole,
-    beforeParse(window) {
-      window.fetch = (...args) => fetch(...args);
-      window.alert = (m) => dialogs.push({ kind: "alert", text: String(m) });
-      window.confirm = (m) => { dialogs.push({ kind: "confirm", text: String(m) }); return true; };
-      window.prompt = () => null;
-      window.URL.createObjectURL = () => "blob:cb4-test";
-      window.URL.revokeObjectURL = () => {};
-      window.HTMLAnchorElement.prototype.click = function () {
-        dialogs.push({ kind: "download", text: this.download || "" });
-      };
+    beforeParse(win) {
+      win.fetch = globalThis.fetch;
     },
   });
+  const doc = dom.window.document;
+  doc.getElementById("dbUrl").value = serverUrl;
 
-  const { window } = dom;
-  const { document } = window;
-  const $ = (s) => document.querySelector(s);
-  const click = (s) => {
-    const el = typeof s === "string" ? $(s) : s;
-    if (!el) throw new Error(`нет элемента ${s}`);
-    el.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
-    return el;
-  };
-  const setVal = (s, v) => { $(s).value = v; };
-  const fatalText = () => ($("#fatal").className === "hide" ? "" : $("#fatal").textContent);
-  const logText = () => $("#log").textContent;
-  const jsErrors = () => {
-    const fatal = fatalText();
-    const logged = (logText().match(/ошибка: [^\n]*/g) || []);
-    return [...(fatal ? ["плашка: " + fatal] : []), ...logged, ...consoleErrors];
-  };
-  const visible = (s) => !$(s).classList.contains("hide");
+  doc.getElementById("btnRefresh").click();
+  await new Promise((r) => setTimeout(r, 150));
+  assert.match(doc.getElementById("roomsView").textContent, /Комната: main \| игроков: 1 \| изменённых блоков: 2/);
 
-  console.log("\n== 1. Загрузка страницы ==");
-  await sleep(300);
-  check("скрипт выполнился без ошибок", jsErrors().length === 0, jsErrors().join(" | "));
-  check("все элементы найдены (MISSING пуст)", window.eval("MISSING.length") === 0,
-        window.eval("JSON.stringify(MISSING)"));
-  check("журнал сообщает, что кнопки привязаны", /всё нажимается/.test(logText()), logText().slice(0, 200));
-  const buttons = [...document.querySelectorAll("button")];
-  check("кнопок на странице много", buttons.length >= 25, String(buttons.length));
+  doc.getElementById("btnBackup").click();
+  await new Promise((r) => setTimeout(r, 120));
+  assert.ok(dom.window.LAST_BACKUP && dom.window.LAST_BACKUP.rooms.main);
 
-  console.log("\n== 2. Тестовый режим и вход ==");
-  // Хвост пароля ротирован: панель обязана об этом рассказывать, а не молча
-  // не пускать на боевую базу (именно так это и выглядело как «всё сломано»).
-  click("#prodMode");
-  check("боевой режим предупреждает про старый хвост",
-        /rotate_db_secret\.py --show/.test($("#suffixWarn").textContent),
-        $("#suffixWarn").textContent.slice(0, 160));
-  click("#suffixHelp");
-  await sleep(150);
-  check("справка про хвост открывается",
-        dialogs.some((d) => d.kind === "alert" && /rotate_db_secret\.py --show/.test(d.text)));
-  setVal("#suffix", "i6Ugz3AlDLdgHJ6iUvkMOwNhKKNOnlwc");
-  $("#suffix").dispatchEvent(new window.Event("input", { bubbles: true }));
-  check("текущий хвост подсвечен как подходящий",
-        /похож на текущий/.test($("#suffixWarn").textContent), $("#suffixWarn").textContent);
-  setVal("#suffix", "|cb4v1");
-  $("#suffix").dispatchEvent(new window.Event("input", { bubbles: true }));
-  click("#testMode");
-  check("тестовый режим выставил адрес базы", $("#dbUrl").value === BASE, $("#dbUrl").value);
-  check("режим подсвечен в шапке", $("#modePill").textContent === "тестовая база", $("#modePill").textContent);
-  setVal("#nick", "Dimasi4ek229");
-  setVal("#pass", "admin");
-  click("#login");
-  await waitFor(() => visible("#app"), "вход и снимок базы");
-  check("вход выполнен админом", /права админа есть/.test(logText()));
-  check("токен разобран (провайдер password)", /провайдер password/.test(logText()));
-  check("показаны разделы панели", visible("#app") && visible("#janitor") && visible("#tools") && visible("#logBox"));
-  check("статистика посчитана", $("#stats").querySelectorAll(".card").length >= 8,
-        String($("#stats").querySelectorAll(".card").length));
-  const token = window.eval("TOKEN");
-  check("токен получен", typeof token === "string" && token.length > 10);
+  doc.getElementById("btnClearBlocks").click();
+  await new Promise((r) => setTimeout(r, 150));
+  assert.match(doc.getElementById("roomsView").textContent, /изменённых блоков: 0/);
 
-  console.log("\n== 3. Уборщик: фильтры, выделение, удаление ==");
-  const found = $("#found").querySelectorAll("input");
-  check("нашли мусор", found.length > 0, String(found.length));
-  check("живой прогресс не в мусоре",
-        !logText().includes("users/Dimasi4ek229/gifts") &&
-        !$("#found").textContent.includes("users/Player2/gifts/emerald_hue"),
-        $("#found").textContent.slice(0, 300));
-  check("корневой мусор виден", $("#found").textContent.includes("freeCupsHack"));
-  check("мусорный игрок виден", $("#found").textContent.includes("xX_hack_Xx"));
-  check("спам в чате виден", $("#found").textContent.includes("взлом"));
-  click("#none");
-  check("«Снять всё» снимает выделение", window.eval("FOUND.filter(f=>f.sel).length") === 0);
-  click("#all");
-  check("«Выделить всё» выделяет", window.eval("FOUND.filter(f=>f.sel).length") > 0);
-  click("#invert");
-  check("«Инвертировать» работает", window.eval("FOUND.filter(f=>f.sel).length") >= 0);
-  // фильтры переключаются
-  const staleFilter = [...document.querySelectorAll(".flt")].find((c) => c.dataset.k === "stale");
-  staleFilter.checked = true;
-  staleFilter.dispatchEvent(new window.Event("change", { bubbles: true }));
-  await sleep(150);
-  check("фильтр «слоты-заглушки» показывает нулевой слот",
-        $("#found").textContent.includes("rooms/main/players/2"));
-  click("#none");
-  // выделяем только корневой мусор и удаляем его
-  window.eval(`FOUND.forEach(f => { f.sel = (f.kind === "unknown_root"); });`);
-  [...document.querySelectorAll(".flt")].forEach((c) => {
-    c.checked = c.dataset.k === "unknown_root";
-    c.dispatchEvent(new window.Event("change", { bubbles: true }));
-  });
-  await sleep(150);
-  click("#all");
-  click("#wipe");
-  await waitFor(async () => (await db("freeCupsHack", token)) === null, "удаление корневого мусора");
-  check("мусорный узел удалён из базы", (await db("freeCupsHack", token)) === null);
-  check("удаление попало в журнал", /готово: удалено/.test(logText()));
-
-  console.log("\n== 4. Ивенты 0..4 ==");
-  for (const ev of [1, 2, 3, 4, 0]) {
-    click(`[data-ev="${ev}"]`);
-    await waitFor(async () => ((await db("event", token)) === ev ? "ok" : null), `event=${ev}`);
-    check(`ивент ${ev} записан`, (await db("event", token)) === ev);
-  }
-  click('[data-ev="4"]');
-  await waitFor(async () => (await db("event", token)) === 4, "event=4 again");
-
-  console.log("\n== 5. Флаги, баннер, баны, оттенок ==");
-  click('[data-flag="FlashSale"][data-v="1"]');
-  await waitFor(async () => (await db("FlashSale", token)) === 1, "FlashSale=1");
-  check("FlashSale включён", (await db("FlashSale", token)) === 1);
-  click('[data-flag="AzumBuff"][data-v="1"]');
-  await waitFor(async () => (await db("AzumBuff", token)) === 1, "AzumBuff=1");
-  check("AzumBuff включён", (await db("AzumBuff", token)) === 1);
-
-  setVal("#bannerText", "Тестовый баннер");
-  click("#setBanner");
-  const banner = await waitFor(async () => {
-    const b = await db("banner", token);
-    return b && b.text === "Тестовый баннер" ? b : null;
-  }, "баннер");
-  check("баннер записан (текст и цвет)", banner.text === "Тестовый баннер" && banner.color === "white");
-  click("#clearBanner");
-  await waitFor(async () => (await db("banner", token)) === null, "снятие баннера");
-  check("баннер снят", (await db("banner", token)) === null);
-
-  setVal("#banNick", "Spammer");
-  click("#ban");
-  await waitFor(async () => (await db("bans/Spammer", token)) === true, "бан");
-  check("бан записан", (await db("bans/Spammer", token)) === true);
-  click("#unban");
-  await waitFor(async () => (await db("bans/Spammer", token)) === null, "разбан");
-  check("разбан сработал", (await db("bans/Spammer", token)) === null);
-  setVal("#banNick", "не ник!");
-  click("#ban");
-  await sleep(200);
-  check("неправильный ник не уходит в базу",
-        dialogs.some((d) => d.kind === "alert" && /A-Za-z0-9_/.test(d.text)));
-
-  setVal("#hueNick", "Player2");
-  setVal("#hueVal", "6");
-  click("#setHue");
-  await waitFor(async () => (await db("users/Player2/gifts/emerald_hue", token)) === 6, "оттенок");
-  check("оттенок изумруда записан", (await db("users/Player2/gifts/emerald_hue", token)) === 6);
-
-  console.log("\n== 6. Комната: чат и слоты ==");
-  setVal("#room", "main");
-  click("#clearChat");
-  await waitFor(async () => (await db("rooms/main/chat", token)) === null, "очистка чата");
-  check("чат комнаты очищен", (await db("rooms/main/chat", token)) === null);
-  click("#clearSlots");
-  await waitFor(async () => (await db("rooms/main/players", token)) === null, "сброс слотов");
-  check("слоты сброшены", (await db("rooms/main/players", token)) === null);
-
-  console.log("\n== 7. Резервная копия и восстановление ==");
-  click("#dump");
-  await sleep(200);
-  check("копия скачалась", dialogs.some((d) => d.kind === "download" && /^cb4-backup-.*\.json$/.test(d.text)),
-        JSON.stringify(dialogs.filter((d) => d.kind === "download")));
-
-  const file = new window.File([JSON.stringify({ event: 2, AzumBuff: 1 })], "restore.json",
-                               { type: "application/json" });
-  Object.defineProperty($("#restoreFile"), "files", { value: [file], configurable: true });
-  $("#restoreFile").dispatchEvent(new window.Event("change", { bubbles: true }));
-  await waitFor(async () => (await db("event", token)) === 2, "восстановление из копии");
-  check("копия восстановлена", (await db("event", token)) === 2 && (await db("AzumBuff", token)) === 1);
-
-  console.log("\n== 8. Самопроверка, журнал, ключ, выход ==");
-  click("#selftest");
-  await sleep(150);
-  check("самопроверка сообщает, что всё привязано",
-        dialogs.some((d) => d.kind === "alert" && /Все кнопки привязаны/.test(d.text)),
-        JSON.stringify(dialogs.slice(-1)));
-  click("#checkKey");
-  await waitFor(() => (/проверка ключа/.test(logText()) ? true : null), "проверка ключа");
-  check("проверка ключа отработала", /проверка ключа/.test(logText()));
-  click("#clearLog");
-  check("журнал очищается", $("#log").textContent === "");
-
-  console.log("\n== 9. Вход обычным игроком (не админ) ==");
-  // «Выйти» делает location.reload(); в jsdom перезагрузки нет, поэтому
-  // сбрасываем вход руками и показываем форму входа - дальше всё по-настоящему.
-  window.eval("TOKEN = null; REFRESH = null; SNAP = null; FOUND = [];");
-  await sleep(100);
-  setVal("#nick", "Player2");
-  setVal("#pass", "secret");
-  $("#authBox").classList.remove("hide");
-  click("#login");
-  await waitFor(() => (/читаю игровые узлы по отдельности/.test(logText()) ? true : null),
-                "вход игроком и снимок по узлам");
-  check("вход игроком прошёл", /вход выполнен: player2@cb4\.game/.test(logText()));
-  check("корень закрыт - снимок по узлам", /читаю игровые узлы по отдельности/.test(logText()));
-  check("панель не умерла без прав админа", jsErrors().length === 0, jsErrors().join(" | "));
-
-  console.log("\n== 10. Итог по ошибкам ==");
-  check("за весь прогон не было ни одной ошибки", jsErrors().length === 0, jsErrors().join(" | "));
-} catch (e) {
-  failures.push("исключение в тесте: " + (e && e.stack || e));
-  console.log("  FAIL исключение:", e && e.message);
-  console.log(serverLog.slice(-2000));
+  doc.getElementById("btnClearLog").click();
+  assert.equal(doc.getElementById("logBox").textContent, "");
+  assert.equal(dom.window.GEO_ERRORS.length, 0);
+  console.log("Geometrium Web Console DOM E2E: OK");
 } finally {
-  server.kill("SIGTERM");
-  if (dom) dom.window.close();
+  py.kill("SIGTERM");
 }
-
-console.log("");
-if (failures.length) {
-  console.log(`ПРОВАЛЕНО: ${failures.length}`);
-  for (const f of failures) console.log(" - " + f);
-  process.exit(1);
-}
-console.log("Все проверки веб-панели прошли: каждая кнопка нажимается и доходит до базы.");

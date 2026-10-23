@@ -1,4 +1,4 @@
-// Vertical-gradient rounded buttons for Cubic Battle 4.
+// Vertical-gradient rounded buttons for Geometrium.
 //
 // This is the one spot where C++ earns its place: the gradient needs a little
 // analytic geometry per scanline (the row inset of a rounded silhouette) plus
