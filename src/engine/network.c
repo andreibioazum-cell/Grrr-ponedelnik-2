@@ -90,6 +90,7 @@ typedef struct {
 static DSMutex net_lock = DS_MUTEX_INIT;
 static NetState net;
 static int net_fast = 0;
+#define TIMEOUT 5000
 static int net_log_ok(void) { return 1; }
 
 static long long geo_now_ms(void) {
