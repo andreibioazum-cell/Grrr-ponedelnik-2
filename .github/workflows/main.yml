@@ -98,18 +98,6 @@ jobs:
           set -euo pipefail
           TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
           GLUE="$ANDROID_NDK_HOME/sources/android/native_app_glue"
-          C_OPTS=(
-            -std=c99 -O2 -fPIC -shared
-            -Wall -Wextra -Werror
-            -Isrc -I. -I"$GLUE"
-            -llog -landroid -lvulkan -lm -ldl
-          )
-          CPP_OPTS=(
-            -std=c++17 -O2 -fPIC
-            -Wall -Wextra -Werror
-            -fno-exceptions -fno-rtti
-            -Isrc -I.
-          )
           C_SOURCES=(
             src/game/game.c
             src/engine/runtime.c
@@ -117,17 +105,22 @@ jobs:
             "$GLUE/android_native_app_glue.c"
           )
           CPP_SOURCE=src/game/cpp/ui_fx.cpp
+          C_OPTS=(-std=c99 -O3 -s -fPIC -shared -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
+          CPP_OPTS=(-std=c++17 -fno-exceptions -fno-rtti -O3 -s -fPIC -Isrc)
+          mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
 
           for ABI in arm64-v8a armeabi-v7a x86_64; do
-            mkdir -p "staging/lib/$ABI"
             case "$ABI" in
               arm64-v8a) TRIPLE=aarch64-linux-android26;;
               armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
               x86_64) TRIPLE=x86_64-linux-android26;;
             esac
+            "$TOOLCHAIN/$TRIPLE-clang" -std=c99 -Wall -Wextra -Werror -O3 -fPIC -Isrc -I. -c src/game/game.c -o "staging/game_check_$ABI.o"
+            rm -f "staging/game_check_$ABI.o"
             "$TOOLCHAIN/$TRIPLE-clang++" "${CPP_OPTS[@]}" -c "$CPP_SOURCE" -o "staging/ui_fx_$ABI.o"
             "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" "staging/ui_fx_$ABI.o" \
               -o "staging/lib/$ABI/libgeometrium.so"
+            rm -f "staging/ui_fx_$ABI.o"
           done
 
       - name: Package and align Geometrium APK
