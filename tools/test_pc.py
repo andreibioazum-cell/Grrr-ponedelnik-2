@@ -435,8 +435,8 @@ def test_brick_online(assets: Path) -> None:
              "--report", "1500",
              # the mode button, then the pad: the countdown and a dragged aim
              "--touch", "1560:408:533:0:5", "--touch", "1572:408:533:1:5",
-             "--touch", "1600:408:630:0:7", "--touch", "1630:408:700:2:7",
-             "--touch", "1640:408:700:1:7",
+             "--touch", "1600:408:630:0:7", "--touch", "1630:236:445:2:7",
+             "--touch", "1640:236:445:1:7",
              "--report", "1700", "--report", "2000", "--report", "2300"],
         )
         time.sleep(5)
@@ -458,7 +458,8 @@ def test_brick_online(assets: Path) -> None:
     check("метатель в онлайне", a1500.get("state") == "5" and a1500.get("battle") == "1", str(a1500))
     check("второй игрок в том же бою", b1500.get("state") == "5" and b1500.get("battle") == "1", str(b1500))
     check("кнопка режимов работает в онлайне", a1700.get("mode") == "1", str(a1700))
-    check("кирпич улетел в онлайне", "brick thrown" in err_a and float(a2000.get("bounces", "0")) > 0,
+    check("кирпич улетел в онлайне",
+          ("magic projectile thrown" in err_a or "brick thrown" in err_a) and float(a2000.get("bounces", "0")) > 0,
           f"{a2000} / {err_a[-400:]}")
     check("другой игрок видит кирпич", "1" in seen, f"rbricks по кадрам: {seen}")
     check(
@@ -608,14 +609,14 @@ def test_ball(assets: Path) -> None:
 
         aimed = fight("brick_aim", [
             "--touch", "930:408:630:0:7", "--report", "960",
-            "--touch", "980:270:200:2:7",            # drag: aim at the enemy
-            "--touch", "1000:270:200:1:7",
+            "--touch", "980:270:360:2:7",            # drag near the cube: aim at the enemy
+            "--touch", "1000:270:360:1:7",
             "--report", "1250", "--report", "1500",
         ])
         wall = fight("brick_wall", [
             "--touch", "930:408:630:0:7", "--report", "960",
-            "--touch", "980:530:480:2:7",            # drag: aim at the right wall
-            "--touch", "1000:530:480:1:7",
+            "--touch", "980:410:480:2:7",            # drag near the cube: aim at the right wall
+            "--touch", "1000:410:480:1:7",
             "--report", "1066", "--report", "1250", "--report", "1700",
         ])
     base = aimed.get(860, {})
@@ -661,8 +662,8 @@ def test_ult_mode_switch(assets: Path) -> None:
                 "--touch", "1300:408:533:0:5", "--touch", "1312:408:533:1:5",
                 "--report", "1330",
                 # brick mode: the press starts the countdown, the drag aims it up
-                "--touch", "1350:408:630:0:7", "--touch", "1380:270:200:2:7",
-                "--touch", "1390:270:200:1:7",
+                "--touch", "1350:408:630:0:7", "--touch", "1380:270:360:2:7",
+                "--touch", "1390:270:360:1:7",
                 "--report", "1410", "--report", "1560",
             ],
         )

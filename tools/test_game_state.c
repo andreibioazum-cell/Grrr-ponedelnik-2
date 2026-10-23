@@ -2011,9 +2011,42 @@ static void test_eax229_and_rooms(void) {
     game_reset();
     screen_w = 1280;
     screen_h = 720;
-    assert(achievement_count() == 5);
+    assert(achievement_count() == 6);
+    assert(achievement_bit(5) == ACH_BUK_GIFT);
     assert(strcmp(tr_achievement_eax229(), "mov eax, 0x229") == 0);
     assert(strcmp(tr_achievement_eax229_desc(), "???") == 0);
+
+    /* Gift from буК: granted in an online Ded Moroz event as Santa, unlocks Elf буК. */
+    achievement_mask = 0;
+    bp_claimed = 0;
+    assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 0);
+    game_state = ST_ONLINE;
+    online_ready = 1;
+    event_mode = 3;
+    player_class = CLASS_SANTA;
+    check_buk_elf_achievement();
+    assert(has_achievement(ACH_BUK_GIFT) == 1);
+    assert(skin_unlocked_for(CLASS_EBUC, SKIN_SPECIAL) == 1);
+    online_ready = 0;
+    event_mode = 0;
+    player_class = CLASS_ORDINARY;
+    game_state = ST_LOBBY;
+
+    /* Aiming the magic projectile only updates within 180 px around the player. */
+    player->x = 400;
+    player->y = 360;
+    player->angle = 0;
+    super_cd = 0;
+    finished = 0;
+    player_block = 0;
+    ball_reset();
+    ball_aim_start(7);
+    assert(ball.aim_on == 1 && fabs(ball.aim_dx - 1) < 1e-6 && fabs(ball.aim_dy) < 1e-6);
+    ball_aim_point(400, 100); /* 260 px away: ignored */
+    assert(fabs(ball.aim_dx - 1) < 1e-6 && fabs(ball.aim_dy) < 1e-6);
+    ball_aim_point(400, 240); /* 120 px away: aims straight up */
+    assert(fabs(ball.aim_dx) < 1e-6 && fabs(ball.aim_dy + 1) < 1e-6);
+    ball_aim_cancel();
 
     /* Dimasi4ek229 himself: granted automatically (case-insensitive). */
     achievement_mask = 0;
@@ -2784,8 +2817,9 @@ int main(void) {
         finish_game(1);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        assert(achievement_count() == 5);
+        assert(achievement_count() == 6);
         assert(achievement_bit(3) == ACH_LAST_HP);
+        assert(achievement_bit(5) == ACH_BUK_GIFT);
         finished = 0;
         cups_awarded = 0;
         achievement_mask = 0;

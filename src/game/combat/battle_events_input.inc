@@ -365,6 +365,7 @@ static void touch_game(double x, double y, double action, double id) {
             return;
         }
         if (action == 1 || action == 3) {
+            ball.aim_id = -1;
             if (action == 3) {
                 ball_aim_cancel();
             }
@@ -425,6 +426,12 @@ static void touch_game(double x, double y, double action, double id) {
             }
             return;
         }
+    }
+    if (ball.aim_on == 1 && ball.aim_id == -1 && action == 0 &&
+        (joy_id != -1 || dist(x, y, joy.x, joy.y) > 150) && ball_aim_near(x, y) == 1) {
+        ball.aim_id = id;
+        ball_aim_point(x, y);
+        return;
     }
     joy_touch(x, y, action, id);
 }
