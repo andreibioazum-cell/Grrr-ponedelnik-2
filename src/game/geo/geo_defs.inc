@@ -55,7 +55,8 @@ enum {
     SCR_INFO = 4,
     SCR_PLAY = 5,
     SCR_STUDIO = 6,  /* Roblox-style avatar/model editor */
-    SCR_ANIM = 7     /* custom animation editor */
+    SCR_ANIM = 7,    /* custom animation editor */
+    SCR_SCRIPTS = 8  /* C scripts manager */
 };
 
 enum {
@@ -187,6 +188,8 @@ typedef struct {
     int build_mode;    /* in-game Part builder (Roblox Studio style) */
     int part_sel;      /* selected GeoPart index, -1 = none */
     int players_open;  /* overlay listing other accounts in the world */
+    int editor_mode;   /* Roblox Studio editor: flat baseplate + tools */
+    int studio_return; /* 1 = Studio/Anim/Scripts back button returns to play */
     float walk_phase, swing_anim, step_cd, place_cd, sync_cd;
     int swing_seq;
 
@@ -241,6 +244,13 @@ static void geo_apply_remote_parts(void);
 static void geo_sync_remote_players(float fdt);
 static void geo_draw_anim(float cx, float cy);
 static void geo_touch_anim(float x, float y, float cx, float cy);
+static void geo_scripts_reset(void);
+static void geo_draw_home(float cx, float cy, float w, float h);
+static void geo_touch_home(float x, float y, float cx, float cy);
+static void geo_draw_scripts(float cx, float cy);
+static void geo_touch_scripts(float x, float y, float cx, float cy);
+static void geo_draw_editor_toolbar(void);
+static int geo_touch_editor_toolbar(float x, float y);
 static int geo_skin_pack(void);
 static void geo_skin_unpack(int packed, int skin[4]);
 
@@ -284,8 +294,3 @@ static const char *geo_face_tex(unsigned char b, int face) {
     return geo_blocks[b].side_tex;
 }
 
-static const char *geo_block_name(int b) {
-    if (b <= 0 || b >= GEO_BLOCK_COUNT)
-        return "";
-    return geo.lang ? geo_blocks[b].ru : geo_blocks[b].en;
-}

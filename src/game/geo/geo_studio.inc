@@ -40,10 +40,14 @@ enum {
     ANIM_SWIM, ANIM_WAVE, ANIM_DANCE, ANIM_CUSTOM, ANIM_COUNT
 };
 
-/* The player's own animation, built joint-by-joint in the Anim Editor.
- * Played as: neutral -> this pose -> neutral, 1 second loop. */
-static float geo_custom_pose[GJ_COUNT];
-static int geo_custom_joint;   /* joint currently edited in the UI */
+/* The player's own animations, built joint-by-joint in the Anim Editor.
+ * Slot 0 = emote (neutral -> pose -> neutral), 1 = custom WALK,
+ * 2 = custom RUN (looped with the built-in clip timing when enabled). */
+static float geo_custom_poses[3][GJ_COUNT];
+#define geo_custom_pose (geo_custom_poses[0])
+static int geo_custom_on[2];       /* [0]=walk, [1]=run overrides enabled */
+static int geo_anim_target;        /* editor target: 0 emote, 1 walk, 2 run */
+static int geo_custom_joint;       /* joint currently edited in the UI */
 
 #define GEO_ANIM_MAX_KEYS 8
 typedef struct {
@@ -109,6 +113,17 @@ static void geo_anim_sample(int clip_id, float t, float out[GJ_COUNT]) {
         f = ph < 0.5f ? ph * 2.0f : (1.0f - ph) * 2.0f;
         for (i = 0; i < GJ_COUNT; i++)
             out[i] = geo_custom_pose[i] * f;
+        return;
+    }
+    if ((clip_id == ANIM_WALK && geo_custom_on[0]) || (clip_id == ANIM_RUN && geo_custom_on[1])) {
+        /* Player-made walk/run: swing between +pose and -pose. */
+        const float *pose = geo_custom_poses[clip_id == ANIM_WALK ? 1 : 2];
+        float dur = geo_anim_clips[clip_id].duration;
+        float ph = dur > 0.0f ? fmodf(t, dur) / dur : 0.0f;
+        float s = sinf(ph * 6.2831853f);
+        for (i = 0; i < GJ_COUNT; i++)
+            out[i] = pose[i] * s;
+        out[GJ_BOB] = fabsf(s) * pose[GJ_BOB];
         return;
     }
     if (clip_id < 0 || clip_id >= ANIM_CUSTOM)
@@ -241,14 +256,21 @@ typedef struct {
 
 static const GeoScriptApi *geo_script_api;
 static int geo_scripts_started;
+static int geo_script_enabled[GEO_SCRIPT_COUNT];   /* toggled in Scripts screen */
 
 static void geo_scripts_start(const GeoScriptApi *api) {
     int i;
+    static int defaults_done;
+    if (!defaults_done) {
+        defaults_done = 1;
+        for (i = 0; i < GEO_SCRIPT_COUNT; i++)
+            geo_script_enabled[i] = 1;
+    }
     geo_parts_clear();
     geo_script_api = api;
     geo_scripts_started = 1;
     for (i = 0; i < GEO_SCRIPT_COUNT; i++)
-        if (geo_scripts[i].on_start)
+        if (geo_script_enabled[i] && geo_scripts[i].on_start)
             geo_scripts[i].on_start((GeoScriptApi *)api);
 }
 
@@ -257,8 +279,14 @@ static void geo_scripts_tick(const GeoScriptApi *api, float dt) {
     if (!geo_scripts_started)
         geo_scripts_start(api);
     for (i = 0; i < GEO_SCRIPT_COUNT; i++)
-        if (geo_scripts[i].on_tick)
+        if (geo_script_enabled[i] && geo_scripts[i].on_tick)
             geo_scripts[i].on_tick((GeoScriptApi *)api, dt);
+}
+
+/* Back to a clean slate: next tick re-runs enabled scripts' on_start. */
+static void geo_scripts_reset(void) {
+    geo_scripts_started = 0;
+    geo_parts_clear();
 }
 
 #endif /* GEO_STUDIO_INC */

@@ -148,6 +148,13 @@ int net_part_poll(GeoPartNet *out) {
     return ok;
 }
 
+void net_publish_game(void) {
+    ds_mutex_lock(net_lock);
+    if (net.run)
+        net.game_dirty = 1;
+    ds_mutex_unlock(net_lock);
+}
+
 void net_set_spectator(int spectator) {
     ds_mutex_lock(net_lock);
     net.spectate = spectator ? 1 : 0;

@@ -132,6 +132,23 @@ int main(void) {
         CHECK(bp->yaw > 0.7f);
     }
 
+    /* --- custom walk/run animations + script manager flags --- */
+    geo_custom_poses[1][GJ_LEG_L] = 0.6f;
+    geo_custom_poses[2][GJ_LEG_R] = -0.4f;
+    geo_custom_on[0] = 1; geo_custom_on[1] = 1; geo_anim_target = 2;
+    CHECK(fabsf(geo_custom_poses[1][GJ_LEG_L] - 0.6f) < 1e-6f);
+    CHECK(fabsf(geo_custom_poses[2][GJ_LEG_R] + 0.4f) < 1e-6f);
+    CHECK(geo_custom_on[0] == 1 && geo_custom_on[1] == 1);
+    CHECK(geo_anim_target == 2);
+    /* scripts default to ON at first start; the manager can toggle them,
+     * and reset only restarts execution (keeps the user's toggles) */
+    geo_script_enabled[0] = 0;
+    geo_scripts_reset();
+    CHECK(geo_script_enabled[0] == 0);
+    for (i = 1; i < GEO_SCRIPT_COUNT; i++)
+        CHECK(geo_script_enabled[i] == 1);
+    geo_script_enabled[0] = 1;
+
     if (failures) {
         printf("%d FAILURES\n", failures);
         return 1;

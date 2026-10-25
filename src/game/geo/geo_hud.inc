@@ -78,10 +78,12 @@ static void geo_draw_play_hud(void) {
     geo_draw_pill_btn(L.menu_b, geo.lang ? "МЕНЮ" : "MENU", 0, 0.58f);
     geo_draw_pill_btn(L.fly_b, geo.lang ? "ПОЛЁТ" : "FLY", geo.flying, 0.58f);
     geo_draw_pill_btn(L.view_b, geo.lang ? "ВИД" : "VIEW", geo.third_person, 0.58f);
-    geo_draw_pill_btn(L.pal_b, geo.lang ? "БЛОКИ" : "BLOCKS", geo.inv_open, 0.58f);
+    /* No Minecraft block inventory: building lives in the editor (Parts). */
     if (geo.online)
         geo_draw_pill_btn(L.chat_b, geo.lang ? "ЧАТ" : "CHAT", geo.chat_open, 0.58f);
-    geo_draw_pill_btn(L.build_b, geo.lang ? "ПАРТЫ" : "PARTS", geo.build_mode, 0.58f);
+    geo_draw_pill_btn(L.build_b, geo.editor_mode ? (geo.lang ? "РЕДАКТОР" : "EDITOR")
+                                                 : (geo.lang ? "ПАРТЫ" : "PARTS"),
+                      geo.build_mode, 0.58f);
 
     /* Roblox Studio builder panel: create / rotate / resize / paint / delete */
     if (geo.build_mode) {
@@ -141,60 +143,17 @@ static void geo_draw_play_hud(void) {
         geo_draw_circle_btn(L.down_x, L.down_y, L.down_r, geo.lang ? "ВНИЗ" : "DOWN", geo.down_tid >= 0, 4);
     }
 
-    /* Right-thumb three big full-circle monochrome dark-gray action buttons */
-    geo_draw_circle_btn(L.mine_x, L.mine_y, L.mine_r, geo.lang ? "ЛОМАТЬ" : "BREAK", geo.mine_tid >= 0, 1);
-    geo_draw_circle_btn(L.place_x, L.place_y, L.place_r, geo.lang ? "СТАВИТЬ" : "PLACE", geo.place_tid >= 0, 2);
+    /* One clean action button: jump. Building is done in the editor. */
     geo_draw_circle_btn(L.jump_x, L.jump_y, L.jump_r, geo.lang ? "ПРЫЖОК" : "JUMP", geo.jump_tid >= 0, 3);
-
-    /* Selected block name label above hotbar */
-    geo_text_center(geo_block_name(geo.hotbar[geo.slot]), cx, L.bar_y - 22.0f, geo_gray(236, 240), 0.58f);
-
-    /* Bottom 9-slot large monochrome dark-gray hotbar */
-    roundrect(L.bar_x - 10.0f, L.bar_y - 10.0f, L.slot_size * 9.0f + L.slot_gap * 8.0f + 20.0f, L.slot_size + 20.0f,
-              28.0f, geo_gray(24, 215));
-    for (i = 0; i < GEO_HOTBAR_SLOTS; i++) {
-        float sx = L.bar_x + (float)i * (L.slot_size + L.slot_gap);
-        int sel = (i == geo.slot);
-        roundrect(sx - 2.0f, L.bar_y - 2.0f, L.slot_size + 4.0f, L.slot_size + 4.0f, 22.0f,
-                  sel ? geo_gray(226, 250) : geo_gray(82, 200));
-        roundrect(sx, L.bar_y, L.slot_size, L.slot_size, 20.0f, sel ? geo_gray(64, 240) : geo_gray(36, 225));
-        geo_draw_block_icon3d(sx + L.slot_size * 0.5f, L.bar_y + L.slot_size * 0.52f, L.slot_size * 0.34f,
-                              geo.hotbar[i]);
-    }
-}
-
-static void geo_draw_palette_overlay(void) {
-    float w = (float)screen_w, h = (float)screen_h;
-    float pw = w * 0.80f > 1180.0f ? 1180.0f : w * 0.80f;
-    float ph = h * 0.78f > 740.0f ? 740.0f : h * 0.78f;
-    float px = (w - pw) * 0.5f, py = (h - ph) * 0.5f;
-    int cols = 6, i;
-    float cell = (pw - 96.0f) / (float)cols;
-    GeoRect close_b = {px + pw - 190.0f, py + 20.0f, 166.0f, 60.0f};
-
-    rect(0.0f, 0.0f, w, h, geo_gray(10, 175));
-    roundrect(px - 2.0f, py - 2.0f, pw + 4.0f, ph + 4.0f, 32.0f, geo_gray(112, 235));
-    roundrect(px, py, pw, ph, 30.0f, geo_gray(28, 245));
-    geo_text_center(geo.lang ? "КАТАЛОГ БЛОКОВ GEOMETRIUM (32×32)" : "GEOMETRIUM BLOCK PALETTE (32x32)",
-                    px + pw * 0.42f, py + 50.0f, geo_gray(242, 255), 0.72f);
-    geo_draw_pill_btn(close_b, geo.lang ? "ГОТОВО" : "CLOSE", 0, 0.58f);
-
-    for (i = 0; i < GEO_PALETTE_COUNT; i++) {
-        int col = i % cols, row = i / cols;
-        int bid = geo_palette_blocks[i];
-        float cx = px + 36.0f + (float)col * (cell + 6.0f);
-        float cy = py + 104.0f + (float)row * 144.0f;
-        int sel = (geo.hotbar[geo.slot] == bid);
-        roundrect(cx - 2.0f, cy - 2.0f, cell - 6.0f + 4.0f, 130.0f, 24.0f, sel ? geo_gray(220, 245) : geo_gray(76, 215));
-        roundrect(cx, cy, cell - 6.0f, 126.0f, 22.0f, sel ? geo_gray(62, 240) : geo_gray(40, 230));
-        geo_draw_block_icon3d(cx + (cell - 6.0f) * 0.5f, cy + 50.0f, 34.0f, bid);
-        geo_text_center(geo_block_name(bid), cx + (cell - 6.0f) * 0.5f, cy + 105.0f, geo_gray(226, 245), 0.44f);
-    }
+    if (geo.spectate)
+        geo_text_center(geo.lang ? "РЕЖИМ ПРОСМОТРА ЧУЖОЙ ИГРЫ" : "WATCHING SOMEONE ELSE'S GAME", cx,
+                        (float)screen_h - 40.0f, geo_gray(240, 245), 0.58f);
+    if (geo.editor_mode)
+        geo_draw_editor_toolbar();
 }
 
 static void geo_touch_play(float x, float y, int action, int tid) {
     GeoHudLayout L;
-    int i;
     geo_compute_hud(&L);
 
     if (geo.pause_open) {
@@ -225,33 +184,6 @@ static void geo_touch_play(float x, float y, int action, int tid) {
                 geo_init_world(0, "panorama", 0);
                 net_rooms_refresh();
                 geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-            }
-        }
-        return;
-    }
-
-    if (geo.inv_open) {
-        if (action == 0) {
-            float w = (float)screen_w, h = (float)screen_h;
-            float pw = w * 0.80f > 1180.0f ? 1180.0f : w * 0.80f;
-            float ph = h * 0.78f > 740.0f ? 740.0f : h * 0.78f;
-            float px = (w - pw) * 0.5f, py = (h - ph) * 0.5f;
-            float cell = (pw - 96.0f) / 6.0f;
-            GeoRect close_b = {px + pw - 190.0f, py + 20.0f, 166.0f, 60.0f};
-            if (geo_hit_rect(x, y, close_b)) {
-                geo.inv_open = 0;
-                geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-                return;
-            }
-            for (i = 0; i < GEO_PALETTE_COUNT; i++) {
-                float cx = px + 36.0f + (float)(i % 6) * (cell + 6.0f);
-                float cy = py + 104.0f + (float)(i / 6) * 144.0f;
-                if (geo_hit_rect(x, y, (GeoRect){cx, cy, cell - 6.0f, 126.0f})) {
-                    geo.hotbar[geo.slot] = geo_palette_blocks[i];
-                    geo.inv_open = 0;
-                    geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-                    return;
-                }
             }
         }
         return;
@@ -310,11 +242,6 @@ static void geo_touch_play(float x, float y, int action, int tid) {
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             return;
         }
-        if (geo_hit_rect(x, y, L.pal_b)) {
-            geo.inv_open = 1;
-            geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-            return;
-        }
         if (geo_hit_rect(x, y, L.build_b)) {
             geo.build_mode = !geo.build_mode;
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
@@ -339,18 +266,8 @@ static void geo_touch_play(float x, float y, int action, int tid) {
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             return;
         }
-        for (i = 0; i < GEO_HOTBAR_SLOTS; i++) {
-            float sx = L.bar_x + (float)i * (L.slot_size + L.slot_gap);
-            if (geo_hit_rect(x, y, (GeoRect){sx, L.bar_y, L.slot_size, L.slot_size})) {
-                geo.slot = i;
-                geo_play_sfx("sounds/ui_tap.wav", 0.7f);
-                return;
-            }
-        }
-        if (geo_hit_circle(x, y, L.mine_x, L.mine_y, L.mine_r * 1.12f)) {
-            geo.mine_tid = tid;
+        if (geo.editor_mode && geo_touch_editor_toolbar(x, y))
             return;
-        }
         if (geo_hit_circle(x, y, L.place_x, L.place_y, L.place_r * 1.12f)) {
             geo.place_tid = tid;
             geo.place_tap_queued = 1;

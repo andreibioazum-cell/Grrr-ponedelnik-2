@@ -289,14 +289,25 @@ static void *writer_thread_fn(void *arg) {
         }
 
         if (now - last_idx >= 3500) {
-            int online_n;
-            char ibody[128];
+            int online_n, gdirty;
+            char ibody[192];
             ds_mutex_lock(net_lock);
             online_n = 1 + net.peer_n;
+            gdirty = net.game_dirty;
+            net.game_dirty = 0;
             ds_mutex_unlock(net_lock);
             snprintf(url, sizeof(url), "%s/geometrium/room_index/%s.json", base, room);
             snprintf(ibody, sizeof(ibody), "{\"players\":%d,\"ts\":{\".sv\":\"timestamp\"}}", online_n);
             (void)geo_http_put(url, ibody);
+            if (gdirty) {
+                char esc_nick[48], gbody[256];
+                geo_json_escape(nick, esc_nick, sizeof(esc_nick));
+                snprintf(url, sizeof(url), "%s/geometrium/games/%s.json", base, room);
+                snprintf(gbody, sizeof(gbody),
+                         "{\"title\":\"%s\",\"author\":\"%s\",\"players\":%d,\"ts\":{\".sv\":\"timestamp\"}}", room,
+                         esc_nick, online_n);
+                (void)geo_http_put(url, gbody);
+            }
             last_idx = now;
         }
         geo_sleep_ms(20);

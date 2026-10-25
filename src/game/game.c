@@ -22,6 +22,8 @@
 #include "geo/geo_pause_ui.inc"
 #include "geo/geo_ui.inc"
 #include "geo/geo_anim_ui.inc"
+#include "geo/geo_home_ui.inc"
+#include "geo/geo_editor_ui.inc"
 
 void game_init(struct AAssetManager *assets) {
     int i;
@@ -38,7 +40,7 @@ void game_init(struct AAssetManager *assets) {
             int v = (sk >> (s * 4)) & 15;
             geo.av_skin[s] = v < GEO_SKIN_COUNT ? v : geo_skin_default[s];
         }
-        net_custom_anim_load(geo_custom_pose);
+        net_custom_anim_load(&geo_custom_poses[0][0], geo_custom_on);
     }
     geo.lang = net_language();
     geo.screen = net_warning_accepted() ? SCR_MENU : SCR_WARNING;
@@ -112,9 +114,7 @@ void game_draw(struct Buffer *buffer) {
 
     if (geo.screen == SCR_PLAY) {
         geo_render_play_frame();
-        if (geo.inv_open)
-            geo_draw_palette_overlay();
-        else if (geo.chat_open)
+        if (geo.chat_open)
             geo_draw_chat_overlay();
         else if (geo.pause_open)
             geo_draw_pause_overlay();

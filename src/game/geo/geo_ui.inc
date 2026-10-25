@@ -139,6 +139,11 @@ static void geo_draw_menu_screens(void) {
         return;
     }
 
+    if (geo.screen == SCR_SCRIPTS) {
+        geo_draw_scripts(cx, cy);
+        return;
+    }
+
     if (geo.screen == SCR_ROOMS) {
         GeoRoomEntry list[GEO_MAX_ROOMS];
         int n = net_rooms_list(list, 8), i;
@@ -247,29 +252,7 @@ static void geo_draw_menu_screens(void) {
         return;
     }
 
-    /* Main Architectural Title & Large Monochrome Dark-Gray Buttons */
-    {
-        char prof_label[64];
-        GeoRect play_on = {cx - 260.0f, cy - 78.0f, 520.0f, 80.0f};
-        GeoRect rooms_b = {cx - 260.0f, cy + 18.0f, 520.0f, 76.0f};
-        GeoRect solo_b  = {cx - 260.0f, cy + 110.0f, 520.0f, 76.0f};
-        GeoRect prof_b  = {cx - 260.0f, cy + 202.0f, 252.0f, 70.0f};
-        GeoRect info_b  = {cx + 8.0f, cy + 202.0f, 252.0f, 70.0f};
-
-        geo_text_center("G E O M E T R I U M", cx, cy - 196.0f, geo_gray(248, 255), 1.25f);
-        geo_text_center(geo.lang ? "3D-МИРЫ КАК В ROBLOX  •  ПАРТЫ, АНИМАЦИИ, СВОИ ПЕРСОНАЖИ, ОНЛАЙН"
-                                 : "ROBLOX-STYLE 3D WORLDS  •  PARTS, ANIMATION, AVATARS, LIVE ONLINE",
-                        cx, cy - 134.0f, geo_gray(196, 235), 0.54f);
-
-        snprintf(prof_label, sizeof(prof_label), "%s", net_nick());
-        geo_draw_pill_btn(play_on, geo.lang ? "ИГРАТЬ ОНЛАЙН (ОБЩИЙ МИР)" : "PLAY ONLINE (SHARED WORLD)", 1, 0.66f);
-        geo_draw_pill_btn(rooms_b, geo.lang ? "СПИСОК МИРОВ И КОМНАТ" : "WORLDS & ROOMS BROWSER", 0, 0.62f);
-        geo_draw_pill_btn(solo_b, geo.lang ? "ОДИНОЧНЫЙ МИР" : "SOLO SANDBOX WORLD", 0, 0.62f);
-        geo_draw_pill_btn(prof_b, prof_label, net_account_logged_in(), 0.56f);
-        geo_draw_pill_btn(info_b, geo.lang ? "НАСТРОЙКИ / ПРАВА" : "SETTINGS / LEGAL", 0, 0.54f);
-
-        geo_text_center("© 2026 Geometrium. Все права защищены.", cx, h - 26.0f, geo_gray(158, 215), 0.46f);
-    }
+    geo_draw_home(cx, cy, w, h);
 }
 
 static void geo_touch_menu(float x, float y, int action, int tid) {
@@ -307,6 +290,11 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
             geo.screen = SCR_MENU;
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
         }
+        return;
+    }
+
+    if (geo.screen == SCR_SCRIPTS) {
+        geo_touch_scripts(x, y, cx, cy);
         return;
     }
 
@@ -362,7 +350,8 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
     if (geo.screen == SCR_STUDIO) {
         int s;
         if (geo_hit_rect(x, y, (GeoRect){34.0f, 28.0f, 190.0f, 66.0f})) {
-            geo.screen = SCR_PROFILE;
+            geo.screen = geo.studio_return ? SCR_PLAY : SCR_PROFILE;
+            geo.studio_return = 0;
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
         } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 150.0f, 640.0f, 66.0f})) {
             geo.av_model = (geo.av_model + 1) % GEO_MODEL_COUNT;
@@ -419,26 +408,5 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
         return;
     }
 
-    /* SCR_MENU button actions */
-    if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy - 78.0f, 520.0f, 80.0f})) {
-        geo_play_sfx("sounds/ui_tap.wav", 0.85f);
-        geo.spectate_sel = 0;
-        geo_start_online_room(GEO_DEFAULT_ROOM);
-    } else if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy + 18.0f, 520.0f, 76.0f})) {
-        net_rooms_refresh();
-        geo.screen = SCR_ROOMS;
-        geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-    } else if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy + 110.0f, 520.0f, 76.0f})) {
-        net_disconnect();
-        geo_init_world(0, "solo", 0);
-        geo.screen = SCR_PLAY;
-        geo_play_sfx("sounds/ui_tap.wav", 0.85f);
-    } else if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy + 202.0f, 252.0f, 70.0f})) {
-        snprintf(geo.edit_nick, sizeof(geo.edit_nick), "%s", net_nick());
-        geo.screen = SCR_PROFILE;
-        geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-    } else if (geo_hit_rect(x, y, (GeoRect){cx + 8.0f, cy + 202.0f, 252.0f, 70.0f})) {
-        geo.screen = SCR_INFO;
-        geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-    }
+    geo_touch_home(x, y, cx, cy);
 }

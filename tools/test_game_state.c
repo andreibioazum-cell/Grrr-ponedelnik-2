@@ -158,7 +158,7 @@ static void run_local_engine_tests(const char *tmp_dir) {
     geo.flying = 1;
     circle_buttons_drawn = 0;
     geo_draw_play_hud();
-    geo_draw_palette_overlay();
+    geo.screen = SCR_SCRIPTS; geo_draw_menu_screens(); geo.screen = SCR_PLAY;
     geo_draw_chat_overlay();
     geo_draw_pause_overlay();
     check_monochrome_ui = 0;

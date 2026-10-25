@@ -247,24 +247,6 @@ static void geo_draw_quad3d(const float wx[4], const float wy[4], const float wz
     }
 }
 
-/* Crisp isometric 3D block icon using its real 32x32 top/side textures */
-static void geo_draw_block_icon3d(float cx, float cy, float rad, int block_id) {
-    float dx = rad * 0.866f, dy = rad * 0.50f;
-    const char *top_t = geo_face_tex((unsigned char)block_id, 0);
-    const char *side_t = geo_face_tex((unsigned char)block_id, 2);
-    uint32_t ct = geo_pack_vk_rgba(255, 255, 255, 255);
-    uint32_t cl = geo_pack_vk_rgba(204, 204, 204, 255);
-    uint32_t cr = geo_pack_vk_rgba(148, 148, 148, 255);
-    if (!top_t || !top_t[0])
-        return;
-    ds_gfx_quad(top_t, cx, cy - rad, 0.02f, 0.02f, ct, cx + dx, cy - dy, 0.98f, 0.02f, ct, cx, cy, 0.98f, 0.98f, ct,
-                cx - dx, cy - dy, 0.02f, 0.98f, ct);
-    ds_gfx_quad(side_t, cx - dx, cy - dy, 0.02f, 0.02f, cl, cx, cy, 0.98f, 0.02f, cl, cx, cy + rad, 0.98f, 0.98f, cl,
-                cx - dx, cy + dy, 0.02f, 0.98f, cl);
-    ds_gfx_quad(side_t, cx, cy, 0.02f, 0.02f, cr, cx + dx, cy - dy, 0.98f, 0.02f, cr, cx + dx, cy + dy, 0.98f, 0.98f,
-                cr, cx, cy + rad, 0.02f, 0.98f, cr);
-}
-
 static void geo_text_center(const char *s, float cx, float cy, uint32_t col, float sc) {
     float w;
     if (!s || !s[0])

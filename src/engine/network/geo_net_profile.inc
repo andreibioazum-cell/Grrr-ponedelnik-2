@@ -98,6 +98,9 @@ void net_profile_save(void) {
                 (double)net.sens, net.av_model, net.av_skin, (double)net.cust_pose[0], (double)net.cust_pose[1],
                 (double)net.cust_pose[2], (double)net.cust_pose[3], (double)net.cust_pose[4],
                 (double)net.cust_pose[5], (double)net.cust_pose[6]);
+        fprintf(f, "cust2=");
+        { int ci; for (ci = 0; ci < 21; ci++) fprintf(f, "%s%.3f", ci ? "," : "", (double)net.cust_pose[ci]); }
+        fprintf(f, "\ncon=%d,%d\n", net.cust_on[0], net.cust_on[1]);
         fclose(f);
     }
     ds_mutex_unlock(net_lock);
@@ -137,10 +140,24 @@ void net_profile_load(void) {
                 net.av_model = atoi(line + 6);
             else if (strncmp(line, "skin=", 5) == 0)
                 net.av_skin = atoi(line + 5);
+            else if (strncmp(line, "con=", 4) == 0) {
+                net.cust_on[0] = atoi(line + 4);
+                { const char *cm = strchr(line + 4, ','); if (cm) net.cust_on[1] = atoi(cm + 1); }
+            }
+            else if (strncmp(line, "cust2=", 6) == 0) {
+                const char *p = line + 6;
+                int ci;
+                for (ci = 0; ci < 21 && p; ci++) {
+                    net.cust_pose[ci] = (float)atof(p);
+                    p = strchr(p, ',');
+                    if (p)
+                        p++;
+                }
+            }
             else if (strncmp(line, "cust=", 5) == 0) {
                 const char *p = line + 5;
                 int ci;
-                for (ci = 0; ci < 7 && p; ci++) {
+                for (ci = 0; ci < 21 && p; ci++) {
                     net.cust_pose[ci] = (float)atof(p);
                     p = strchr(p, ',');
                     if (p)
@@ -363,20 +380,24 @@ void net_avatar_save(int model, int skin_packed) {
     net_profile_save();
 }
 
-void net_custom_anim_load(float pose[7]) {
+void net_custom_anim_load(float *poses, int *on) {
     int i;
     ds_mutex_lock(net_lock);
     geo_ensure_defaults_locked();
-    for (i = 0; i < 7; i++)
-        pose[i] = net.cust_pose[i];
+    for (i = 0; i < 21; i++)
+        poses[i] = net.cust_pose[i];
+    on[0] = net.cust_on[0];
+    on[1] = net.cust_on[1];
     ds_mutex_unlock(net_lock);
 }
 
-void net_custom_anim_save(const float pose[7]) {
+void net_custom_anim_save(const float *poses, const int *on) {
     int i;
     ds_mutex_lock(net_lock);
-    for (i = 0; i < 7; i++)
-        net.cust_pose[i] = pose[i];
+    for (i = 0; i < 21; i++)
+        net.cust_pose[i] = poses[i];
+    net.cust_on[0] = on[0];
+    net.cust_on[1] = on[1];
     ds_mutex_unlock(net_lock);
     net_profile_save();
 }

@@ -289,3 +289,22 @@ static void geo_init_world(int online_mode, const char *room_name, int force_fre
     geo.face_yaw = geo.yaw;
     geo.pitch = -0.10f;
 }
+
+/* Roblox Studio baseplate: a flat build plate, not Minecraft terrain.
+ * The voxel ground stays only as the floor you stand on - all building
+ * in the editor is done with Parts, characters and scripts. */
+static void geo_init_editor_world(void) {
+    int x, y, z;
+    geo_init_world(0, "editor", 1);
+    for (z = 0; z < GEO_WZ; z++)
+        for (x = 0; x < GEO_WX; x++)
+            for (y = 0; y < GEO_WY; y++)
+                geo.vox[y][z][x] = (y < 11) ? GEO_SLATE : (y == 11) ? GEO_TURF : GEO_AIR;
+    geo_rebuild_lights();
+    geo.px = (float)(GEO_WX / 2) + 0.5f;
+    geo.pz = (float)(GEO_WZ / 2) + 0.5f;
+    geo.py = 12.01f;
+    geo.editor_mode = 1;
+    geo.build_mode = 1;
+    geo_scripts_reset();
+}

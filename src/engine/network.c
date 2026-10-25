@@ -70,7 +70,8 @@ typedef struct {
     int lheld, lfly;
     int lmodel, lskin, lanim;
     int av_model, av_skin;
-    float cust_pose[7];
+    float cust_pose[21];
+    int cust_on[2];
 
     GeoRemotePeer peers[GEO_MAX_REMOTES];
     int peer_n;
@@ -87,6 +88,7 @@ typedef struct {
     GeoPartNet part_in[256];
     int part_in_head, part_in_tail;
     int spectate;
+    int game_dirty;
 
     GeoChatMsg chat[GEO_MAX_CHAT];
     int chat_n;
