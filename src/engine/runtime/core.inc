@@ -92,7 +92,7 @@ static DSStringNode *ds_strings = NULL;
  * freed. */
 static unsigned long ds_string_gen = 0;
 static void platform_log(int is_error, const char *format, va_list args) {
-    __android_log_vprint(is_error ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, "CubicBattle", format, args);
+    __android_log_vprint(is_error ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, "Geometrium", format, args);
 }
 void ds_log(const char *format, ...) {
     char tmp[DS_CONSOLE_LINE_MAX];
@@ -175,7 +175,7 @@ int ds_call_protected(DSProtectedFunction function, void *userdata, const char *
     return 0;
 }
 const char *ds_runtime_error_message(void) {
-    return ds_last_error[0] ? ds_last_error : "unknown CubicBattle runtime error";
+    return ds_last_error[0] ? ds_last_error : "unknown Geometrium runtime error";
 }
 int ds_game_has_error(void) {
     return ds_has_error;

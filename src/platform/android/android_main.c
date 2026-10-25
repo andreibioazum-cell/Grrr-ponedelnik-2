@@ -91,7 +91,7 @@ static void protected_game_back(void *userdata) {
 }
 static void mark_game_failed(const char *hook) {
     const char *message = ds_runtime_error_message();
-    __android_log_print(ANDROID_LOG_ERROR, "CubicBattle", "game hook '%s' stopped: %s; scheduling a restart",
+    __android_log_print(ANDROID_LOG_ERROR, "Geometrium", "game hook '%s' stopped: %s; scheduling a restart",
                         hook ? hook : "unknown", message);
     ds_console_log(1, "game error: hook '%s' stopped: %s; restarting", hook ? hook : "unknown", message);
     unsigned int shift = restart_failures < 5 ? restart_failures : 5;
@@ -358,7 +358,7 @@ void android_main(struct android_app *app) {
         net_set_system_language(lang);
     }
     ds_set_activity(app->activity);
-    ds_log("Cubic Battle 4: C + Vulkan");
+    ds_log("Geometrium: Pure C99 + Vulkan 3D");
     for (;;) {
         struct android_poll_source *source = NULL;
         int ident;

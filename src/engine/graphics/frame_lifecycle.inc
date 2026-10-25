@@ -68,7 +68,7 @@ void ds_graphics_error_screen(const char *m) {
     if (!ensure_font())
         return;
     int y = 12;
-    text_scaled("=== CUBIC BATTLE ERROR ===", 16, (float)y, pack_c(0xffe6e6e6), 0.7f);
+    text_scaled("=== GEOMETRIUM ERROR ===", 16, (float)y, pack_c(0xffe6e6e6), 0.7f);
     y += 30;
     if (m && *m) {
         text_scaled(m, 16, (float)y, pack_c(0xffc98f8f), 0.6f);

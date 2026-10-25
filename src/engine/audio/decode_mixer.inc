@@ -36,7 +36,7 @@ static void snd_lock_drop(void) {
     pthread_mutex_unlock(&snd_lock);
 }
 
-#if defined(__ANDROID__) || defined(CB_PC)
+#ifdef __ANDROID__
 static AAssetManager *snd_amgr = NULL;
 #endif
 
