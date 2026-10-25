@@ -183,6 +183,8 @@ static void geo_parse_chat_json(const char *json, unsigned int gen) {
 static void *writer_thread_fn(void *arg) {
     unsigned int gen = (unsigned int)(uintptr_t)arg;
     char base[256], room[24], uid[24], nick[24], url[384], body[4096];
+    char pbody_parts[4096];
+    int part_batch = 0, spectate_flag = 0;
     long long last_pos = 0, last_idx = 0;
 
     for (;;) {
@@ -211,6 +213,33 @@ static void *writer_thread_fn(void *arg) {
         skin = net.lskin;
         anim = net.lanim;
         fly = net.lfly;
+        {
+            /* Drain queued Part edits into a PATCH body for /parts.json */
+            size_t poff = 1;
+            pbody_parts[0] = '{';
+            pbody_parts[1] = '\0';
+            part_batch = 0;
+            while (net.part_out_tail != net.part_out_head && part_batch < 24 &&
+                   poff + 180 < sizeof(pbody_parts)) {
+                GeoPartNet pt = net.part_out[net.part_out_tail];
+                net.part_out_tail = (net.part_out_tail + 1) % 256;
+                if (pt.block < 0) {
+                    poff += (size_t)snprintf(pbody_parts + poff, sizeof(pbody_parts) - poff,
+                                             "%s\"%s\":null", part_batch ? "," : "", pt.name);
+                } else {
+                    poff += (size_t)snprintf(pbody_parts + poff, sizeof(pbody_parts) - poff,
+                                             "%s\"%s\":{\"x\":%.2f,\"y\":%.2f,\"z\":%.2f,\"sx\":%.2f,\"sy\":%.2f,"
+                                             "\"sz\":%.2f,\"ry\":%.3f,\"b\":%d}",
+                                             part_batch ? "," : "", pt.name, (double)pt.x, (double)pt.y,
+                                             (double)pt.z, (double)pt.sx, (double)pt.sy, (double)pt.sz,
+                                             (double)pt.yaw, pt.block);
+                }
+                part_batch++;
+            }
+            pbody_parts[poff] = '}';
+            pbody_parts[poff + 1] = '\0';
+            spectate_flag = net.spectate;
+        }
         body[0] = '{';
         body[1] = '\0';
         {
@@ -231,8 +260,12 @@ static void *writer_thread_fn(void *arg) {
             snprintf(url, sizeof(url), "%s/geometrium/rooms/%s/blocks.json", base, room);
             (void)geo_http_patch(url, body);
         }
+        if (part_batch > 0) {
+            snprintf(url, sizeof(url), "%s/geometrium/rooms/%s/parts.json", base, room);
+            (void)geo_http_patch(url, pbody_parts);
+        }
 
-        if (now - last_pos >= 100) {
+        if (now - last_pos >= 100 && !spectate_flag) {
             char esc_nick[48], pbody[320];
             long long seq;
             ds_mutex_lock(net_lock);
@@ -282,17 +315,21 @@ static void *reader_thread_fn(void *arg) {
     char *blocks_buf = (char *)malloc(BLOCKS_RESP_MAX);
     char *players_buf = (char *)malloc(32768);
     char *chat_buf = (char *)malloc(32768);
+    char *parts_buf = (char *)malloc(32768);
+    long long last_parts = 0;
     int shadow_len = 96 * 48 * 96;
     unsigned char *shadow = (unsigned char *)calloc((size_t)shadow_len, 1);
     long long last_blocks = 0, last_chat = 0;
 
-    if (!blocks_buf || !players_buf || !chat_buf || !shadow) {
+    if (!blocks_buf || !players_buf || !chat_buf || !parts_buf || !shadow) {
         free(blocks_buf);
         free(players_buf);
         free(chat_buf);
+        free(parts_buf);
         free(shadow);
         return NULL;
     }
+    geo_part_shadow_n = 0;
 
     for (;;) {
         char base[256], room[24], uid[24], url[384];
@@ -332,12 +369,20 @@ static void *reader_thread_fn(void *arg) {
             last_chat = now;
         }
 
+        if (now - last_parts >= 400 || last_parts == 0) {
+            snprintf(url, sizeof(url), "%s/geometrium/rooms/%s/parts.json", base, room);
+            if (parts_buf && geo_http_get(url, parts_buf, 32768))
+                geo_parse_parts_json(parts_buf, gen);
+            last_parts = now;
+        }
+
         geo_sleep_ms(100);
     }
 
     free(blocks_buf);
     free(players_buf);
     free(chat_buf);
+    free(parts_buf);
     free(shadow);
     return NULL;
 }

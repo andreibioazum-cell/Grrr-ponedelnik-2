@@ -214,6 +214,7 @@ static void geo_update_gameplay(float fdt) {
         int guard = 0;
         while (guard++ < 512 && net_block_poll(&bx, &by, &bz, &bid))
             geo_set_block(bx, by, bz, (unsigned char)bid, 0);
+        geo_apply_remote_parts();
     }
 
     if (geo.joy_tid >= 0) {
@@ -225,6 +226,38 @@ static void geo_update_gameplay(float fdt) {
     speed = geo.flying ? 9.4f : (geo.in_water ? 3.8f : 5.4f);
     geo.vx = (sy * fwd - cy * right) * speed;
     geo.vz = (cy * fwd + sy * right) * speed;
+
+    if (geo.spectate) {
+        /* Free-fly observer: move through the world along the camera. */
+        float sp = geo.flying ? 14.0f : 9.0f;
+        float cp = cosf(geo.pitch);
+        geo.px += (sy * cp * fwd - cy * right) * sp * fdt;
+        geo.pz += (cy * cp * fwd + sy * right) * sp * fdt;
+        geo.py += sinf(geo.pitch) * fwd * sp * fdt;
+        if (want_jump)
+            geo.py += sp * fdt;
+        if (geo.down_tid >= 0)
+            geo.py -= sp * fdt;
+        if (geo.py < 1.0f)
+            geo.py = 1.0f;
+        if (geo.py > (float)GEO_WY - 2.0f)
+            geo.py = (float)GEO_WY - 2.0f;
+        geo_setup_camera(geo.px, geo.py + GEO_EYE_H, geo.pz, geo.yaw, geo.pitch, 0);
+        geo_sync_remote_players(fdt);   /* observers still receive everyone */
+        return;
+    }
+
+    /* Roblox body: the character turns toward where it actually runs,
+     * independently of the orbiting camera. */
+    if ((geo.vx * geo.vx + geo.vz * geo.vz) > 0.25f) {
+        float target = atan2f(geo.vx, geo.vz);
+        float d = target - geo.face_yaw;
+        while (d > 3.14159265f)
+            d -= 6.2831853f;
+        while (d < -3.14159265f)
+            d += 6.2831853f;
+        geo.face_yaw += d * (fdt * 12.0f > 1.0f ? 1.0f : fdt * 12.0f);
+    }
 
     geo.in_water = geo_is_liquid_id(geo_get((int)floorf(geo.px), (int)floorf(geo.py + 0.7f), (int)floorf(geo.pz)));
     if (geo.flying) {
@@ -374,62 +407,5 @@ static void geo_update_gameplay(float fdt) {
             geo.parts[i].active = 0;
     }
 
-    /* Publish local 3D player state & smoothly interpolate all remote players */
-    if (geo.online) {
-        GeoRemotePeer peers[GEO_MAX_REMOTES];
-        int pn, r;
-        net_publish_local(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, (float)geo.swing_seq, geo.hotbar[geo.slot],
-                          geo.flying, geo.av_model, geo_skin_pack(), geo.anim_id);
-        pn = net_copy_remotes(peers, GEO_MAX_REMOTES);
-        for (r = 0; r < GEO_MAX_REMOTES; r++)
-            geo.rem[r].active = 0;
-        for (i = 0; i < pn; i++) {
-            GeoRemoteAvatar *av = &geo.rem[i];
-            float dx = peers[i].x - av->x, dy = peers[i].y - av->y, dz = peers[i].z - av->z;
-            int fresh = strcmp(av->uid, peers[i].uid) != 0;
-            snprintf(av->uid, sizeof(av->uid), "%s", peers[i].uid);
-            snprintf(av->name, sizeof(av->name), "%s", peers[i].name);
-            av->active = 1;
-            av->held = peers[i].held;
-            av->model = peers[i].model >= 0 && peers[i].model < 4 ? peers[i].model : 0;
-            geo_skin_unpack(peers[i].skin, av->skin);
-            if (peers[i].anim != av->anim) {
-                av->anim = peers[i].anim;
-                av->anim_t = 0.0f;
-            } else {
-                av->anim_t += fdt;
-            }
-            if (fresh || (dx * dx + dy * dy + dz * dz) > 64.0f) {
-                av->x = peers[i].x;
-                av->y = peers[i].y;
-                av->z = peers[i].z;
-                av->yaw = peers[i].yaw;
-                av->pitch = peers[i].pitch;
-                av->last_swing = peers[i].swing;
-            } else {
-                float k = fdt * 10.5f > 1.0f ? 1.0f : fdt * 10.5f;
-                float dyaw = peers[i].yaw - av->yaw;
-                while (dyaw > 3.14159265f)
-                    dyaw -= 6.2831853f;
-                while (dyaw < -3.14159265f)
-                    dyaw += 6.2831853f;
-                if (fabsf(dx) + fabsf(dz) > 0.015f)
-                    av->walk_t += fdt * 8.5f;
-                av->x += dx * k;
-                av->y += dy * k;
-                av->z += dz * k;
-                av->yaw += dyaw * k;
-                av->pitch += (peers[i].pitch - av->pitch) * k;
-                if (peers[i].swing != av->last_swing) {
-                    av->last_swing = peers[i].swing;
-                    av->swing_t = 1.0f;
-                }
-            }
-            if (av->swing_t > 0.0f) {
-                av->swing_t -= fdt * 4.0f;
-                if (av->swing_t < 0.0f)
-                    av->swing_t = 0.0f;
-            }
-        }
-    }
+    geo_sync_remote_players(fdt);
 }

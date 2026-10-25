@@ -81,6 +81,191 @@ static void geo_update_anim_state(float dt) {
     }
 }
 
+/* Publish local state & interpolate remote players (called each tick). */
+static void geo_sync_remote_players(float fdt) {
+if (geo.online) {
+    GeoRemotePeer peers[GEO_MAX_REMOTES];
+    int pn, r, i;
+    net_publish_local(geo.px, geo.py, geo.pz, geo.face_yaw, geo.pitch, (float)geo.swing_seq, geo.hotbar[geo.slot],
+                      geo.flying, geo.av_model, geo_skin_pack(), geo.anim_id);
+    pn = net_copy_remotes(peers, GEO_MAX_REMOTES);
+    for (r = 0; r < GEO_MAX_REMOTES; r++)
+        geo.rem[r].active = 0;
+    for (i = 0; i < pn; i++) {
+        GeoRemoteAvatar *av = &geo.rem[i];
+        float dx = peers[i].x - av->x, dy = peers[i].y - av->y, dz = peers[i].z - av->z;
+        int fresh = strcmp(av->uid, peers[i].uid) != 0;
+        snprintf(av->uid, sizeof(av->uid), "%s", peers[i].uid);
+        snprintf(av->name, sizeof(av->name), "%s", peers[i].name);
+        av->active = 1;
+        av->held = peers[i].held;
+        av->model = peers[i].model >= 0 && peers[i].model < 4 ? peers[i].model : 0;
+        geo_skin_unpack(peers[i].skin, av->skin);
+        if (peers[i].anim != av->anim) {
+            av->anim = peers[i].anim;
+            av->anim_t = 0.0f;
+        } else {
+            av->anim_t += fdt;
+        }
+        if (fresh || (dx * dx + dy * dy + dz * dz) > 64.0f) {
+            av->x = peers[i].x;
+            av->y = peers[i].y;
+            av->z = peers[i].z;
+            av->yaw = peers[i].yaw;
+            av->pitch = peers[i].pitch;
+            av->last_swing = peers[i].swing;
+        } else {
+            float k = fdt * 10.5f > 1.0f ? 1.0f : fdt * 10.5f;
+            float dyaw = peers[i].yaw - av->yaw;
+            while (dyaw > 3.14159265f)
+                dyaw -= 6.2831853f;
+            while (dyaw < -3.14159265f)
+                dyaw += 6.2831853f;
+            if (fabsf(dx) + fabsf(dz) > 0.015f)
+                av->walk_t += fdt * 8.5f;
+            av->x += dx * k;
+            av->y += dy * k;
+            av->z += dz * k;
+            av->yaw += dyaw * k;
+            av->pitch += (peers[i].pitch - av->pitch) * k;
+            if (peers[i].swing != av->last_swing) {
+                av->last_swing = peers[i].swing;
+                av->swing_t = 1.0f;
+            }
+        }
+        if (av->swing_t > 0.0f) {
+            av->swing_t -= fdt * 4.0f;
+            if (av->swing_t < 0.0f)
+                av->swing_t = 0.0f;
+        }
+    }
+}
+}
+
+/* ---- Roblox Studio-style Part builder (used by the in-game panel) ---- */
+static int geo_part_counter;
+
+static void geo_part_broadcast(GeoPart *p) {
+    GeoPartNet np;
+    if (!geo.online || !p)
+        return;
+    memset(&np, 0, sizeof(np));
+    snprintf(np.name, sizeof(np.name), "%s", p->name);
+    np.x = p->x; np.y = p->y; np.z = p->z;
+    np.sx = p->sx; np.sy = p->sy; np.sz = p->sz; np.yaw = p->yaw;
+    np.block = p->active ? p->block_id : -1;
+    net_part_send(&np);
+}
+
+static void geo_build_create(void) {
+    char name[24];
+    float px, py, pz;
+    int idx;
+    snprintf(name, sizeof(name), "Part%d", ++geo_part_counter);
+    if (geo.hit) {
+        px = (float)geo.bx + 0.5f;
+        py = (float)geo.by + 1.5f;
+        pz = (float)geo.bz + 0.5f;
+    } else {
+        px = geo.px + sinf(geo.yaw) * 3.0f;
+        py = geo.py + 1.0f;
+        pz = geo.pz + cosf(geo.yaw) * 3.0f;
+    }
+    idx = geo_part_spawn(name, px, py, pz, 1.4f, 0.7f, 1.4f, geo.hotbar[geo.slot], -1);
+    if (idx >= 0) {
+        geo.part_sel = idx;
+        geo_part_broadcast(&geo_parts[idx]);
+        geo_play_sfx("sounds/block_place.wav", 0.8f);
+    }
+}
+
+static GeoPart *geo_build_selected(void) {
+    if (geo.part_sel >= 0 && geo.part_sel < GEO_MAX_PARTS && geo_parts[geo.part_sel].active)
+        return &geo_parts[geo.part_sel];
+    return NULL;
+}
+
+static void geo_build_rotate(void) {
+    GeoPart *p = geo_build_selected();
+    if (p) {
+        p->yaw += 0.261799f;   /* 15 degrees: turn parts any way you like */
+        geo_part_broadcast(p);
+    }
+}
+
+static void geo_build_resize(void) {
+    GeoPart *p = geo_build_selected();
+    if (p) {
+        float v = p->sx < 1.8f ? 2.8f : (p->sx < 3.4f ? 0.9f : 1.4f);
+        p->sx = p->sz = v;
+        p->sy = v * 0.5f;
+        geo_part_broadcast(p);
+    }
+}
+
+static void geo_build_material(void) {
+    GeoPart *p = geo_build_selected();
+    if (p) {
+        p->block_id = geo_palette_blocks[(geo.slot + 1) % GEO_PALETTE_COUNT];
+        geo_part_broadcast(p);
+    }
+}
+
+static void geo_build_delete(void) {
+    GeoPart *p = geo_build_selected();
+    if (p) {
+        p->active = 0;
+        geo_part_broadcast(p);
+        geo.part_sel = -1;
+    }
+}
+
+/* Shared geometry for the 5-button builder panel (draw + touch). */
+static void geo_build_panel_rects(GeoRect out[5]) {
+    float w = (float)screen_w, y = (float)screen_h - 196.0f;
+    float bw = 176.0f, gap = 10.0f, x0 = (w - (bw * 5.0f + gap * 4.0f)) * 0.5f;
+    int i;
+    for (i = 0; i < 5; i++)
+        out[i] = (GeoRect){x0 + (float)i * (bw + gap), y, bw, 56.0f};
+}
+static void geo_build_action(int i) {
+    if (i == 0)
+        geo_build_create();
+    else if (i == 1)
+        geo_build_rotate();
+    else if (i == 2)
+        geo_build_resize();
+    else if (i == 3)
+        geo_build_material();
+    else if (i == 4)
+        geo_build_delete();
+    geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+}
+
+/* Apply Part edits arriving from the room (other players' creations). */
+static void geo_apply_remote_parts(void) {
+    GeoPartNet np;
+    int guard = 0;
+    while (guard++ < 64 && net_part_poll(&np)) {
+        GeoPart *p = geo_part_find(np.name);
+        if (np.block < 0) {
+            if (p)
+                p->active = 0;
+            continue;
+        }
+        if (!p) {
+            int idx = geo_part_spawn(np.name, np.x, np.y, np.z, np.sx, np.sy, np.sz, np.block, -2);
+            if (idx < 0)
+                continue;
+            p = &geo_parts[idx];
+        }
+        p->x = np.x; p->y = np.y; p->z = np.z;
+        p->sx = np.sx; p->sy = np.sy; p->sz = np.sz;
+        p->yaw = np.yaw;
+        p->block_id = np.block;
+    }
+}
+
 static void geo_script_engine_tick(float dt) {
     geo_scripts_tick(&geo_script_api_impl, dt);
     geo_update_anim_state(dt);

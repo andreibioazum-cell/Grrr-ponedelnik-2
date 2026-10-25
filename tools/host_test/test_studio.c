@@ -73,11 +73,24 @@ int main(void) {
         geo_anim_sample(ANIM_JUMP, 99.0f, a);
         CHECK(a[GJ_ARM_L] < -2.0f);
     }
-    /* every clip has keys and a name */
-    for (i = 0; i < ANIM_COUNT; i++) {
+    /* every built-in clip has keys and a name */
+    for (i = 0; i < ANIM_CUSTOM; i++) {
         CHECK(geo_anim_clips[i].nkeys >= 1);
         CHECK(geo_anim_clips[i].name != NULL);
+        CHECK(geo_anim_name(i) == geo_anim_clips[i].name);
     }
+    CHECK(strcmp(geo_anim_name(ANIM_CUSTOM), "custom") == 0);
+    CHECK(strcmp(geo_joint_name(GJ_ARM_R), "arm R") == 0);
+
+    /* custom animation: pose built joint-by-joint peaks mid-loop */
+    geo_custom_joint = GJ_ARM_R;   /* editor selects this joint */
+    memset(geo_custom_pose, 0, sizeof(geo_custom_pose));
+    geo_custom_pose[GJ_ARM_R] = -2.8f;
+    geo_custom_pose[GJ_BOB] = 0.12f;
+    geo_anim_sample(ANIM_CUSTOM, 0.25f, pose);
+    CHECK(pose[GJ_ARM_R] < -1.3f);
+    geo_anim_sample(ANIM_CUSTOM, 0.0f, pose);
+    CHECK(pose[GJ_ARM_R] == 0.0f);
 
     /* --- models: 4 distinct, sane proportions --- */
     CHECK(GEO_MODEL_COUNT == 4);
@@ -111,6 +124,13 @@ int main(void) {
     /* bounce pad fired player_bounce with real power */
     CHECK(bounce_calls > 0);
     CHECK(last_bounce > 10.0f);
+
+    /* parts can be rotated to any angle (builder panel turns by 15 deg) */
+    {
+        GeoPart *bp = geo_part_find("BouncePad");
+        bp->yaw += 0.261799f * 3.0f;
+        CHECK(bp->yaw > 0.7f);
+    }
 
     if (failures) {
         printf("%d FAILURES\n", failures);

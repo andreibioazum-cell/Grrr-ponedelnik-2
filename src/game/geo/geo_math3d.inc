@@ -29,8 +29,10 @@ static void geo_setup_camera(float eye_x, float eye_y, float eye_z, float yaw, f
     geo.cam_y = eye_y;
     geo.cam_z = eye_z;
     if (third_person) {
-        int step;
-        for (step = 1; step <= 18; step++) {
+        int step, steps = (int)(geo.cam_dist / 0.22f);
+        if (steps < 4)
+            steps = 4;
+        for (step = 1; step <= steps; step++) {
             float d = (float)step * 0.22f;
             float tx = eye_x - geo.fx * d;
             float ty = eye_y - geo.fy * d + 0.18f;

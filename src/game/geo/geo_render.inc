@@ -387,7 +387,7 @@ static void geo_render_scene3d(int draw_self_3rd) {
                                                   geo.rem[idx].model, geo.rem[idx].skin, geo.rem[idx].anim,
                                                   geo.rem[idx].anim_t);
                             } else if (ents[i].kind == 1) {
-                                geo_draw_avatar3d(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, geo.walk_phase,
+                                geo_draw_avatar3d(geo.px, geo.py, geo.pz, geo.face_yaw, geo.pitch, geo.walk_phase,
                                                   geo.swing_anim, geo.hotbar[geo.slot], net_nick(), NULL,
                                                   geo.av_model, geo.av_skin, geo.anim_id, geo.anim_t);
                             } else if (ents[i].kind == 4) {

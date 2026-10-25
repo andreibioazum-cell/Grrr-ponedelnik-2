@@ -89,7 +89,22 @@ void net_publish_local(float x, float y, float z, float yaw, float pitch, float 
 /* Avatar (model + packed materials) persisted in the local profile */
 void net_avatar_load(int *model, int *skin_packed);
 void net_avatar_save(int model, int skin_packed);
+/* Custom animation pose (7 joint channels) persisted in the profile */
+void net_custom_anim_load(float pose[7]);
+void net_custom_anim_save(const float pose[7]);
 int net_copy_remotes(GeoRemotePeer *out, int max_out);
+
+/* Dynamic Parts sync (/geometrium/rooms/<room>/parts.json): Roblox-style
+ * script/player-created 3D objects that everyone in the room can see. */
+typedef struct {
+    char name[24];
+    float x, y, z, sx, sy, sz, yaw;
+    int block;   /* <0 = deleted */
+} GeoPartNet;
+void net_part_send(const GeoPartNet *part);
+int net_part_poll(GeoPartNet *out);
+/* Spectators watch other people's games without appearing as a player. */
+void net_set_spectator(int spectator);
 
 /* Real-time Persistent Shared Voxel Sync (/geometrium/rooms/<room>/blocks.json) */
 void net_block_send(int x, int y, int z, int block_id);

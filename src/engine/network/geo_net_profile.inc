@@ -92,8 +92,12 @@ void net_profile_save(void) {
     snprintf(path, sizeof(path), "%s/geometrium_profile.dat", net.data_dir[0] ? net.data_dir : "/tmp");
     f = fopen(path, "w");
     if (f) {
-        fprintf(f, "uid=%s\nnick=%s\nhash=%s\nlogged=%d\nlang=%d\nwarn=%d\nvol=%.3f\nsens=%.3f\n", net.uid, net.nick,
-                net.pass_hash, net.logged_in, net.lang, net.warn_ok, (double)net.volume, (double)net.sens);
+        fprintf(f, "uid=%s\nnick=%s\nhash=%s\nlogged=%d\nlang=%d\nwarn=%d\nvol=%.3f\nsens=%.3f\nmodel=%d\nskin=%d\n"
+                   "cust=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                net.uid, net.nick, net.pass_hash, net.logged_in, net.lang, net.warn_ok, (double)net.volume,
+                (double)net.sens, net.av_model, net.av_skin, (double)net.cust_pose[0], (double)net.cust_pose[1],
+                (double)net.cust_pose[2], (double)net.cust_pose[3], (double)net.cust_pose[4],
+                (double)net.cust_pose[5], (double)net.cust_pose[6]);
         fclose(f);
     }
     ds_mutex_unlock(net_lock);
@@ -133,6 +137,16 @@ void net_profile_load(void) {
                 net.av_model = atoi(line + 6);
             else if (strncmp(line, "skin=", 5) == 0)
                 net.av_skin = atoi(line + 5);
+            else if (strncmp(line, "cust=", 5) == 0) {
+                const char *p = line + 5;
+                int ci;
+                for (ci = 0; ci < 7 && p; ci++) {
+                    net.cust_pose[ci] = (float)atof(p);
+                    p = strchr(p, ',');
+                    if (p)
+                        p++;
+                }
+            }
         }
         fclose(f);
     }
@@ -345,6 +359,24 @@ void net_avatar_save(int model, int skin_packed) {
     ds_mutex_lock(net_lock);
     net.av_model = model;
     net.av_skin = skin_packed;
+    ds_mutex_unlock(net_lock);
+    net_profile_save();
+}
+
+void net_custom_anim_load(float pose[7]) {
+    int i;
+    ds_mutex_lock(net_lock);
+    geo_ensure_defaults_locked();
+    for (i = 0; i < 7; i++)
+        pose[i] = net.cust_pose[i];
+    ds_mutex_unlock(net_lock);
+}
+
+void net_custom_anim_save(const float pose[7]) {
+    int i;
+    ds_mutex_lock(net_lock);
+    for (i = 0; i < 7; i++)
+        net.cust_pose[i] = pose[i];
     ds_mutex_unlock(net_lock);
     net_profile_save();
 }

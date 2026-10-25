@@ -2,7 +2,7 @@
  * Large ergonomic full-circle action buttons + stadium pills in strict 100% monochrome dark gray. */
 
 typedef struct {
-    GeoRect menu_b, fly_b, view_b, pal_b, chat_b;
+    GeoRect menu_b, fly_b, view_b, pal_b, chat_b, build_b;
     float mine_x, mine_y, mine_r;
     float place_x, place_y, place_r;
     float jump_x, jump_y, jump_r;
@@ -26,6 +26,7 @@ static void geo_compute_hud(GeoHudLayout *L) {
     L->view_b = (GeoRect){374.0f * sc, 20.0f * sc, 152.0f * sc, 68.0f * sc};
     L->pal_b  = (GeoRect){540.0f * sc, 20.0f * sc, 174.0f * sc, 68.0f * sc};
     L->chat_b = (GeoRect){728.0f * sc, 20.0f * sc, 148.0f * sc, 68.0f * sc};
+    L->build_b = (GeoRect){890.0f * sc, 20.0f * sc, 172.0f * sc, 68.0f * sc};
 
     /* Large full-circle right-thumb action cluster (NOT small narrow rectangles!) */
     L->mine_r  = 70.0f * sc;
@@ -80,6 +81,18 @@ static void geo_draw_play_hud(void) {
     geo_draw_pill_btn(L.pal_b, geo.lang ? "БЛОКИ" : "BLOCKS", geo.inv_open, 0.58f);
     if (geo.online)
         geo_draw_pill_btn(L.chat_b, geo.lang ? "ЧАТ" : "CHAT", geo.chat_open, 0.58f);
+    geo_draw_pill_btn(L.build_b, geo.lang ? "ПАРТЫ" : "PARTS", geo.build_mode, 0.58f);
+
+    /* Roblox Studio builder panel: create / rotate / resize / paint / delete */
+    if (geo.build_mode) {
+        static const char *pb_ru[5] = {"+ ПАРТ", "ВРАЩАТЬ", "РАЗМЕР", "МАТЕРИАЛ", "УДАЛИТЬ"};
+        static const char *pb_en[5] = {"+ PART", "ROTATE", "RESIZE", "MATERIAL", "DELETE"};
+        GeoRect pr[5];
+        int i;
+        geo_build_panel_rects(pr);
+        for (i = 0; i < 5; i++)
+            geo_draw_pill_btn(pr[i], geo.lang ? pb_ru[i] : pb_en[i], i == 0, 0.52f);
+    }
 
     /* Top-right monochrome world & live player status badge */
     if (geo.online) {
@@ -179,17 +192,6 @@ static void geo_draw_palette_overlay(void) {
     }
 }
 
-static void geo_draw_pause_overlay(void) {
-    float cx = (float)screen_w * 0.5f, cy = (float)screen_h * 0.5f;
-    GeoRect cont_b = {cx - 230.0f, cy - 60.0f, 460.0f, 76.0f};
-    GeoRect exit_b = {cx - 230.0f, cy + 38.0f, 460.0f, 76.0f};
-    rect(0.0f, 0.0f, (float)screen_w, (float)screen_h, geo_gray(10, 185));
-    roundrect(cx - 280.0f, cy - 165.0f, 560.0f, 315.0f, 32.0f, geo_gray(30, 245));
-    geo_text_center(geo.lang ? "ПАУЗА" : "PAUSED", cx, cy - 115.0f, geo_gray(244, 255), 0.82f);
-    geo_draw_pill_btn(cont_b, geo.lang ? "ПРОДОЛЖИТЬ ИГРУ" : "RESUME WORLD", 1, 0.64f);
-    geo_draw_pill_btn(exit_b, geo.lang ? "ВЫЙТИ В ГЛАВНОЕ МЕНЮ" : "EXIT TO MAIN MENU", 0, 0.64f);
-}
-
 static void geo_touch_play(float x, float y, int action, int tid) {
     GeoHudLayout L;
     int i;
@@ -198,10 +200,20 @@ static void geo_touch_play(float x, float y, int action, int tid) {
     if (geo.pause_open) {
         if (action == 0) {
             float cx = (float)screen_w * 0.5f, cy = (float)screen_h * 0.5f;
-            GeoRect cont_b = {cx - 230.0f, cy - 60.0f, 460.0f, 76.0f};
-            GeoRect exit_b = {cx - 230.0f, cy + 38.0f, 460.0f, 76.0f};
+            GeoRect cont_b = {cx - 230.0f, cy - 92.0f, 460.0f, 68.0f};
+            GeoRect exit_b = {cx - 230.0f, cy + 62.0f, 460.0f, 68.0f};
+            if (geo.players_open) {
+                if (geo_hit_rect(x, y, (GeoRect){cx - 160.0f, cy + 168.0f, 320.0f, 60.0f})) {
+                    geo.players_open = 0;
+                    geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+                }
+                return;
+            }
             if (geo_hit_rect(x, y, cont_b)) {
                 geo.pause_open = 0;
+                geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+            } else if (geo_hit_rect(x, y, (GeoRect){cx - 230.0f, cy - 8.0f, 460.0f, 60.0f})) {
+                geo.players_open = 1;
                 geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             } else if (geo_hit_rect(x, y, exit_b)) {
                 if (!geo.online)
@@ -284,7 +296,17 @@ static void geo_touch_play(float x, float y, int action, int tid) {
             return;
         }
         if (geo_hit_rect(x, y, L.view_b)) {
-            geo.third_person = !geo.third_person;
+            /* Roblox camera cycle: near orbit -> far orbit -> 1st person */
+            if (!geo.third_person) {
+                geo.third_person = 1;
+                geo.cam_dist = 3.4f;
+            } else if (geo.cam_dist < 4.5f) {
+                geo.cam_dist = 6.0f;
+            } else if (geo.cam_dist < 7.5f) {
+                geo.cam_dist = 9.0f;
+            } else {
+                geo.third_person = 0;
+            }
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             return;
         }
@@ -292,6 +314,22 @@ static void geo_touch_play(float x, float y, int action, int tid) {
             geo.inv_open = 1;
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             return;
+        }
+        if (geo_hit_rect(x, y, L.build_b)) {
+            geo.build_mode = !geo.build_mode;
+            geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+            return;
+        }
+        if (geo.build_mode) {
+            GeoRect pr[5];
+            int i;
+            geo_build_panel_rects(pr);
+            for (i = 0; i < 5; i++) {
+                if (geo_hit_rect(x, y, pr[i])) {
+                    geo_build_action(i);
+                    return;
+                }
+            }
         }
         if (geo.online && geo_hit_rect(x, y, L.chat_b)) {
             geo.chat_open = 1;
@@ -354,12 +392,14 @@ static void geo_touch_play(float x, float y, int action, int tid) {
             geo.joy_y = dy;
         } else if (tid == geo.look_tid) {
             float sens = 0.0046f * net_look_sens();
+            /* Free orbit: yaw spins endlessly, pitch goes almost fully
+             * over the top / under the feet (any direction at all). */
             geo.yaw -= (x - geo.look_lx) * sens;
             geo.pitch -= (y - geo.look_ly) * sens;
-            if (geo.pitch > 1.50f)
-                geo.pitch = 1.50f;
-            if (geo.pitch < -1.50f)
-                geo.pitch = -1.50f;
+            if (geo.pitch > 1.54f)
+                geo.pitch = 1.54f;
+            if (geo.pitch < -1.54f)
+                geo.pitch = -1.54f;
             geo.look_lx = x;
             geo.look_ly = y;
         }

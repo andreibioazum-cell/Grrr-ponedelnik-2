@@ -17,6 +17,9 @@ void net_connect(const char *url, const char *room) {
     snprintf(net.room, sizeof(net.room), "%s", clean_room);
     net.peer_n = 0;
     net.out_head = net.out_tail = 0;
+    net.part_out_head = net.part_out_tail = 0;
+    net.part_in_head = net.part_in_tail = 0;
+    net.spectate = 0;
     net.in_head = net.in_tail = 0;
     net.world_loaded = 0;
     net.chat_n = 0;
@@ -116,6 +119,39 @@ int net_block_poll(int *x, int *y, int *z, int *block_id) {
     }
     ds_mutex_unlock(net_lock);
     return ok;
+}
+
+void net_part_send(const GeoPartNet *part) {
+    int next;
+    if (!part || !part->name[0])
+        return;
+    ds_mutex_lock(net_lock);
+    if (net.run) {
+        next = (net.part_out_head + 1) % 256;
+        if (next == net.part_out_tail)
+            net.part_out_tail = (net.part_out_tail + 1) % 256;
+        net.part_out[net.part_out_head] = *part;
+        net.part_out_head = next;
+    }
+    ds_mutex_unlock(net_lock);
+}
+
+int net_part_poll(GeoPartNet *out) {
+    int ok = 0;
+    ds_mutex_lock(net_lock);
+    if (net.part_in_tail != net.part_in_head) {
+        *out = net.part_in[net.part_in_tail];
+        net.part_in_tail = (net.part_in_tail + 1) % 256;
+        ok = 1;
+    }
+    ds_mutex_unlock(net_lock);
+    return ok;
+}
+
+void net_set_spectator(int spectator) {
+    ds_mutex_lock(net_lock);
+    net.spectate = spectator ? 1 : 0;
+    ds_mutex_unlock(net_lock);
 }
 
 int net_world_synced(void) {

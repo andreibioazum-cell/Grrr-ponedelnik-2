@@ -70,6 +70,7 @@ typedef struct {
     int lheld, lfly;
     int lmodel, lskin, lanim;
     int av_model, av_skin;
+    float cust_pose[7];
 
     GeoRemotePeer peers[GEO_MAX_REMOTES];
     int peer_n;
@@ -80,6 +81,12 @@ typedef struct {
     GeoBlockEdit inbox[BLOCK_RING_CAP];
     int in_head, in_tail;
     int world_loaded;
+
+    GeoPartNet part_out[256];
+    int part_out_head, part_out_tail;
+    GeoPartNet part_in[256];
+    int part_in_head, part_in_tail;
+    int spectate;
 
     GeoChatMsg chat[GEO_MAX_CHAT];
     int chat_n;
@@ -116,6 +123,7 @@ static void geo_sleep_ms(int ms) {
 
 #include "engine/network/geo_net_json.inc"
 #include "engine/network/geo_net_profile.inc"
+#include "engine/network/geo_net_parts.inc"
 #include "engine/network/geo_net_rooms.inc"
 #include "engine/network/geo_net_api.inc"
 

@@ -19,7 +19,9 @@
 #include "geo/geo_script_glue.inc"
 #include "geo/geo_render.inc"
 #include "geo/geo_hud.inc"
+#include "geo/geo_pause_ui.inc"
 #include "geo/geo_ui.inc"
+#include "geo/geo_anim_ui.inc"
 
 void game_init(struct AAssetManager *assets) {
     int i;
@@ -36,6 +38,7 @@ void game_init(struct AAssetManager *assets) {
             int v = (sk >> (s * 4)) & 15;
             geo.av_skin[s] = v < GEO_SKIN_COUNT ? v : geo_skin_default[s];
         }
+        net_custom_anim_load(geo_custom_pose);
     }
     geo.lang = net_language();
     geo.screen = net_warning_accepted() ? SCR_MENU : SCR_WARNING;

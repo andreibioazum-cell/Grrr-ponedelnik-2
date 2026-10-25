@@ -38,8 +38,10 @@ static void geo_start_online_room(const char *room_name) {
     const char *r = (room_name && room_name[0]) ? room_name : GEO_DEFAULT_ROOM;
     net_disconnect();
     geo_init_world(1, r, 0);
+    geo.spectate = geo.spectate_sel;   /* watch other people's games freely */
     net_connect(NULL, r);
-    net_publish_local(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, 0.0f, geo.hotbar[geo.slot], 0,
+    net_set_spectator(geo.spectate);
+    net_publish_local(geo.px, geo.py, geo.pz, geo.face_yaw, geo.pitch, 0.0f, geo.hotbar[geo.slot], 0,
                       geo.av_model, geo_skin_pack(), geo.anim_id);
     geo.screen = SCR_PLAY;
 }
@@ -151,13 +153,17 @@ static void geo_draw_menu_screens(void) {
         geo_text_center(geo.lang ? "ОНЛАЙН-МИРЫ И КОМНАТЫ GEOMETRIUM" : "GEOMETRIUM ONLINE WORLDS", cx, cy - 186.0f,
                         geo_gray(246, 255), 0.72f);
 
+        geo_draw_pill_btn((GeoRect){cx - 380.0f, cy - 152.0f, 760.0f, 50.0f},
+                          geo.spectate_sel ? (geo.lang ? "РЕЖИМ: СМОТРЕТЬ ЧУЖИЕ ИГРЫ (БЕЗ ПЕРСОНАЖА)" : "MODE: WATCH GAMES (NO AVATAR)")
+                                           : (geo.lang ? "РЕЖИМ: ИГРАТЬ СВОИМ ПЕРСОНАЖЕМ" : "MODE: PLAY AS YOUR CHARACTER"),
+                          geo.spectate_sel, 0.52f);
         for (i = 0; i < n; i++) {
             char label[96];
             float rx = cx - 380.0f + (float)(i % 2) * 392.0f;
-            float ry = cy - 130.0f + (float)(i / 2) * 72.0f;
+            float ry = cy - 88.0f + (float)(i / 2) * 66.0f;
             snprintf(label, sizeof(label), geo.lang ? "%s   [онлайн: %d]" : "%s   [online: %d]", list[i].name,
                      list[i].players);
-            geo_draw_pill_btn((GeoRect){rx, ry, 368.0f, 58.0f}, label, strcmp(list[i].name, GEO_DEFAULT_ROOM) == 0,
+            geo_draw_pill_btn((GeoRect){rx, ry, 368.0f, 56.0f}, label, strcmp(list[i].name, GEO_DEFAULT_ROOM) == 0,
                               0.54f);
         }
 
@@ -194,8 +200,12 @@ static void geo_draw_menu_screens(void) {
                           geo.lang ? "ЭМОЦИЯ: ПРИВЕТ" : "EMOTE: WAVE", geo.emote_id == ANIM_WAVE && geo.emote_t > 0.0f,
                           0.54f);
         geo_draw_pill_btn((GeoRect){cx + 10.0f, cy + 196.0f, 310.0f, 58.0f},
-                          geo.lang ? "ЭМОЦИЯ: ТАНЕЦ" : "EMOTE: DANCE", geo.emote_id == ANIM_DANCE && geo.emote_t > 0.0f,
-                          0.54f);
+                          geo.lang ? "СВОЯ АНИМАЦИЯ ✎" : "MY ANIMATION ✎", 0, 0.54f);
+        return;
+    }
+
+    if (geo.screen == SCR_ANIM) {
+        geo_draw_anim(cx, cy);
         return;
     }
 
@@ -247,8 +257,8 @@ static void geo_draw_menu_screens(void) {
         GeoRect info_b  = {cx + 8.0f, cy + 202.0f, 252.0f, 70.0f};
 
         geo_text_center("G E O M E T R I U M", cx, cy - 196.0f, geo_gray(248, 255), 1.25f);
-        geo_text_center(geo.lang ? "ВОКСЕЛЬНАЯ ПЕСОЧНИЦА БЕЗ ГРАНИЦ  •  ОНЛАЙН И СТРОИТЕЛЬСТВО"
-                                 : "UNRESTRICTED 3D VOXEL SANDBOX  •  LIVE MULTIPLAYER",
+        geo_text_center(geo.lang ? "3D-МИРЫ КАК В ROBLOX  •  ПАРТЫ, АНИМАЦИИ, СВОИ ПЕРСОНАЖИ, ОНЛАЙН"
+                                 : "ROBLOX-STYLE 3D WORLDS  •  PARTS, ANIMATION, AVATARS, LIVE ONLINE",
                         cx, cy - 134.0f, geo_gray(196, 235), 0.54f);
 
         snprintf(prof_label, sizeof(prof_label), "%s", net_nick());
@@ -314,10 +324,15 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
             return;
         }
+        if (geo_hit_rect(x, y, (GeoRect){cx - 380.0f, cy - 152.0f, 760.0f, 50.0f})) {
+            geo.spectate_sel = !geo.spectate_sel;
+            geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+            return;
+        }
         for (i = 0; i < n; i++) {
             float rx = cx - 380.0f + (float)(i % 2) * 392.0f;
-            float ry = cy - 130.0f + (float)(i / 2) * 72.0f;
-            if (geo_hit_rect(x, y, (GeoRect){rx, ry, 368.0f, 58.0f})) {
+            float ry = cy - 88.0f + (float)(i / 2) * 66.0f;
+            if (geo_hit_rect(x, y, (GeoRect){rx, ry, 368.0f, 56.0f})) {
                 geo_close_keyboard(0);
                 geo_play_sfx("sounds/ui_tap.wav", 0.85f);
                 geo_start_online_room(list[i].name);
@@ -339,6 +354,11 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
         return;
     }
 
+    if (geo.screen == SCR_ANIM) {
+        geo_touch_anim(x, y, cx, cy);
+        return;
+    }
+
     if (geo.screen == SCR_STUDIO) {
         int s;
         if (geo_hit_rect(x, y, (GeoRect){34.0f, 28.0f, 190.0f, 66.0f})) {
@@ -354,9 +374,7 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
             geo.screen = SCR_MENU;
             geo_play_sfx("sounds/ui_tap.wav", 0.85f);
         } else if (geo_hit_rect(x, y, (GeoRect){cx + 10.0f, cy + 196.0f, 310.0f, 58.0f})) {
-            geo.emote_id = ANIM_DANCE;
-            geo.emote_t = 3.0f;
-            geo.screen = SCR_MENU;
+            geo.screen = SCR_ANIM;
             geo_play_sfx("sounds/ui_tap.wav", 0.85f);
         } else {
             for (s = 0; s < SLOT_COUNT; s++) {
@@ -404,6 +422,7 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
     /* SCR_MENU button actions */
     if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy - 78.0f, 520.0f, 80.0f})) {
         geo_play_sfx("sounds/ui_tap.wav", 0.85f);
+        geo.spectate_sel = 0;
         geo_start_online_room(GEO_DEFAULT_ROOM);
     } else if (geo_hit_rect(x, y, (GeoRect){cx - 260.0f, cy + 18.0f, 520.0f, 76.0f})) {
         net_rooms_refresh();

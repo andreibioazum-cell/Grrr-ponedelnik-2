@@ -54,7 +54,8 @@ enum {
     SCR_PROFILE = 3,
     SCR_INFO = 4,
     SCR_PLAY = 5,
-    SCR_STUDIO = 6   /* Roblox-style avatar/model editor */
+    SCR_STUDIO = 6,  /* Roblox-style avatar/model editor */
+    SCR_ANIM = 7     /* custom animation editor */
 };
 
 enum {
@@ -178,6 +179,14 @@ typedef struct {
     float vx, vy, vz;
     float yaw, pitch;
     int on_ground, in_water, flying, third_person;
+    /* Roblox orbit camera: yaw/pitch are the camera, face_yaw is the body.
+     * cam_dist zooms the 3rd-person orbit; spectate = free-fly observer. */
+    float cam_dist, face_yaw;
+    int spectate;
+    int spectate_sel;  /* rooms screen: next join is watch-only */
+    int build_mode;    /* in-game Part builder (Roblox Studio style) */
+    int part_sel;      /* selected GeoPart index, -1 = none */
+    int players_open;  /* overlay listing other accounts in the world */
     float walk_phase, swing_anim, step_cd, place_cd, sync_cd;
     int swing_seq;
 
@@ -228,6 +237,10 @@ typedef struct {
 static GeoState geo;
 
 /* Defined in geo_script_glue.inc (included later in the TU). */
+static void geo_apply_remote_parts(void);
+static void geo_sync_remote_players(float fdt);
+static void geo_draw_anim(float cx, float cy);
+static void geo_touch_anim(float x, float y, float cx, float cy);
 static int geo_skin_pack(void);
 static void geo_skin_unpack(int packed, int skin[4]);
 

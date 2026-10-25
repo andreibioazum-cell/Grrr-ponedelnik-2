@@ -37,8 +37,13 @@ enum {
 };
 enum {
     ANIM_IDLE = 0, ANIM_WALK, ANIM_RUN, ANIM_JUMP, ANIM_FALL,
-    ANIM_SWIM, ANIM_WAVE, ANIM_DANCE, ANIM_COUNT
+    ANIM_SWIM, ANIM_WAVE, ANIM_DANCE, ANIM_CUSTOM, ANIM_COUNT
 };
+
+/* The player's own animation, built joint-by-joint in the Anim Editor.
+ * Played as: neutral -> this pose -> neutral, 1 second loop. */
+static float geo_custom_pose[GJ_COUNT];
+static int geo_custom_joint;   /* joint currently edited in the UI */
 
 #define GEO_ANIM_MAX_KEYS 8
 typedef struct {
@@ -81,11 +86,32 @@ static const GeoAnimClip geo_anim_clips[ANIM_COUNT] = {
                            {0.75f, {-0.4f, 0.4f, -0.6f, -2.2f, 0, -0.12f, 0.0f}}}},
 };
 
+static const char *geo_anim_name(int id) {
+    if (id == ANIM_CUSTOM)
+        return "custom";
+    if (id < 0 || id >= ANIM_CUSTOM)
+        return "idle";
+    return geo_anim_clips[id].name;
+}
+static const char *geo_joint_name(int j) {
+    static const char *names[GJ_COUNT] = {"leg L", "leg R", "arm L", "arm R", "head", "body", "bob"};
+    return (j >= 0 && j < GJ_COUNT) ? names[j] : "?";
+}
+
 /* Sample a clip at time t (seconds) into out[GJ_COUNT]. */
 static void geo_anim_sample(int clip_id, float t, float out[GJ_COUNT]) {
     const GeoAnimClip *c;
     int i, k;
-    if (clip_id < 0 || clip_id >= ANIM_COUNT)
+    if (clip_id == ANIM_CUSTOM) {
+        float ph = fmodf(t, 1.0f), f;
+        if (ph < 0.0f)
+            ph += 1.0f;
+        f = ph < 0.5f ? ph * 2.0f : (1.0f - ph) * 2.0f;
+        for (i = 0; i < GJ_COUNT; i++)
+            out[i] = geo_custom_pose[i] * f;
+        return;
+    }
+    if (clip_id < 0 || clip_id >= ANIM_CUSTOM)
         clip_id = ANIM_IDLE;
     c = &geo_anim_clips[clip_id];
     if (c->loop && c->duration > 0.0f) {

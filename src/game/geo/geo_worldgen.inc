@@ -203,6 +203,12 @@ static void geo_init_world(int online_mode, const char *room_name, int force_fre
     snprintf(geo.room_name, sizeof(geo.room_name), "%s", (room_name && *room_name) ? room_name : GEO_DEFAULT_ROOM);
     geo.mine_on = 0;
     geo.mine_prog = 0.0f;
+    geo.third_person = 1;      /* Roblox view: 3rd person by default */
+    geo.cam_dist = 5.5f;
+    geo.part_sel = -1;
+    geo.spectate = 0;
+    geo.build_mode = 0;
+    geo.players_open = 0;
     geo.inv_open = 0;
     geo.chat_open = 0;
     geo.pause_open = 0;
@@ -280,5 +286,6 @@ static void geo_init_world(int online_mode, const char *room_name, int force_fre
     geo.pz = (float)(GEO_WZ / 2) + 4.5f;
     geo.py = (float)geo_top_solid_y((int)geo.px, (int)geo.pz) + 1.01f;
     geo.yaw = 3.14159265f;
+    geo.face_yaw = geo.yaw;
     geo.pitch = -0.10f;
 }
