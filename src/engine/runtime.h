@@ -92,6 +92,9 @@ void tex(float x, float y, const char *name, float angle, float scale);
 void tex_tint(float x, float y, const char *name, float angle, float scale, uint32_t color);
 void tex_alpha(float x, float y, const char *name, float angle, float scale, double alpha);
 void tex_round(float x, float y, const char *name, float scale, float radius);
+void ds_gfx_quad(const char *tex_name, float x0, float y0, float u0, float v0, uint32_t c0, float x1, float y1,
+                 float u1, float v1, uint32_t c1, float x2, float y2, float u2, float v2, uint32_t c2, float x3,
+                 float y3, float u3, float v3, uint32_t c3);
 
 /* Grayscale filter for the whole frame (1 = black and white, 0 = normal) and
  * a small decaying screen shake (amplitude in pixels, duration in seconds). */

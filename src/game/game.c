@@ -1,86 +1,154 @@
-/* All of the Cubic Battle 4 game logic in C. */
+/* Geometrium — Original 3D Voxel Sandbox & Live Multiplayer Game (Pure C99 + Vulkan).
+ * Copyright (c) 2026 Geometrium. All rights reserved. */
 #include "game/game.h"
-#include "engine/runtime.h"
 #include "engine/network.h"
+#include "engine/runtime.h"
+
+#include <ctype.h>
 #include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "types.inc"
-#include "state.inc"
-#include "functions.inc"
-#include "core/config.inc"
-#include "ui/locale_core.inc"
-#include "ui/locale_shop.inc"
-#include "ui/locale_settings.inc"
-#include "ui/locale_progress.inc"
-#include "ui/locale_progress_part2.inc"
-#include "ui/locale_extra.inc"
-#include "ui/legal_text.inc"
-#include "ui/chat_filter.inc"
-#include "core/press.inc"
-#include "core/ui.inc"
-#include "ui/progress_classes.inc"
-#include "ui/progress_rewards.inc"
-#include "ui/promo.inc"
-#include "ui/layout.inc"
-#include "ui/account_msg.inc"
-#include "ui/account.inc"
-#include "ui/legal.inc"
-#include "ui/chat.inc"
-#include "ui/npc_cube.inc"
-#include "ui/class_stars.inc"
-#include "ui/menu_screens.inc"
-#include "ui/battle_pass.inc"
-#include "ui/rooms.inc"
-#include "ui/menu_input.inc"
-#include "ui/menu_input_part2.inc"
-#include "ui/admin.inc"
-#include "ui/admin_part2.inc"
-#include "fx/ability_sounds.inc"
-#include "combat/battle_rules.inc"
-#include "combat/hit_geometry.inc"
-#include "combat/battle_turrets.inc"
-#include "combat/battle_hitscan.inc"
-#include "combat/battle_damage.inc"
-#include "combat/battle_setup.inc"
-#include "combat/battle_movement.inc"
-#include "combat/battle_ai.inc"
-#include "combat/battle_status.inc"
-#include "combat/battle_enemy_class.inc"
-#include "combat/battle_enemy_dash.inc"
-#include "combat/battle_enemy_turrets.inc"
-#include "combat/battle_shield.inc"
-#include "combat/battle_astra_abilities.inc"
-#include "combat/battle_codecracker.inc"
-#include "combat/battle_astra.inc"
-#include "combat/battle_astra_online.inc"
-#include "combat/battle_astra_bot.inc"
-#include "combat/battle_abilities.inc"
-#include "combat/battle_online.inc"
-#include "combat/battle_online_smooth.inc"
-#include "combat/battle_actions_fx.inc"
-#include "combat/battle_super_render.inc"
-#include "combat/battle_hitboxes.inc"
-#include "combat/battle_hitbox_fades.inc"
-#include "combat/battle_fighter_look.inc"
-#include "combat/battle_screen_fx.inc"
-#include "combat/battle_render.inc"
-#include "combat/battle_chaos.inc"
-#include "combat/battle_ball.inc"
-#include "combat/battle_event_plates.inc"
-#include "combat/battle_event_santa.inc"
-#include "combat/battle_event_dice.inc"
-#include "combat/battle_events_input.inc"
-#include "fx/weather.inc"
-#include "fx/newyear.inc"
-#include "fx/dust.inc"
-#include "core/textures.inc"
-#include "core/engine_overlays.inc"
-#include "core/transitions.inc"
-#include "core/engine.inc"
-#include "ui/chat_bubbles.inc"
-#include "lifecycle.inc"
+#include "geo/geo_defs.inc"
+#include "geo/geo_math3d.inc"
+#include "geo/geo_worldgen.inc"
+#include "geo/geo_world_edit.inc"
+#include "geo/geo_render.inc"
+#include "geo/geo_hud.inc"
+#include "geo/geo_ui.inc"
 
-#ifdef CB_PC
-/* Bridge for the keyboard and mouse: see platform/pc/pc_main.c. */
-#include "pc_pads.inc"
-#endif
+void game_init(struct AAssetManager *assets) {
+    int i;
+    char crack_name[24];
+    ds_set_asset_manager(assets);
+    (void)ds_sound_init(assets);
+
+    net_profile_load();
+    geo.lang = net_language();
+    geo.screen = net_warning_accepted() ? SCR_MENU : SCR_WARNING;
+    geo.slot = 0;
+    geo.look_tid = -1;
+    geo.joy_tid = -1;
+    geo.mine_tid = -1;
+    geo.place_tid = -1;
+    geo.jump_tid = -1;
+    geo.up_tid = -1;
+    geo.down_tid = -1;
+    for (i = 0; i < GEO_HOTBAR_SLOTS; i++)
+        geo.hotbar[i] = geo_default_hotbar[i];
+
+    /* Preload all 32x32 block, avatar, and fracture textures + Geometrium sounds */
+    for (i = 1; i < GEO_BLOCK_COUNT; i++) {
+        (void)png_load(geo_blocks[i].top_tex);
+        (void)png_load(geo_blocks[i].side_tex);
+        (void)png_load(geo_blocks[i].bot_tex);
+    }
+    (void)png_load("avatar_head.png");
+    (void)png_load("avatar_body.png");
+    (void)png_load("avatar_limb.png");
+    for (i = 0; i < 10; i++) {
+        snprintf(crack_name, sizeof(crack_name), "crack_%d.png", i);
+        (void)png_load(crack_name);
+    }
+
+    (void)snd_load("sounds/geo_ambient.wav");
+    (void)snd_load("sounds/ui_tap.wav");
+    (void)snd_load("sounds/block_break.wav");
+    (void)snd_load("sounds/block_place.wav");
+    (void)snd_load("sounds/step.wav");
+    (void)snd_load("sounds/jump.wav");
+    (void)snd_load("sounds/charge_boom.wav");
+    (void)snd_load("sounds/water_splash.wav");
+
+    if (net_sound_volume() > 0.02f) {
+        (void)snd_loop("sounds/geo_ambient.wav");
+        snd_volume("sounds/geo_ambient.wav", (double)(net_sound_volume() * 0.45f));
+    }
+
+    /* Build background architectural 3D panorama world for the main menu */
+    geo_init_world(0, "panorama", 0);
+    net_rooms_refresh();
+}
+
+void game_update(void) {
+    float fdt = (float)dt;
+    if (fdt <= 0.0f)
+        fdt = 0.016f;
+    if (fdt > 0.06f)
+        fdt = 0.06f;
+    geo.time_sec += fdt;
+
+    if (geo.kb_mode != KB_NONE)
+        geo_poll_keyboard();
+
+    if (geo.screen == SCR_PLAY)
+        geo_update_gameplay(fdt);
+}
+
+void game_draw(struct Buffer *buffer) {
+    (void)buffer;
+    if (screen_w < 64)
+        screen_w = 1920;
+    if (screen_h < 64)
+        screen_h = 1080;
+
+    if (geo.screen == SCR_PLAY) {
+        geo_render_play_frame();
+        if (geo.inv_open)
+            geo_draw_palette_overlay();
+        else if (geo.chat_open)
+            geo_draw_chat_overlay();
+        else if (geo.pause_open)
+            geo_draw_pause_overlay();
+        else
+            geo_draw_play_hud();
+    } else {
+        geo_render_menu_background();
+        geo_draw_menu_screens();
+    }
+}
+
+void game_touch(float x, float y, int action, int pointer_id) {
+    if (geo.screen == SCR_PLAY)
+        geo_touch_play(x, y, action, pointer_id);
+    else
+        geo_touch_menu(x, y, action, pointer_id);
+}
+
+int game_back(void) {
+    if (geo.kb_mode != KB_NONE) {
+        geo_close_keyboard(0);
+        return 1;
+    }
+    if (geo.screen == SCR_PLAY) {
+        if (geo.inv_open) {
+            geo.inv_open = 0;
+            return 1;
+        }
+        if (geo.chat_open) {
+            geo.chat_open = 0;
+            return 1;
+        }
+        geo.pause_open = !geo.pause_open;
+        return 1;
+    }
+    if (geo.screen != SCR_MENU && geo.screen != SCR_WARNING) {
+        geo.screen = SCR_MENU;
+        return 1;
+    }
+    return 0;
+}
+
+void game_reset(void) {
+    net_disconnect();
+    memset(&geo, 0, sizeof(geo));
+}
+
+void game_bye(void) {
+    if (geo.screen == SCR_PLAY && !geo.online)
+        geo_solo_save();
+    net_disconnect();
+    net_profile_save();
+}

@@ -1,6 +1,13 @@
 static int ds_vk_batch_push(int pipeline, const void *desc, size_t first, size_t count) {
     if (count == 0)
         return 1;
+    if (vk_batch_n > 0) {
+        GeoBatch *prev = &vk_batches[vk_batch_n - 1];
+        if (prev->pipeline == pipeline && prev->desc == desc && prev->first + prev->count == (uint32_t)first) {
+            prev->count += (uint32_t)count;
+            return 1;
+        }
+    }
     if (vk_batch_n == vk_batch_cap) {
         size_t cap = vk_batch_cap ? vk_batch_cap * 2 : 256;
         if (cap > SIZE_MAX / sizeof(GeoBatch))
@@ -107,6 +114,26 @@ static int ds_vk_build_geometry(void) {
                 geo_text_rainbow(c->v.tr.s, c->v.tr.x, c->v.tr.y, c->v.tr.sc, c->v.tr.hue, font);
             }
             break;
+        case DS_CMD_QUAD3D: {
+            Texture *t = c->v.q3.tx;
+            if (!t || (t->gpu.uploaded && t->gpu.desc)) {
+                GeoVert q[4];
+                int k;
+                for (k = 0; k < 4; k++) {
+                    q[k].x = c->v.q3.x[k];
+                    q[k].y = c->v.q3.y[k];
+                    q[k].u = c->v.q3.u[k];
+                    q[k].v = c->v.q3.v[k];
+                    q[k].c = c->v.q3.c[k];
+                }
+                if (t) {
+                    pipeline = 1;
+                    desc = (const void *)(uintptr_t)t->gpu.desc;
+                }
+                geo_quad(q);
+            }
+            break;
+        }
         }
         if (!ds_vk_batch_push(pipeline, desc, is, geo_in - is))
             return 0;
