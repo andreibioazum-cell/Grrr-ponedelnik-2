@@ -15,6 +15,8 @@
 #include "geo/geo_math3d.inc"
 #include "geo/geo_worldgen.inc"
 #include "geo/geo_world_edit.inc"
+#include "geo/geo_studio.inc"
+#include "geo/geo_script_glue.inc"
 #include "geo/geo_render.inc"
 #include "geo/geo_hud.inc"
 #include "geo/geo_ui.inc"
@@ -26,6 +28,15 @@ void game_init(struct AAssetManager *assets) {
     (void)ds_sound_init(assets);
 
     net_profile_load();
+    {
+        int mdl = 0, sk = 0, s;
+        net_avatar_load(&mdl, &sk);
+        geo.av_model = mdl >= 0 && mdl < GEO_MODEL_COUNT ? mdl : 0;
+        for (s = 0; s < SLOT_COUNT; s++) {
+            int v = (sk >> (s * 4)) & 15;
+            geo.av_skin[s] = v < GEO_SKIN_COUNT ? v : geo_skin_default[s];
+        }
+    }
     geo.lang = net_language();
     geo.screen = net_warning_accepted() ? SCR_MENU : SCR_WARNING;
     geo.slot = 0;
@@ -83,8 +94,10 @@ void game_update(void) {
     if (geo.kb_mode != KB_NONE)
         geo_poll_keyboard();
 
-    if (geo.screen == SCR_PLAY)
+    if (geo.screen == SCR_PLAY) {
         geo_update_gameplay(fdt);
+        geo_script_engine_tick(fdt);   /* user C scripts + animation state */
+    }
 }
 
 void game_draw(struct Buffer *buffer) {

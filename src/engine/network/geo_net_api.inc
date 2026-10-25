@@ -62,7 +62,8 @@ int net_online_count(void) {
     return n;
 }
 
-void net_publish_local(float x, float y, float z, float yaw, float pitch, float swing, int held, int fly) {
+void net_publish_local(float x, float y, float z, float yaw, float pitch, float swing, int held, int fly,
+                       int model, int skin_packed, int anim) {
     ds_mutex_lock(net_lock);
     net.lx = x;
     net.ly = y;
@@ -72,6 +73,9 @@ void net_publish_local(float x, float y, float z, float yaw, float pitch, float 
     net.lswing = swing;
     net.lheld = held;
     net.lfly = fly;
+    net.lmodel = model;
+    net.lskin = skin_packed;
+    net.lanim = anim;
     ds_mutex_unlock(net_lock);
 }
 

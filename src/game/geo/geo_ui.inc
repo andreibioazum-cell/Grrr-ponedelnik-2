@@ -39,7 +39,8 @@ static void geo_start_online_room(const char *room_name) {
     net_disconnect();
     geo_init_world(1, r, 0);
     net_connect(NULL, r);
-    net_publish_local(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, 0.0f, geo.hotbar[geo.slot], 0);
+    net_publish_local(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, 0.0f, geo.hotbar[geo.slot], 0,
+                      geo.av_model, geo_skin_pack(), geo.anim_id);
     geo.screen = SCR_PLAY;
 }
 
@@ -169,18 +170,48 @@ static void geo_draw_menu_screens(void) {
         return;
     }
 
+    if (geo.screen == SCR_STUDIO) {
+        /* Roblox-style character studio: model + materials + emotes. */
+        static const char *slot_ru[SLOT_COUNT] = {"ГОЛОВА", "ТЕЛО", "РУКИ", "НОГИ"};
+        static const char *slot_en[SLOT_COUNT] = {"HEAD", "TORSO", "ARMS", "LEGS"};
+        GeoRect back_b = {34.0f, 28.0f, 190.0f, 66.0f};
+        char label[96];
+        int s;
+        roundrect(cx - 430.0f, cy - 250.0f, 860.0f, 520.0f, 32.0f, geo_gray(28, 244));
+        geo_draw_pill_btn(back_b, geo.lang ? "НАЗАД" : "BACK", 0, 0.58f);
+        geo_text_center(geo.lang ? "СТУДИЯ ПЕРСОНАЖА" : "CHARACTER STUDIO", cx, cy - 196.0f,
+                        geo_gray(246, 255), 0.74f);
+        snprintf(label, sizeof(label), geo.lang ? "МОДЕЛЬ: %s  (нажмите — сменить)" : "MODEL: %s  (tap to change)",
+                 geo.lang ? geo_models[geo.av_model].name_ru : geo_models[geo.av_model].name_en);
+        geo_draw_pill_btn((GeoRect){cx - 320.0f, cy - 150.0f, 640.0f, 66.0f}, label, 1, 0.58f);
+        for (s = 0; s < SLOT_COUNT; s++) {
+            float ry = cy - 62.0f + (float)s * 62.0f;
+            snprintf(label, sizeof(label), "%s: %s", geo.lang ? slot_ru[s] : slot_en[s],
+                     geo_skin_tex[geo.av_skin[s] & 7]);
+            geo_draw_pill_btn((GeoRect){cx - 320.0f, ry, 640.0f, 52.0f}, label, 0, 0.52f);
+        }
+        geo_draw_pill_btn((GeoRect){cx - 320.0f, cy + 196.0f, 310.0f, 58.0f},
+                          geo.lang ? "ЭМОЦИЯ: ПРИВЕТ" : "EMOTE: WAVE", geo.emote_id == ANIM_WAVE && geo.emote_t > 0.0f,
+                          0.54f);
+        geo_draw_pill_btn((GeoRect){cx + 10.0f, cy + 196.0f, 310.0f, 58.0f},
+                          geo.lang ? "ЭМОЦИЯ: ТАНЕЦ" : "EMOTE: DANCE", geo.emote_id == ANIM_DANCE && geo.emote_t > 0.0f,
+                          0.54f);
+        return;
+    }
+
     if (geo.screen == SCR_PROFILE) {
         int st = net_account_status();
         const char *status_line = "";
         GeoRect back_b = {34.0f, 28.0f, 190.0f, 66.0f};
-        GeoRect nick_b = {cx - 320.0f, cy - 96.0f, 640.0f, 72.0f};
-        GeoRect pass_b = {cx - 320.0f, cy - 4.0f, 640.0f, 72.0f};
-        GeoRect auth_b = {cx - 320.0f, cy + 94.0f, 410.0f, 74.0f};
-        GeoRect out_b  = {cx + 108.0f, cy + 94.0f, 212.0f, 74.0f};
+        GeoRect nick_b = {cx - 320.0f, cy - 118.0f, 640.0f, 68.0f};
+        GeoRect pass_b = {cx - 320.0f, cy - 34.0f, 640.0f, 68.0f};
+        GeoRect auth_b = {cx - 320.0f, cy + 50.0f, 410.0f, 70.0f};
+        GeoRect out_b  = {cx + 108.0f, cy + 50.0f, 212.0f, 70.0f};
+        GeoRect studio_b = {cx - 320.0f, cy + 138.0f, 640.0f, 64.0f};
 
-        roundrect(cx - 390.0f, cy - 210.0f, 780.0f, 430.0f, 32.0f, geo_gray(28, 244));
+        roundrect(cx - 390.0f, cy - 236.0f, 780.0f, 480.0f, 32.0f, geo_gray(28, 244));
         geo_draw_pill_btn(back_b, geo.lang ? "НАЗАД" : "BACK", 0, 0.58f);
-        geo_text_center(geo.lang ? "ПРОФИЛЬ И ОБЛАЧНЫЙ АККАУНТ" : "PROFILE & CLOUD ACCOUNT", cx, cy - 156.0f,
+        geo_text_center(geo.lang ? "ПРОФИЛЬ И ОБЛАЧНЫЙ АККАУНТ" : "PROFILE & CLOUD ACCOUNT", cx, cy - 182.0f,
                         geo_gray(246, 255), 0.72f);
 
         {
@@ -194,13 +225,15 @@ static void geo_draw_menu_screens(void) {
         }
         geo_draw_pill_btn(auth_b, geo.lang ? "ВОЙТИ / РЕГИСТРАЦИЯ" : "SIGN IN / REGISTER", 1, 0.58f);
         geo_draw_pill_btn(out_b, geo.lang ? "СБРОСИТЬ" : "SIGN OUT", 0, 0.56f);
+        geo_draw_pill_btn(studio_b, geo.lang ? "СТУДИЯ ПЕРСОНАЖА (МОДЕЛИ И АНИМАЦИИ)" : "CHARACTER STUDIO (MODELS & ANIMATION)",
+                          0, 0.56f);
 
         if (st == AUTH_BUSY) status_line = geo.lang ? "Синхронизация с сервером..." : "Syncing with cloud...";
         else if (st == AUTH_OK) status_line = geo.lang ? "Аккаунт синхронизирован!" : "Cloud account active!";
         else if (st == AUTH_WRONG_PASS) status_line = geo.lang ? "Неверный пароль для этого ника." : "Wrong password.";
         else if (st == AUTH_BAD_INPUT) status_line = geo.lang ? "Ник от 2 симв., пароль от 4 симв." : "Min 2 nick / 4 pass.";
         else if (st == AUTH_NET_ERR) status_line = geo.lang ? "Ошибка соединения с базой." : "Database connection error.";
-        geo_text_center(status_line, cx, cy + 192.0f, geo_gray(214, 240), 0.54f);
+        geo_text_center(status_line, cx, cy + 224.0f, geo_gray(214, 240), 0.54f);
         return;
     }
 
@@ -306,27 +339,64 @@ static void geo_touch_menu(float x, float y, int action, int tid) {
         return;
     }
 
+    if (geo.screen == SCR_STUDIO) {
+        int s;
+        if (geo_hit_rect(x, y, (GeoRect){34.0f, 28.0f, 190.0f, 66.0f})) {
+            geo.screen = SCR_PROFILE;
+            geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 150.0f, 640.0f, 66.0f})) {
+            geo.av_model = (geo.av_model + 1) % GEO_MODEL_COUNT;
+            net_avatar_save(geo.av_model, geo_skin_pack());
+            geo_play_sfx("sounds/ui_tap.wav", 0.85f);
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy + 196.0f, 310.0f, 58.0f})) {
+            geo.emote_id = ANIM_WAVE;
+            geo.emote_t = 2.4f;
+            geo.screen = SCR_MENU;
+            geo_play_sfx("sounds/ui_tap.wav", 0.85f);
+        } else if (geo_hit_rect(x, y, (GeoRect){cx + 10.0f, cy + 196.0f, 310.0f, 58.0f})) {
+            geo.emote_id = ANIM_DANCE;
+            geo.emote_t = 3.0f;
+            geo.screen = SCR_MENU;
+            geo_play_sfx("sounds/ui_tap.wav", 0.85f);
+        } else {
+            for (s = 0; s < SLOT_COUNT; s++) {
+                float ry = cy - 62.0f + (float)s * 62.0f;
+                if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, ry, 640.0f, 52.0f})) {
+                    geo.av_skin[s] = (geo.av_skin[s] + 1) % GEO_SKIN_COUNT;
+                    net_avatar_save(geo.av_model, geo_skin_pack());
+                    geo_play_sfx("sounds/ui_tap.wav", 0.85f);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
     if (geo.screen == SCR_PROFILE) {
         if (geo_hit_rect(x, y, (GeoRect){34.0f, 28.0f, 190.0f, 66.0f})) {
             geo_close_keyboard(1);
             geo.screen = SCR_MENU;
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
-        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 96.0f, 640.0f, 72.0f})) {
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 118.0f, 640.0f, 68.0f})) {
             geo.kb_mode = KB_NICK;
             keyboard_clear();
             keyboard_show();
-        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 4.0f, 640.0f, 72.0f})) {
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy - 34.0f, 640.0f, 68.0f})) {
             geo.kb_mode = KB_PASS;
             keyboard_clear();
             keyboard_show();
-        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy + 94.0f, 410.0f, 74.0f})) {
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy + 50.0f, 410.0f, 70.0f})) {
             geo_close_keyboard(1);
             net_account_auth(geo.edit_nick[0] ? geo.edit_nick : net_nick(), geo.edit_pass);
             geo_play_sfx("sounds/ui_tap.wav", 0.85f);
-        } else if (geo_hit_rect(x, y, (GeoRect){cx + 108.0f, cy + 94.0f, 212.0f, 74.0f})) {
+        } else if (geo_hit_rect(x, y, (GeoRect){cx + 108.0f, cy + 50.0f, 212.0f, 70.0f})) {
             geo.edit_pass[0] = '\0';
             net_account_logout();
             geo_play_sfx("sounds/ui_tap.wav", 0.8f);
+        } else if (geo_hit_rect(x, y, (GeoRect){cx - 320.0f, cy + 138.0f, 640.0f, 64.0f})) {
+            geo_close_keyboard(1);
+            geo.screen = SCR_STUDIO;
+            geo_play_sfx("sounds/ui_tap.wav", 0.85f);
         }
         return;
     }

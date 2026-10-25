@@ -189,6 +189,7 @@ static void *writer_thread_fn(void *arg) {
         long long now = geo_now_ms();
         float x, y, z, yaw, pitch, swing;
         int held, fly, batch_n = 0;
+        int model = 0, skin = 0, anim = 0;
 
         ds_mutex_lock(net_lock);
         if (!net.run || net.gen != gen) {
@@ -206,6 +207,9 @@ static void *writer_thread_fn(void *arg) {
         pitch = net.lpitch;
         swing = net.lswing;
         held = net.lheld;
+        model = net.lmodel;
+        skin = net.lskin;
+        anim = net.lanim;
         fly = net.lfly;
         body[0] = '{';
         body[1] = '\0';
@@ -238,9 +242,10 @@ static void *writer_thread_fn(void *arg) {
             snprintf(url, sizeof(url), "%s/geometrium/rooms/%s/players/%s.json", base, room, uid);
             snprintf(pbody, sizeof(pbody),
                      "{\"name\":\"%s\",\"x\":%.2f,\"y\":%.2f,\"z\":%.2f,\"yaw\":%.3f,\"pitch\":%.3f,"
-                     "\"swing\":%.2f,\"held\":%d,\"fly\":%d,\"live\":1,\"seq\":%lld,\"ts\":{\".sv\":\"timestamp\"}}",
+                     "\"swing\":%.2f,\"held\":%d,\"fly\":%d,\"m\":%d,\"sk\":%d,\"a\":%d,"
+                     "\"live\":1,\"seq\":%lld,\"ts\":{\".sv\":\"timestamp\"}}",
                      esc_nick, (double)x, (double)y, (double)z, (double)yaw, (double)pitch, (double)swing, held, fly,
-                     seq);
+                     model, skin, anim, seq);
             if (geo_http_put(url, pbody)) {
                 ds_mutex_lock(net_lock);
                 if (net.run && net.gen == gen)

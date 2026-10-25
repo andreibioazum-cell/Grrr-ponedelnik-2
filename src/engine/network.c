@@ -68,6 +68,8 @@ typedef struct {
 
     float lx, ly, lz, lyaw, lpitch, lswing;
     int lheld, lfly;
+    int lmodel, lskin, lanim;
+    int av_model, av_skin;
 
     GeoRemotePeer peers[GEO_MAX_REMOTES];
     int peer_n;

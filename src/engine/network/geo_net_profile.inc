@@ -129,6 +129,10 @@ void net_profile_load(void) {
                 net.volume = (float)atof(line + 4);
             else if (strncmp(line, "sens=", 5) == 0)
                 net.sens = (float)atof(line + 5);
+            else if (strncmp(line, "model=", 6) == 0)
+                net.av_model = atoi(line + 6);
+            else if (strncmp(line, "skin=", 5) == 0)
+                net.av_skin = atoi(line + 5);
         }
         fclose(f);
     }
@@ -323,6 +327,24 @@ void net_account_logout(void) {
     net.auth_state = AUTH_IDLE;
     net.uid[0] = '\0';
     geo_ensure_defaults_locked();
+    ds_mutex_unlock(net_lock);
+    net_profile_save();
+}
+
+void net_avatar_load(int *model, int *skin_packed) {
+    ds_mutex_lock(net_lock);
+    geo_ensure_defaults_locked();
+    if (model)
+        *model = net.av_model;
+    if (skin_packed)
+        *skin_packed = net.av_skin;
+    ds_mutex_unlock(net_lock);
+}
+
+void net_avatar_save(int model, int skin_packed) {
+    ds_mutex_lock(net_lock);
+    net.av_model = model;
+    net.av_skin = skin_packed;
     ds_mutex_unlock(net_lock);
     net_profile_save();
 }

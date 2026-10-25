@@ -379,7 +379,7 @@ static void geo_update_gameplay(float fdt) {
         GeoRemotePeer peers[GEO_MAX_REMOTES];
         int pn, r;
         net_publish_local(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, (float)geo.swing_seq, geo.hotbar[geo.slot],
-                          geo.flying);
+                          geo.flying, geo.av_model, geo_skin_pack(), geo.anim_id);
         pn = net_copy_remotes(peers, GEO_MAX_REMOTES);
         for (r = 0; r < GEO_MAX_REMOTES; r++)
             geo.rem[r].active = 0;
@@ -391,6 +391,14 @@ static void geo_update_gameplay(float fdt) {
             snprintf(av->name, sizeof(av->name), "%s", peers[i].name);
             av->active = 1;
             av->held = peers[i].held;
+            av->model = peers[i].model >= 0 && peers[i].model < 4 ? peers[i].model : 0;
+            geo_skin_unpack(peers[i].skin, av->skin);
+            if (peers[i].anim != av->anim) {
+                av->anim = peers[i].anim;
+                av->anim_t = 0.0f;
+            } else {
+                av->anim_t += fdt;
+            }
             if (fresh || (dx * dx + dy * dy + dz * dz) > 64.0f) {
                 av->x = peers[i].x;
                 av->y = peers[i].y;

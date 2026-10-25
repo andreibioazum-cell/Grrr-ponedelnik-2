@@ -53,7 +53,8 @@ enum {
     SCR_ROOMS = 2,
     SCR_PROFILE = 3,
     SCR_INFO = 4,
-    SCR_PLAY = 5
+    SCR_PLAY = 5,
+    SCR_STUDIO = 6   /* Roblox-style avatar/model editor */
 };
 
 enum {
@@ -139,6 +140,11 @@ typedef struct {
     float walk_t, swing_t, last_swing;
     int held;
     int next_ent;
+    /* Roblox-style synced appearance: model, 4 material slots, animation */
+    int model;
+    int skin[4];
+    int anim;
+    float anim_t;
 } GeoRemoteAvatar;
 
 typedef struct {
@@ -174,6 +180,14 @@ typedef struct {
     int on_ground, in_water, flying, third_person;
     float walk_phase, swing_anim, step_cd, place_cd, sync_cd;
     int swing_seq;
+
+    /* Roblox-style avatar: model id, material per slot, animation state */
+    int av_model;
+    int av_skin[4];
+    int anim_id;
+    float anim_t;
+    int emote_id;      /* ANIM_WAVE / ANIM_DANCE while emote_t > 0 */
+    float emote_t;
 
     int hotbar[GEO_HOTBAR_SLOTS];
     int slot;
@@ -212,6 +226,10 @@ typedef struct {
 } GeoState;
 
 static GeoState geo;
+
+/* Defined in geo_script_glue.inc (included later in the TU). */
+static int geo_skin_pack(void);
+static void geo_skin_unpack(int packed, int skin[4]);
 
 /* Strict 100% monochrome dark-gray color packer: R == G == B guaranteed by type signature! */
 static uint32_t geo_gray(int lum, int alpha) {

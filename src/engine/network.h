@@ -36,6 +36,10 @@ typedef struct {
     float swing;
     int held;
     int fly;
+    /* Roblox-style appearance sync: model, packed materials, animation */
+    int model;
+    int skin;   /* 4 slots x 4 bits */
+    int anim;
 } GeoRemotePeer;
 
 typedef struct {
@@ -80,7 +84,11 @@ int net_status(void);
 const char *net_current_room(void);
 int net_online_count(void);
 
-void net_publish_local(float x, float y, float z, float yaw, float pitch, float swing, int held, int fly);
+void net_publish_local(float x, float y, float z, float yaw, float pitch, float swing, int held, int fly,
+                       int model, int skin_packed, int anim);
+/* Avatar (model + packed materials) persisted in the local profile */
+void net_avatar_load(int *model, int *skin_packed);
+void net_avatar_save(int model, int skin_packed);
 int net_copy_remotes(GeoRemotePeer *out, int max_out);
 
 /* Real-time Persistent Shared Voxel Sync (/geometrium/rooms/<room>/blocks.json) */

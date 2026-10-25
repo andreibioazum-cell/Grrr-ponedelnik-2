@@ -124,23 +124,17 @@ static void geo_draw_line3d(float x0, float y0, float z0, float x1, float y1, fl
 }
 
 static void geo_draw_wire_cube(int bx, int by, int bz) {
-    float e = 0.008f;
-    float x0 = (float)bx - e, x1 = (float)bx + 1.0f + e;
-    float y0 = (float)by - e, y1 = (float)by + 1.0f + e;
-    float z0 = (float)bz - e, z1 = (float)bz + 1.0f + e;
-    uint32_t c = geo_gray(240, 210);
-    geo_draw_line3d(x0, y0, z0, x1, y0, z0, 2.2f, c);
-    geo_draw_line3d(x1, y0, z0, x1, y0, z1, 2.2f, c);
-    geo_draw_line3d(x1, y0, z1, x0, y0, z1, 2.2f, c);
-    geo_draw_line3d(x0, y0, z1, x0, y0, z0, 2.2f, c);
-    geo_draw_line3d(x0, y1, z0, x1, y1, z0, 2.2f, c);
-    geo_draw_line3d(x1, y1, z0, x1, y1, z1, 2.2f, c);
-    geo_draw_line3d(x1, y1, z1, x0, y1, z1, 2.2f, c);
-    geo_draw_line3d(x0, y1, z1, x0, y1, z0, 2.2f, c);
-    geo_draw_line3d(x0, y0, z0, x0, y1, z0, 2.2f, c);
-    geo_draw_line3d(x1, y0, z0, x1, y1, z0, 2.2f, c);
-    geo_draw_line3d(x1, y0, z1, x1, y1, z1, 2.2f, c);
-    geo_draw_line3d(x0, y0, z1, x0, y1, z1, 2.2f, c);
+    static const int edges[12][2] = {{0,1},{1,3},{3,2},{2,0},{4,5},{5,7},{7,6},{6,4},{0,4},{1,5},{3,7},{2,6}};
+    float e = 0.008f, lo[3], hi[3];
+    int i, a, b;
+    lo[0] = (float)bx - e; lo[1] = (float)by - e; lo[2] = (float)bz - e;
+    hi[0] = (float)bx + 1.0f + e; hi[1] = (float)by + 1.0f + e; hi[2] = (float)bz + 1.0f + e;
+    for (i = 0; i < 12; i++) {
+        a = edges[i][0]; b = edges[i][1];
+        geo_draw_line3d((a & 1) ? hi[0] : lo[0], (a & 2) ? hi[1] : lo[1], (a & 4) ? hi[2] : lo[2],
+                        (b & 1) ? hi[0] : lo[0], (b & 2) ? hi[1] : lo[1], (b & 4) ? hi[2] : lo[2],
+                        2.2f, geo_gray(240, 210));
+    }
 }
 
 static void geo_draw_oriented_box(float px, float py, float pz, float yaw, float pitch_loc, float ox, float oy,
@@ -187,30 +181,63 @@ static void geo_draw_oriented_box(float px, float py, float pz, float yaw, float
     }
 }
 
+/* Roblox-style avatar: data-driven model (geo_models[]) posed by an animation
+ * clip (geo_anim_sample); materials come from the player's 4 slots. */
 static void geo_draw_avatar3d(float x, float y, float z, float yaw, float pitch, float walk_t, float swing_t,
-                              int held_block, const char *name_tag, const char *bubble) {
+                              int held_block, const char *name_tag, const char *bubble,
+                              int model_id, const int skin[4], int anim_id, float anim_t) {
     float dx = x - geo.cam_x, dy = y - geo.cam_y, dz = z - geo.cam_z;
     float dist = sqrtf(dx * dx + dy * dy + dz * dz);
     float fog_k = (dist - GEO_FOG_START) / (GEO_FOG_END - GEO_FOG_START);
-    float leg = sinf(walk_t) * 0.55f;
-    float r_arm = -leg * 0.8f - sinf(swing_t * 3.14159f) * 1.35f;
+    float pose[GJ_COUNT];
+    const GeoModelDef *m;
+    float leg_l, leg_r, arm_l, arm_r, bob, torso_y, head_y;
     float sx, sy, depth;
+    (void)walk_t;
 
-    if (fog_k < 0.0f)
-        fog_k = 0.0f;
-    else if (fog_k > 0.90f)
-        fog_k = 0.90f;
+    fog_k = fog_k < 0.0f ? 0.0f : (fog_k > 0.90f ? 0.90f : fog_k);
+    if (model_id < 0 || model_id >= GEO_MODEL_COUNT)
+        model_id = GEO_MODEL_CLASSIC;
+    m = &geo_models[model_id];
 
-    geo_draw_oriented_box(x, y, z, yaw, leg, -0.14f, 0.36f, 0.0f, 0.12f, 0.36f, 0.12f, "avatar_limb.png", fog_k);
-    geo_draw_oriented_box(x, y, z, yaw, -leg, 0.14f, 0.36f, 0.0f, 0.12f, 0.36f, 0.12f, "avatar_limb.png", fog_k);
-    geo_draw_oriented_box(x, y, z, yaw, 0.0f, 0.0f, 1.05f, 0.0f, 0.25f, 0.34f, 0.14f, "avatar_body.png", fog_k);
-    geo_draw_oriented_box(x, y, z, yaw, leg * 0.8f, -0.37f, 1.05f, 0.0f, 0.11f, 0.33f, 0.11f, "avatar_limb.png", fog_k);
-    geo_draw_oriented_box(x, y, z, yaw, r_arm, 0.37f, 1.05f, 0.0f, 0.11f, 0.33f, 0.11f, "avatar_limb.png", fog_k);
+    geo_anim_sample(anim_id, anim_t, pose);
+    /* A mining swing overrides the right arm, like before. */
+    if (swing_t > 0.0f)
+        pose[GJ_ARM_R] = -sinf(swing_t * 3.14159f) * 1.35f - pose[GJ_LEG_L] * 0.4f;
+    leg_l = pose[GJ_LEG_L];
+    leg_r = pose[GJ_LEG_R];
+    arm_l = pose[GJ_ARM_L];
+    arm_r = pose[GJ_ARM_R];
+    bob = pose[GJ_BOB];
+    torso_y = m->leg_h + 0.33f + bob;
+    head_y = m->leg_h + 0.72f + m->head + bob;
+
+    geo_draw_oriented_box(x, y, z, yaw, leg_l, -0.14f, m->leg_h * 0.5f + bob, 0.0f, 0.12f, m->leg_h * 0.5f, 0.12f,
+                          geo_skin_tex[skin[SLOT_LEGS] & 7], fog_k);
+    geo_draw_oriented_box(x, y, z, yaw, leg_r, 0.14f, m->leg_h * 0.5f + bob, 0.0f, 0.12f, m->leg_h * 0.5f, 0.12f,
+                          geo_skin_tex[skin[SLOT_LEGS] & 7], fog_k);
+    geo_draw_oriented_box(x, y, z, yaw, pose[GJ_BODY], 0.0f, torso_y, 0.0f, m->torso_w, 0.34f, 0.14f,
+                          geo_skin_tex[skin[SLOT_TORSO] & 7], fog_k);
+    geo_draw_oriented_box(x, y, z, yaw, arm_l, -(m->torso_w + 0.12f), torso_y + 0.06f, 0.0f, 0.11f, m->arm_len * 0.5f,
+                          0.11f, geo_skin_tex[skin[SLOT_ARMS] & 7], fog_k);
+    geo_draw_oriented_box(x, y, z, yaw, arm_r, (m->torso_w + 0.12f), torso_y + 0.06f, 0.0f, 0.11f, m->arm_len * 0.5f,
+                          0.11f, geo_skin_tex[skin[SLOT_ARMS] & 7], fog_k);
     if (held_block > 0 && held_block < GEO_BLOCK_COUNT) {
-        geo_draw_oriented_box(x, y, z, yaw, r_arm, 0.38f, 0.78f, 0.22f, 0.14f, 0.14f, 0.14f,
+        geo_draw_oriented_box(x, y, z, yaw, arm_r, (m->torso_w + 0.13f), torso_y - 0.28f, 0.22f, 0.14f, 0.14f, 0.14f,
                               geo_face_tex((unsigned char)held_block, 2), fog_k);
     }
-    geo_draw_oriented_box(x, y, z, yaw, -pitch, 0.0f, 1.63f, 0.0f, 0.24f, 0.24f, 0.24f, "avatar_head.png", fog_k);
+    geo_draw_oriented_box(x, y, z, yaw, -pitch + pose[GJ_HEAD], 0.0f, head_y, 0.0f, m->head, m->head, m->head,
+                          geo_skin_tex[skin[SLOT_HEAD] & 7], fog_k);
+    if (m->hat == 1) {          /* cap */
+        geo_draw_oriented_box(x, y, z, yaw, -pitch, 0.0f, head_y + m->head + 0.05f, 0.0f, m->head + 0.05f, 0.05f,
+                              m->head + 0.05f, geo_skin_tex[skin[SLOT_TORSO] & 7], fog_k);
+    } else if (m->hat == 2) {   /* knight helm */
+        geo_draw_oriented_box(x, y, z, yaw, -pitch, 0.0f, head_y + m->head + 0.07f, 0.0f, m->head + 0.03f, 0.07f,
+                              m->head + 0.03f, "steel_plate.png", fog_k);
+    } else if (m->hat == 3) {   /* robot antenna */
+        geo_draw_oriented_box(x, y, z, yaw, 0.0f, 0.0f, head_y + m->head + 0.16f, 0.0f, 0.03f, 0.16f, 0.03f,
+                              "cyan_lamp.png", fog_k);
+    }
 
     if (name_tag && name_tag[0] && dist < 34.0f && geo_project_point(x, y + 2.15f, z, &sx, &sy, &depth)) {
         float nw = (float)text_ink_width(name_tag) * 0.56f + 22.0f;
@@ -228,12 +255,10 @@ static void geo_draw_sky_dome(void) {
     float w = (float)screen_w, h = (float)screen_h;
     int i;
     for (i = 0; i < 6; i++) {
-        float y0 = h * (float)i / 6.0f, bh = h / 6.0f + 2.0f;
         float t = (float)i / 5.0f;
-        unsigned int r = (unsigned int)(116.0f + 62.0f * t);
-        unsigned int g = (unsigned int)(152.0f + 48.0f * t);
+        unsigned int r = (unsigned int)(116.0f + 62.0f * t), g = (unsigned int)(152.0f + 48.0f * t);
         unsigned int b = (unsigned int)(204.0f + 24.0f * t);
-        rect(0.0f, y0, w, bh, 0xFF000000u | (r << 16) | (g << 8) | b);
+        rect(0.0f, h * (float)i / 6.0f, w, h / 6.0f + 2.0f, 0xFF000000u | (r << 16) | (g << 8) | b);
     }
 }
 
@@ -283,6 +308,11 @@ static void geo_render_scene3d(int draw_self_3rd) {
         if (geo.parts[i].active)
             ents[ent_n++] = (GeoCellEnt){3, i, (int)floorf(geo.parts[i].x), (int)floorf(geo.parts[i].y),
                                          (int)floorf(geo.parts[i].z)};
+    /* Script-spawned Workspace Parts join the same occlusion traversal */
+    for (i = 0; i < GEO_MAX_PARTS && ent_n < 160; i++)
+        if (geo_parts[i].active)
+            ents[ent_n++] = (GeoCellEnt){4, i, (int)floorf(geo_parts[i].x), (int)floorf(geo_parts[i].y),
+                                         (int)floorf(geo_parts[i].z)};
 
     geo_draw_sky_dome();
 
@@ -353,10 +383,20 @@ static void geo_render_scene3d(int draw_self_3rd) {
                                                       : NULL;
                                 geo_draw_avatar3d(geo.rem[idx].x, geo.rem[idx].y, geo.rem[idx].z, geo.rem[idx].yaw,
                                                   geo.rem[idx].pitch, geo.rem[idx].walk_t, geo.rem[idx].swing_t,
-                                                  geo.rem[idx].held, geo.rem[idx].name, bub);
+                                                  geo.rem[idx].held, geo.rem[idx].name, bub,
+                                                  geo.rem[idx].model, geo.rem[idx].skin, geo.rem[idx].anim,
+                                                  geo.rem[idx].anim_t);
                             } else if (ents[i].kind == 1) {
                                 geo_draw_avatar3d(geo.px, geo.py, geo.pz, geo.yaw, geo.pitch, geo.walk_phase,
-                                                  geo.swing_anim, geo.hotbar[geo.slot], net_nick(), NULL);
+                                                  geo.swing_anim, geo.hotbar[geo.slot], net_nick(), NULL,
+                                                  geo.av_model, geo.av_skin, geo.anim_id, geo.anim_t);
+                            } else if (ents[i].kind == 4) {
+                                GeoPart *pt = &geo_parts[idx];
+                                const char *ptex = (pt->block_id > 0 && pt->block_id < GEO_BLOCK_COUNT)
+                                                       ? geo_face_tex((unsigned char)pt->block_id, 2)
+                                                       : "marble_top.png";
+                                geo_draw_oriented_box(pt->x, pt->y, pt->z, pt->yaw, 0.0f, 0.0f, 0.0f, 0.0f,
+                                                      pt->sx * 0.5f, pt->sy * 0.5f, pt->sz * 0.5f, ptex, 0.0f);
                             } else if (ents[i].kind == 2) {
                                 const char *ctex = ((int)(geo.charges[idx].fuse * 7.0f) & 1) ? "lumen_core.png"
                                                                                              : "charge_side.png";

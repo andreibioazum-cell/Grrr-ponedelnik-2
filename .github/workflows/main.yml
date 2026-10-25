@@ -44,6 +44,13 @@ jobs:
         run: |
           clang -std=c99 -Wall -Wextra -Werror -pedantic \
             -Isrc -I. -Itools/host_test/stub -fsyntax-only src/game/game.c
+          clang -std=c99 -Wall -Wextra -Werror -pedantic \
+            -Isrc -I. -Itools/host_test/stub -fsyntax-only src/engine/network.c
+          # Roblox-style studio: animation keyframes, character models,
+          # dynamic Parts and the C scripting API with example scripts.
+          cc -std=c99 -Wall -Wextra -Werror -Isrc \
+            -o /tmp/test_studio tools/host_test/test_studio.c -lm
+          /tmp/test_studio
           python3 tools/check_game_file_size.py
           python3 tools/test_resources.py
           python3 tools/test_db_rules.py
