@@ -1,0 +1,45 @@
+name: Build Game3D (Pure C)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (pure C, no HTML/JS game)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify layout - game is C only, HTML is Firebase only
+        run: |
+          set -euo pipefail
+          test -f src/game3d.h
+          test -f src/world.c
+          test -f src/render.c
+          # The only HTML/JS in the repo is the Firebase admin panel.
+          test -f index.html
+          test -f functions/index.js
+          if find src -type f \( -name '*.html' -o -name '*.js' -o -name '*.java' -o -name '*.cpp' \) | grep -q .; then
+            echo "::error::Game sources must be pure C"
+            exit 1
+          fi
+          # The old Cubic Battle game must stay deleted.
+          test ! -e src/game
+          test ! -e platform
+
+      - name: Build
+        run: make
+
+      - name: Test
+        run: make test
+
+      - name: Demo (renders frames, ignites TNT, prints knockback)
+        run: |
+          make demo | tee demo.log
+          grep -q "ignite rc=3" demo.log
+          test -f frame_before.ppm
+          test -f frame_after.ppm

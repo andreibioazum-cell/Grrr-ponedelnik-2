@@ -28,3 +28,9 @@ package-lock.json
 cb4_shot.bmp
 cb4.log
 cb4_data/
+
+# Game3D (pure C)
+build/
+*.o
+game3d
+frame_*.ppm

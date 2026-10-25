@@ -1,113 +1,61 @@
-## RU
+# Game3D — воксельная 3D-игра на чистом C
 
-Полная версия Cubic Battle 4 для Android. Игра написана на C, и немного на Java.
+Старая игра «Cubic Battle» из репозитория **удалена полностью** (C‑код 2D‑файтинга,
+Java‑слой Android, ассеты, скрипты сборки). Вместо неё — новая 3D‑игра, написанная
+**только на C (C99)**. На HTML остался **только Firebase**: админ‑панель
+[`index.html`](index.html), облачная функция в [`functions/`](functions/),
+[`firebase.rules.json`](firebase.rules.json) и [`FIREBASE.md`](FIREBASE.md).
+Никакого HTML/JS в самой игре нет.
 
-- Минимум: Android 8
-- Цель: Android 15
-- Требуется: Vulkan 1.0
+## Что в игре
 
-## ПК-версия (Windows .exe)
+- Воксельный мир 48×24×48: трава, земля, камень, дерево, листва, песок и **динамит (TNT)**.
+- Программный 3D‑рендерер на C: перспективная проекция, **z‑буфер**, отсечение задних
+  граней и скрытых блоков.
+- Персонаж — настоящая объёмная модель из боксов (голова, туловище, руки, ноги,
+  анимация ходьбы), а не плоский спрайт. Камера от третьего лица в демо.
+- Динамит: полноценный куб со всеми шестью гранями, поджигание по прицелу (рейкаст DDA),
+  цепная детонация, воронка и **отбрасывание игрока** — радиальный импульс + подброс вверх.
 
-Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
+## Починенные жалобы
 
-* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions -
-  `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
-* **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig собирает exe и на Linux, MSVC не нужен).
-* **Управление:** `WASD`/стрелки - движение, `ЛКМ` - удар, `E` - блок
-  (удерживать), `Q` - суперудар, мышь - меню и чат, `Esc` - назад, `F12` -
-  скриншот.
+| Жалоба | Причина и исправление |
+|---|---|
+| «При подходе и повороте камеры блок плывёт» | Блоки хранятся только целочисленными мировыми координатами; каждый кадр углы блока проецируются из его адреса и позиции камеры, дрейф накапливаться не может. Плюс z‑буфер, отсечение невидимых блоков/граней и перспективно‑корректная глубина. |
+| «Некоторые блоки сломаны, особенно динамит» | TNT теперь рендерится всеми шестью гранями (верх — с фитилём), ставится, ломается и поджигается как обычный блок. |
+| «Динамит должен отбрасывать игрока» | `world_detonate()` возвращает `knockback_impulse()`: горизонтальный толчок с затуханием по расстоянию + гарантированный подброс; импульс добавляется к скорости игрока. |
+| «Персонаж как плоская 2D‑фигурка» | Игрок собран из 3D‑боксов в общей сцене и виден объёмным с любого ракурса. |
 
-Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой - окно,
-программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
-клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
+## Сборка и запуск
 
-## Веб-панель админа
+Нужен только компилятор C и `make` (без зависимостей):
 
-Кроме APK в репозитории есть веб-версия - [index.html](index.html): панель
-админа для базы Firebase (вход по нику и паролю от игры, снимок базы, поиск и
-удаление мусора, ивенты 0..4, баннер, флаги магазина, шедевро-режим, баны, чистка чата и
-слотов, резервная копия). Сборка не нужна: открой файл в браузере.
-
-Потренироваться без боевой базы можно так:
-
-```
-python3 test/fake_firebase.py 8080
-```
-
-затем открой <http://localhost:8080/>, нажми «Тестовый режим» и войди как
-`Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
-проверки - в [docs/admin-panel.md](docs/admin-panel.md).
-
-## Правовая информация
-
-Возрастная категория 12+. Пользовательское соглашение, политика обработки
-персональных данных и согласие на обработку лежат в [docs/legal](docs/legal);
-там же список того, что владелец должен сделать вне кода (уведомление
-Роскомнадзора, локализация данных и т. д.).
-
-## Лицензия
-
-Copyright (C) 2026 Дима Густенёв
-
-Все права защищены. Код и материалы проекта нельзя копировать, использовать,
-изменять или распространять без письменного разрешения правообладателя.
-Полные условия - в файле [LICENSE](LICENSE).
-
-SPDX-License-Identifier: LicenseRef-Proprietary
-
-## EN
-
-Full version of Cubic Battle 4 for Android. The game is written in C, with a bit of Java.
-
-- Minimum: Android 8
-- Target: Android 15
-- Requires: Vulkan 1.0
-
-## PC version (Windows .exe)
-
-The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
-
-* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions -
-  `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
-* **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig cross-builds the exe on Linux too; MSVC is not needed).
-* **Controls:** `WASD`/arrows to move, `LMB` to punch, `E` to block (hold),
-  `Q` for the class super, mouse for menus and chat, `Esc` back, `F12`
-  screenshot.
-
-The game logic is shared with Android (`src/game`, `src/engine`); the PC layer
-is the window, a software rasterizer instead of Vulkan, WinHTTP instead of JNI
-and a keyboard-to-touch bridge. Details: [docs/pc-version.md](docs/pc-version.md).
-
-## Web admin panel
-
-Besides the APK the repository contains a web version - [index.html](index.html):
-the Firebase admin panel (sign in with the game nick and password, database
-snapshot, junk search and cleanup, events 0..4, banner, shop flags, bans, chat
-and slot cleanup, backup copy). No build step: open the file in a browser.
-
-To practise without touching the live database run
-
-```
-python3 test/fake_firebase.py 8080
+```sh
+make        # собрать ./game3d
+make test   # юнит-тесты: генерация, рейкаст, взрыв, отбрасывание, физика, рендер
+make demo   # симуляция + кадры frame_before.ppm / frame_after.ppm
+./game3d 7 myframe   # свой сид и префикс кадров
 ```
 
-then open <http://localhost:8080/>, press the test-mode button and sign in as
-`Dimasi4ek229` with the password `admin`. Details in
-[docs/admin-panel.md](docs/admin-panel.md).
+Или через CMake: `cmake -B build && cmake --build build && ctest --test-dir build`.
 
-## Legal
+`main.c` — безголовое демо: игрок идёт, камера от третьего лица рендерит кадр,
+затем поджигает ближайший TNT, печатает полученный импульс и рендерит воронку.
+Ввод в самой игре абстрактный (`Input` в `src/game3d.h`: клавиши + дельты мыши) —
+его подаёт платформенный слой на C, поэтому игра не зависит от HTML/JS.
 
-Age rating 12+. The Terms of Use, the personal data policy and the consent
-form (in Russian) are in [docs/legal](docs/legal).
+## Структура
 
-## License
+- `src/game3d.h` — общий API и описание исправлений.
+- `src/world.c` — мир, генерация, рейкаст, взрыв и отбрасывание.
+- `src/player.c` — физика игрока (AABB‑коллизии по вокселям).
+- `src/render.c` — программный 3D‑рендерер (z‑буфер, отсечение граней, модель игрока).
+- `src/game.c` — игровая логика: поставить/сломать/поджечь.
+- `src/main.c` — демо‑запуск.
+- `test/test_game3d.c` — тесты.
 
-Copyright (C) 2026 Дима Густенёв
+## Firebase (единственный HTML)
 
-All rights reserved. The code and materials of this project may not be
-copied, used, modified or distributed without the copyright holder's written
-permission. Full terms in the [LICENSE](LICENSE) file.
-
-SPDX-License-Identifier: LicenseRef-Proprietary
+Админ‑панель базы: открой [`index.html`](index.html) в браузере. Для тренировки без
+боевой базы: `python3 test/fake_firebase.py 8080`, затем <http://localhost:8080/>.
+Подробности — в [`FIREBASE.md`](FIREBASE.md).
