@@ -1,36 +1,12 @@
-# Результаты сборки
+# Результаты сборки Game3D (чистый C)
 __pycache__/
 *.py[cod]
-build/
-staging/
-*.apk
-*.so
-*.o
-aligned.apk
-unsigned.apk
-debug.keystore
-!platform/android/debug.keystore
-
-# Локальные сохранения игры
-auth.dat
-progress.dat
-achievements.dat
-bans.dat
-settings.dat
-
-## Веб-панель: зависимости jsdom-проверок (test/package.json)
-node_modules/
-package-lock.json
-!test/package-lock.json
-
-## ПК-версия: собранные бинарники и скриншоты харнесса
-*.exe
-cb4_shot.bmp
-cb4.log
-cb4_data/
-
-# Game3D (pure C)
 build/
 *.o
 game3d
 frame_*.ppm
+
+## Веб-панель Firebase: зависимости jsdom-проверок (test/package.json)
+node_modules/
+package-lock.json
+!test/package-lock.json
