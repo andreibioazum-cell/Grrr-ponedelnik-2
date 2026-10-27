@@ -77,9 +77,22 @@ jobs:
           TOOLCHAIN="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
           GLUE="$NDK_ROOT/sources/android/native_app_glue"
           C_SOURCES=(src/messenger/app.c src/platform/android/messenger_bridge.c \
-            src/engine/runtime.c src/platform/android/android_main.c "$GLUE/android_native_app_glue.c")
+            src/engine/runtime.c src/platform/android/android_main.c)
           C_OPTS=(-std=c99 -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-unused-function -pedantic -O3 -s -fPIC -shared \
             -Wl,--no-undefined -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
+          report_compile_failure() {
+            local log="$1"
+            cat "$log" >&2
+            python3 - "$log" <<'PY'
+          from pathlib import Path
+          import sys
+          details = Path(sys.argv[1]).read_text(errors="replace").strip()
+          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Native C/Vulkan compiler diagnostics::{escaped}")
+          PY
+            rm -f "$log"
+            exit 1
+          }
           mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
           for ABI in arm64-v8a armeabi-v7a x86_64; do
             case "$ABI" in
@@ -87,21 +100,19 @@ jobs:
               armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
               x86_64) TRIPLE=x86_64-linux-android26;;
             esac
+            GLUE_OBJECT="$(mktemp)"
             LOG="$(mktemp)"
-            if ! "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" \
-              -o "staging/lib/$ABI/libponedelnik_messenger.so" >"$LOG" 2>&1; then
-              cat "$LOG" >&2
-              python3 - "$LOG" <<'PY'
-          from pathlib import Path
-          import sys
-          details = Path(sys.argv[1]).read_text(errors="replace").strip()
-          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::error title=Native C/Vulkan compiler diagnostics::{escaped}")
-          PY
-              rm -f "$LOG"
-              exit 1
+            if ! "$TOOLCHAIN/$TRIPLE-clang" -std=c99 -O3 -fPIC -I"$GLUE" \
+              -c "$GLUE/android_native_app_glue.c" -o "$GLUE_OBJECT" >"$LOG" 2>&1; then
+              report_compile_failure "$LOG"
             fi
             rm -f "$LOG"
+            LOG="$(mktemp)"
+            if ! "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" "$GLUE_OBJECT" \
+              -o "staging/lib/$ABI/libponedelnik_messenger.so" >"$LOG" 2>&1; then
+              report_compile_failure "$LOG"
+            fi
+            rm -f "$LOG" "$GLUE_OBJECT"
           done
 
       - name: Package and align APK
