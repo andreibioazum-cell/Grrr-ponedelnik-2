@@ -261,7 +261,6 @@ void android_main(struct android_app *app) {
     if (!app) return;
     app->onAppCmd = handle_command;
     app->onInputEvent = handle_input;
-    app_dummy();
     ds_log("Pona native 2D engine (C + Vulkan)");
 
     for (;;) {
