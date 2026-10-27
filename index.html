@@ -365,9 +365,9 @@ const secret = ()    => ({t:"str", min:1, max:64, note:"секрет запис�
 
 /* Корневые узлы игры. AzumBuff, FlashSale и HitboxChaos читает live_flags.inc, event и
  * banner - room_control.inc/room_stream.inc, bans - moderation.inc. */
-const ROOT_OK   = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos"];
-/* Узлы, которые читаются по отдельности, если корень закрыт правилами. */
-const ROOT_PARTS = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos"];
+const ROOT_OK   = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos","direct"];
+/* Из direct разрешён только собственный пользовательский узел, не весь корень. */
+const ROOT_PARTS = ["users","rooms","bans","event","banner","AzumBuff","FlashSale","HitboxChaos","direct"];
 
 const USER_REQ  = ["nick","cups","candies","cls","azum","santa","level","levels"];
 /* Подарки - отдельный узел users/<ник>/gifts со своими счётчиками. */

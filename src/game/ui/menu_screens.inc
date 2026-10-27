@@ -53,6 +53,7 @@ static void draw_lobby(void) {
     draw_menu_button(2, tr_settings());
     draw_menu_button(3, tr_account());
     draw_menu_button(4, tr_achievements());
+    draw_menu_button(5, language == 1 ? "Мессенджер" : "Messenger");
     /* The battle pass sits in the bottom-right corner, out of the column.
      * It is admin-only: nobody else even sees the button. */
     if (is_admin() == 1) {

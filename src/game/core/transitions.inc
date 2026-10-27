@@ -31,6 +31,9 @@ static void leave_screen(double state) {
         event_mode = 0;
         event_t = 0;
     }
+    if (state == ST_MESSENGER) {
+        messenger_leave();
+    }
     if (state == ST_SOLO || state == ST_ONLINE) {
         save_progress();
     }
@@ -58,6 +61,10 @@ static double enter_screen(double state) {
     }
     if (state == ST_ROOMS) {
         rooms_open();
+        return 1;
+    }
+    if (state == ST_MESSENGER) {
+        messenger_open();
         return 1;
     }
     if (state == ST_LEADERBOARD) {

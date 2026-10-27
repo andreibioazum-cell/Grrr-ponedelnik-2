@@ -148,7 +148,7 @@ def test_menu_and_battle(assets: Path) -> None:
         [
             "--frames", "700",
             "--touch", "220:360:686:0", "--touch", "223:360:686:1",   # «Понимаю и принимаю»
-            "--touch", "400:270:336:0", "--touch", "403:270:336:1",   # «Играть»
+            "--touch", "400:270:298:0", "--touch", "403:270:298:1",   # «Играть»
             "--touch", "460:270:404:0", "--touch", "463:270:404:1",   # «Соло»
             "--report", "236",
             "--report", "430",
@@ -200,7 +200,7 @@ def test_controls(assets: Path) -> None:
     print("\n== 3b. PC controls (mouse / block / super) ==")
     start = [
         "--touch", "220:360:686:0", "--touch", "223:360:686:1",   # consent
-        "--touch", "400:270:336:0", "--touch", "403:270:336:1",   # Play
+        "--touch", "400:270:298:0", "--touch", "403:270:298:1",   # Play
         "--touch", "460:270:404:0", "--touch", "463:270:404:1",   # Solo
     ]
 
@@ -241,7 +241,7 @@ def test_walk_feel(assets: Path) -> None:
     print("\n== 3c. Cube ramp up and brake ==")
     start = [
         "--touch", "220:360:686:0", "--touch", "223:360:686:1",
-        "--touch", "400:270:336:0", "--touch", "403:270:336:1",
+        "--touch", "400:270:298:0", "--touch", "403:270:298:1",
         "--touch", "460:270:404:0", "--touch", "463:270:404:1",
     ]
     events = ["--frames", "760", *start, "--stick", "600:1:0"]
@@ -316,7 +316,7 @@ def test_chaos(assets: Path) -> None:
                 [
                     "--frames", "700",
                     "--touch", "220:360:686:0", "--touch", "223:360:686:1",
-                    "--touch", "400:270:336:0", "--touch", "403:270:336:1",
+                    "--touch", "400:270:298:0", "--touch", "403:270:298:1",
                     "--touch", "460:270:404:0", "--touch", "463:270:404:1",
                     "--report", "590",
                     "--stick", "600:0:-1",
@@ -382,7 +382,7 @@ def test_chaos_online(assets: Path) -> None:
     nick = f"ccp{int(time.time()) % 100000}"
     taps = [
         "--touch", "220:360:686:0", "--touch", "223:360:686:1",
-        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+        "--touch", "400:270:516:0", "--touch", "403:270:516:1",
     ]
     with fake_server():
         set_chaos_flag(1)
@@ -424,7 +424,7 @@ def test_brick_online(assets: Path) -> None:
     nick = f"brk{int(time.time()) % 100000}"
     taps = [
         "--touch", "220:360:686:0", "--touch", "223:360:686:1",
-        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+        "--touch", "400:270:516:0", "--touch", "403:270:516:1",
     ]
     with fake_server():
         thrower = harness_async(
@@ -519,7 +519,7 @@ def login_taps() -> list[str]:
     """Consent, the account screen and the admin sign-in, in one line."""
     return [
         "--touch", "220:360:686:0", "--touch", "223:360:686:1",
-        "--touch", "400:270:558:0", "--touch", "403:270:558:1",
+        "--touch", "400:270:516:0", "--touch", "403:270:516:1",
         "--login", "450:Dimasi4ek229:admin",
     ]
 
@@ -746,7 +746,7 @@ def test_login(assets: Path) -> None:
             [
                 "--frames", "900",
                 "--touch", "220:360:686:0", "--touch", "223:360:686:1",  # warning
-                "--touch", "400:270:558:0", "--touch", "403:270:558:1",  # "Account"
+                "--touch", "400:270:516:0", "--touch", "403:270:516:1",  # "Account"
                 "--logininfo", "430",
                 # The password goes in without the suffix: the game adds it,
                 # as on a phone. The fake knows the admin password.
@@ -778,6 +778,43 @@ def test_login(assets: Path) -> None:
             fake.wait(timeout=5)
 
 
+def test_messenger(assets: Path) -> None:
+    """Open the C messenger, look up a user, and write both Firebase inbox copies."""
+    print("\n== 5. Messenger: contact lookup and send ==")
+    with fake_server():
+        result = harness(
+            assets,
+            SCRATCH / "messenger",
+            [
+                "--frames", "1400",
+                *login_taps(),
+                "--login", "450:Dimasi4ek229:admin",
+                # Messenger is the sixth lobby row (centered at y=662 in this harness size).
+                "--touch", "800:270:662:0", "--touch", "803:270:662:1",
+                "--report", "850",
+                # Focus recipient, type Player2, and submit the lookup.
+                "--touch", "860:200:200:0", "--touch", "861:200:200:1",
+                "--type", "864:Player2", "--enter", "866",
+                # Focus the message field, type, and send with Enter.
+                "--touch", "940:200:900:0", "--touch", "941:200:900:1",
+                "--type", "944:hello-from-test", "--enter", "946",
+                "--report", "1150",
+            ],
+        )
+        check("messenger flow runs without a game error", result.returncode == 0, result.stderr[-1500:])
+        reports = parse_reports(result.stdout)
+        opened = reports.get(850, {})
+        check("lobby route opens ST_MESSENGER after sign-in", opened.get("state") == "17", str(opened))
+        done = reports.get(1150, {})
+        check("messenger remains active after the send", done.get("state") == "17" and done.get("error") == "0", str(done))
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{FAKE_PORT}/__stats.json", timeout=3) as response:
+                stats = json.load(response)
+            check("C client wrote sender and recipient copies", stats.get("direct_message_writes") == 2, str(stats))
+        except (OSError, ValueError) as exc:
+            check("fake Firebase reports the direct-message writes", False, str(exc))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Проверка ПК-версии")
     parser.add_argument("--no-build", action="store_true", help="не пересобирать харнесс")
@@ -802,6 +839,7 @@ def main() -> int:
         test_chaos_online,
         test_brick_online,
         test_login,
+        test_messenger,
     ]
     for test in tests:
         if args.only and args.only not in test.__name__:

@@ -29,7 +29,9 @@ both modes:
   * event, banner, bans, AzumBuff, FlashSale, HitboxChaos, rooms/*/meta are
     admin writes;
   * users/<nick> - the player or the admin;
-  * slots and chat - any signed-in player;
+  * direct/<nick> - only the matching account may read its inbox, and only
+    the two conversation participants may append a sealed message;
+  * slots and room chat - any signed-in player;
   * AzumBuff, FlashSale and HitboxChaos are readable by all (".read": true in
     the rules);
   * no token gives 401, a token without rights gives 403 (the panel reacts to
@@ -64,7 +66,7 @@ TOKENS = {}     # id_token -> email
 COUNTER = [0]
 
 STATS = {"sign_up": 0, "sign_in": 0, "token_refresh": 0, "password_update": 0,
-         "rtdb_auth": 0, "rtdb_no_auth": 0, "rtdb_denied": 0, "static": 0}
+         "rtdb_auth": 0, "rtdb_no_auth": 0, "rtdb_denied": 0, "direct_message_writes": 0, "static": 0}
 
 
 # ---------------------------------------------------------------------------
@@ -241,10 +243,42 @@ def deep_del(node, parts):
 # ---------------------------------------------------------------------------
 # Rights: a trimmed down firebase.rules.json
 # ---------------------------------------------------------------------------
+def _valid_dm_nick(value):
+    return isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_]{1,16}", value) is not None
+
+
+def _valid_dm_message(owner, peer, key, value, email):
+    if not isinstance(value, dict) or set(value) != {"from", "to", "text", "ts", "w"}:
+        return False
+    sender, recipient = value["from"], value["to"]
+    text, stamp = value["text"], value["ts"]
+    if not _valid_dm_nick(owner) or not _valid_dm_nick(peer) or owner.lower() == peer.lower():
+        return False
+    users = DB.get("users", {})
+    if not isinstance(users, dict) or owner not in users or peer not in users:
+        return False
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", key or ""):
+        return False
+    if not _valid_dm_nick(sender) or not _valid_dm_nick(recipient):
+        return False
+    if not isinstance(text, str) or not 1 <= len(text.encode("utf-8")) <= 320:
+        return False
+    if isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or not 0 <= stamp <= 9_000_000_000_000:
+        return False
+    if value["w"] != SECRET or sender.lower() == recipient.lower():
+        return False
+    account = email.split("@", 1)[0].lower()
+    return ((account == owner.lower() and sender.lower() == owner.lower() and recipient.lower() == peer.lower()) or
+            (account == peer.lower() and sender.lower() == peer.lower() and recipient.lower() == owner.lower()))
+
+
 def can_read(parts, email):
     if not parts:                                   # корень
         return email in ADMINS
     head = parts[0]
+    if head == "direct":
+        return (len(parts) >= 2 and email and email.endswith("@cb4.game") and
+                _valid_dm_nick(parts[1]) and parts[1].lower() == email.split("@", 1)[0].lower())
     if head in PUBLIC_ROOT:
         return True
     if head in KNOWN_ROOT:
@@ -252,12 +286,20 @@ def can_read(parts, email):
     return email in ADMINS                          # «чужие» узлы видит админ
 
 
-def can_write(parts, email):
+def can_write(parts, email, method="PUT", body=b""):
     if not email:
         return False
     if not parts:
         return email in ADMINS
     head = parts[0]
+    if head == "direct":
+        if len(parts) != 4 or method != "PUT" or deep_get(DB, parts) is not None:
+            return False
+        try:
+            value = json.loads(body.decode("utf-8")) if body else None
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return False
+        return _valid_dm_message(parts[1], parts[2], parts[3], value, email)
     if head in ADMIN_ONLY_WRITE:
         if head == "bans" and len(parts) > 1:
                         # you cannot ban your own admins - same as in the rules
@@ -381,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
                 STATS["rtdb_denied"] += 1
             self._send(403, b'{"error":"Permission denied"}')
             return
-        if method != "GET" and not can_write(parts, email):
+        if method != "GET" and not can_write(parts, email, method, body):
             with LOCK:
                 STATS["rtdb_denied"] += 1
             self._send(403, b'{"error":"Permission denied"}')
@@ -419,6 +461,9 @@ class Handler(BaseHTTPRequestHandler):
                 DB.update(value)
             else:
                 deep_set(DB, parts, value)
+                if parts and parts[0] == "direct":
+                    with LOCK:
+                        STATS["direct_message_writes"] += 1
             raw = b"null" if value is None else json.dumps(value, separators=(",", ":")).encode()
             self._send(200, raw, etag=node_etag(value))
         elif method == "PATCH":

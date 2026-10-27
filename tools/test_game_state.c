@@ -1789,6 +1789,20 @@ double net_room_prep_status(void) { return stub_prep_status; }
 static char stub_current_room[25];
 const char *net_current_room(void) { return stub_current_room; }
 void net_room_prep_reset(void) { stub_prep_status = 0; }
+void net_dm_contacts_fetch(const char *url) { (void)url; }
+double net_dm_contacts_status(void) { return 0; }
+double net_dm_contacts_count(void) { return 0; }
+const char *net_dm_contact(double idx) { (void)idx; return ""; }
+void net_dm_open(const char *url, const char *peer) { (void)url; (void)peer; }
+void net_dm_refresh(const char *url) { (void)url; }
+double net_dm_status(void) { return 0; }
+double net_dm_count(void) { return 0; }
+const char *net_dm_peer(void) { return ""; }
+const char *net_dm_from(double idx) { (void)idx; return ""; }
+const char *net_dm_text(double idx) { (void)idx; return ""; }
+double net_dm_timestamp(double idx) { (void)idx; return 0; }
+void net_dm_send(const char *url, const char *text) { (void)url; (void)text; }
+double net_dm_send_status(void) { return 0; }
 
 /* The mov eax, 0x229 achievement and the password rooms screen. */
 
@@ -2011,7 +2025,7 @@ static void test_eax229_and_rooms(void) {
     game_reset();
     screen_w = 1280;
     screen_h = 720;
-    assert(achievement_count() == 5);
+    assert(achievement_count() == 6);
     assert(strcmp(tr_achievement_eax229(), "mov eax, 0x229") == 0);
     assert(strcmp(tr_achievement_eax229_desc(), "???") == 0);
 
@@ -2784,7 +2798,7 @@ int main(void) {
         finish_game(1);
         assert(has_achievement(ACH_LAST_HP) == 0);
 
-        assert(achievement_count() == 5);
+        assert(achievement_count() == 6);
         assert(achievement_bit(3) == ACH_LAST_HP);
         finished = 0;
         cups_awarded = 0;

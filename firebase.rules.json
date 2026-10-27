@@ -45,6 +45,24 @@
       }
     },
 
+    "direct": {
+      "$owner": {
+        ".read": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password' && $owner.matches(/^[A-Za-z0-9_]{1,16}$/) && auth.token.email.toLowerCase().replace('@cb4.game', '') == $owner.toLowerCase()",
+        "$peer": {
+          "$msg": {
+            ".write": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password' && $owner.matches(/^[A-Za-z0-9_]{1,16}$/) && $peer.matches(/^[A-Za-z0-9_]{1,16}$/) && $owner.toLowerCase() != $peer.toLowerCase() && root.child('users').child($owner).child('nick').exists() && root.child('users').child($peer).child('nick').exists() && !data.exists() && newData.exists() && newData.child('w').val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc' && ((auth.token.email.toLowerCase().replace('@cb4.game', '') == $owner.toLowerCase() && newData.child('from').val().toLowerCase() == $owner.toLowerCase() && newData.child('to').val().toLowerCase() == $peer.toLowerCase()) || (auth.token.email.toLowerCase().replace('@cb4.game', '') == $peer.toLowerCase() && newData.child('from').val().toLowerCase() == $peer.toLowerCase() && newData.child('to').val().toLowerCase() == $owner.toLowerCase()))",
+            ".validate": "$msg.matches(/^[A-Za-z0-9_-]{1,80}$/) && newData.hasChildren(['from','to','text','ts','w']) && newData.child('from').val().matches(/^[A-Za-z0-9_]{1,16}$/) && newData.child('to').val().matches(/^[A-Za-z0-9_]{1,16}$/) && newData.child('from').val().toLowerCase() != newData.child('to').val().toLowerCase()",
+            "from": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{1,16}$/)" },
+            "to": { ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_]{1,16}$/)" },
+            "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 320" },
+            "ts": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9000000000000" },
+            "w": { ".validate": "newData.isString() && newData.val() == 'BMAhzk26iwVJAK3KpPxoFCzkt08FL0Hc'" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    },
+
     "users": {
       ".read": "auth != null && auth.token.email.matches(/@cb4[.]game$/) && auth.token.firebase.sign_in_provider == 'password'",
       "$nick": {

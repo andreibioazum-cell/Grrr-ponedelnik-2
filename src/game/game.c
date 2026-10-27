@@ -26,6 +26,7 @@
 #include "ui/account.inc"
 #include "ui/legal.inc"
 #include "ui/chat.inc"
+#include "ui/messenger.inc"
 #include "ui/npc_cube.inc"
 #include "ui/class_stars.inc"
 #include "ui/menu_screens.inc"

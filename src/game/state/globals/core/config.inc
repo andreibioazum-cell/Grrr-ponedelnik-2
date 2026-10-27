@@ -11,6 +11,7 @@ double ST_ACHIEVEMENTS;
 double ST_SKINS;
 double ST_PROMO;
 double ST_ROOMS;
+double ST_MESSENGER;
 double game_state;
 double language;
 double t_dir;

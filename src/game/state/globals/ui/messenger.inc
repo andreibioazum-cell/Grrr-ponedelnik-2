@@ -1,0 +1,12 @@
+double messenger_mode;
+double messenger_field;
+double messenger_poll_t;
+double messenger_notice_t;
+double messenger_send_pending;
+const char *messenger_peer_input;
+const char *messenger_text_input;
+const char *messenger_notice;
+char messenger_peer_buf[24];
+char messenger_text_buf[321];
+char messenger_notice_buf[128];
+char messenger_last_send_buf[321];

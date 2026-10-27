@@ -159,6 +159,8 @@ static void logic_update(void) {
         update_promo();
     } else if (game_state == ST_ROOMS) {
         update_rooms();
+    } else if (game_state == ST_MESSENGER) {
+        messenger_update();
     }
     update_newyear();
     update_weather();
@@ -191,6 +193,8 @@ static void draw_screen(void) {
         draw_promo();
     } else if (game_state == ST_ROOMS) {
         draw_rooms();
+    } else if (game_state == ST_MESSENGER) {
+        draw_messenger();
     } else {
         draw_online();
     }
@@ -279,6 +283,9 @@ static double logic_back(void) {
     }
     if (studio_open == 1) {
         return 1;
+    }
+    if (game_state == ST_MESSENGER) {
+        return messenger_handle_back();
     }
     if (game_state == ST_ONLINE && chat_open == 1) {
         chat_set_open(0);

@@ -11,6 +11,7 @@
 #include "include/prototypes/ui/promo.inc"
 #include "include/prototypes/ui/layout.inc"
 #include "include/prototypes/ui/chat.inc"
+#include "include/prototypes/ui/messenger.inc"
 #include "include/prototypes/ui/admin.inc"
 #include "include/prototypes/ui/gift_icons.inc"
 #include "include/prototypes/ui/menu_screens.inc"

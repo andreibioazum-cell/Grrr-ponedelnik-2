@@ -54,8 +54,27 @@ def main() -> int:
     if "<= 3" not in skin_rule:
         print(f"azum_skin rule rejects the packed skin flags: {skin_rule}", file=sys.stderr)
         return 1
-    print("db rules: event 0..4, gift keys poop/cake/bear/rocket/emerald, "
-          "emerald hue 0..7 for admins, codecracker levels and packed skins OK")
+    direct = rules.get("direct", {})
+    owner = direct.get("$owner", {})
+    read_rule = owner.get(".read", "")
+    message = owner.get("$peer", {}).get("$msg", {})
+    write_rule = message.get(".write", "")
+    validate_rule = message.get(".validate", "")
+    required_fields = ("from", "to", "text", "ts", "w")
+    if not all(token in read_rule for token in ("auth != null", "@cb4[.]game", "$owner.toLowerCase()")):
+        print(f"direct-message reads are not scoped to the authenticated owner: {read_rule}", file=sys.stderr)
+        return 1
+    if not all(token in write_rule for token in ("!data.exists()", "$owner", "$peer", "from", "to", "w", "root.child('users')")):
+        print(f"direct-message writes must be participant-only and immutable: {write_rule}", file=sys.stderr)
+        return 1
+    if not all(field in validate_rule for field in required_fields) or "<= 320" not in message.get("text", {}).get(".validate", ""):
+        print(f"direct-message schema or 320-character limit is missing: {message}", file=sys.stderr)
+        return 1
+    if message.get("$other", {}).get(".validate") is not False:
+        print("unknown direct-message fields must be rejected", file=sys.stderr)
+        return 1
+    print("db rules: event 0..4, gifts, participant-only direct messages, "
+          "320-byte message limit, codecracker levels and packed skins OK")
     return 0
 
 

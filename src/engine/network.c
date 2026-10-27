@@ -32,3 +32,4 @@
 #include "engine/network/room_chat.inc"
 #include "engine/network/room_threads.inc"
 #include "engine/network/player_api.inc"
+#include "engine/network/direct_messages.inc"

@@ -103,7 +103,7 @@ static double menu_button_hit(double x, double y) {
         return battle_back_hit(x, y);
     }
     if (game_state == ST_LOBBY) {
-        while (i <= 4) {
+        while (i <= 5) {
             if (hit_menu_row(x, y, i) == 1) return 1;
             i = i + 1;
         }
@@ -169,6 +169,9 @@ static double menu_button_hit(double x, double y) {
     if (game_state == ST_ROOMS) {
         return rooms_any_hit(x, y);
     }
+    if (game_state == ST_MESSENGER) {
+        return messenger_any_hit(x, y);
+    }
     if (game_state == ST_ACHIEVEMENTS || game_state == ST_LEADERBOARD) {
         return back_hit(x, y);
     }
@@ -220,5 +223,9 @@ static void touch_menu(double x, double y, double action, double id) {
     }
     if (game_state == ST_ROOMS) {
         touch_rooms(x, y, action);
+        return;
+    }
+    if (game_state == ST_MESSENGER) {
+        touch_messenger(x, y, action);
     }
 }

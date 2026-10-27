@@ -189,6 +189,19 @@ static void open_leaderboard(void) {
     start_transition(ST_LEADERBOARD);
 }
 
+static void open_messenger(void) {
+    if (net_login_status() != 2) {
+        login_after = ST_MESSENGER;
+        start_transition(ST_LOGIN);
+        return;
+    }
+    if (consent_ok() == 0) {
+        docs_transition(LEGAL_PAGE_CONSENT, 1);
+        return;
+    }
+    start_transition(ST_MESSENGER);
+}
+
 static void touch_lobby(double x, double y, double action) {
     if (action != 0) {
         return;
@@ -239,6 +252,11 @@ static void touch_lobby(double x, double y, double action) {
     }
     if (hit_menu_row(x, y, 4) == 1) {
         start_transition(ST_ACHIEVEMENTS);
+        return;
+    }
+    if (hit_menu_row(x, y, 5) == 1) {
+        open_messenger();
+        return;
     }
     if (is_admin() == 1 && hit_bpass_corner(x, y) == 1) {
         start_transition(ST_BPASS);

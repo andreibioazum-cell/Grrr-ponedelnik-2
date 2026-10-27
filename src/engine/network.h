@@ -316,4 +316,23 @@ const char *net_chat_uid(double idx);
 
 const char *net_chat_key(double idx);
 
+/* Native C messenger: direct conversations are scoped to the authenticated
+ * account by firebase.rules.json. Statuses: 0 idle, 1 loading/sending,
+ * 2 ready/sent, 3 invalid message or peer, 4 network/rules error,
+ * 5 recipient account not found. */
+void net_dm_contacts_fetch(const char *url);
+double net_dm_contacts_status(void);
+double net_dm_contacts_count(void);
+const char *net_dm_contact(double idx);
+void net_dm_open(const char *url, const char *peer);
+void net_dm_refresh(const char *url);
+double net_dm_status(void);
+double net_dm_count(void);
+const char *net_dm_peer(void);
+const char *net_dm_from(double idx);
+const char *net_dm_text(double idx);
+double net_dm_timestamp(double idx);
+void net_dm_send(const char *url, const char *text);
+double net_dm_send_status(void);
+
 #endif

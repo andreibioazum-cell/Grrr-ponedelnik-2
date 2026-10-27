@@ -1,0 +1,12 @@
+messenger_mode = 0;
+messenger_field = 1;
+messenger_poll_t = 0;
+messenger_notice_t = 0;
+messenger_send_pending = 0;
+messenger_peer_input = "";
+messenger_text_input = "";
+messenger_notice = "";
+messenger_peer_buf[0] = 0;
+messenger_text_buf[0] = 0;
+messenger_notice_buf[0] = 0;
+messenger_last_send_buf[0] = 0;
