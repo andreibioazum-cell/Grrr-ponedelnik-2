@@ -151,19 +151,21 @@ final class P2pMessenger {
     }
 
     private void startPoller() {
-        pollThread = new Thread(() -> {
-            while (running) {
-                try {
-                    JSONObject response = signal.poll();
-                    JSONObject item = response.optJSONObject("signal");
-                    if (item != null) handleSignal(item);
-                } catch (Exception e) {
-                    if (!running) return;
-                    if (String.valueOf(e.getMessage()).contains("HTTP 401")) {
-                        try { register(); } catch (Exception retry) { emit(PND_EVENT_ERROR, "", safeMessage(retry)); }
-                    } else {
-                        emit(PND_EVENT_STATUS, "", "Сигналинг недоступен; повторяем подключение…");
-                        sleep(900);
+        pollThread = new Thread(new Runnable() {
+            @Override public void run() {
+                while (running) {
+                    try {
+                        JSONObject response = signal.poll();
+                        JSONObject item = response.optJSONObject("signal");
+                        if (item != null) handleSignal(item);
+                    } catch (Exception e) {
+                        if (!running) return;
+                        if (String.valueOf(e.getMessage()).contains("HTTP 401")) {
+                            try { register(); } catch (Exception retry) { emit(PND_EVENT_ERROR, "", safeMessage(retry)); }
+                        } else {
+                            emit(PND_EVENT_STATUS, "", "Сигналинг недоступен; повторяем подключение…");
+                            sleep(900);
+                        }
                     }
                 }
             }
@@ -173,18 +175,20 @@ final class P2pMessenger {
     }
 
     private void startReceiver() {
-        receiveThread = new Thread(() -> {
-            byte[] buffer = new byte[MAX_PACKET];
-            while (running && socket != null && !socket.isClosed()) {
-                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                try {
-                    socket.receive(packet);
-                    byte[] data = Arrays.copyOfRange(packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
-                    if (starts(data, "PH1\n")) receiveHello(data, packet);
-                    else if (starts(data, "PMD1")) receiveMessage(data, packet);
-                } catch (java.net.SocketTimeoutException ignored) {
-                } catch (Exception e) {
-                    if (running && socket != null && !socket.isClosed()) emit(PND_EVENT_ERROR, "", safeMessage(e));
+        receiveThread = new Thread(new Runnable() {
+            @Override public void run() {
+                byte[] buffer = new byte[MAX_PACKET];
+                while (running && socket != null && !socket.isClosed()) {
+                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                    try {
+                        socket.receive(packet);
+                        byte[] data = Arrays.copyOfRange(packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
+                        if (starts(data, "PH1\n")) receiveHello(data, packet);
+                        else if (starts(data, "PMD1")) receiveMessage(data, packet);
+                    } catch (java.net.SocketTimeoutException ignored) {
+                    } catch (Exception e) {
+                        if (running && socket != null && !socket.isClosed()) emit(PND_EVENT_ERROR, "", safeMessage(e));
+                    }
                 }
             }
         }, "pnd-udp-receive");
@@ -233,35 +237,39 @@ final class P2pMessenger {
 
     void connect(String peerId) {
         if (!running || commands == null) { emit(PND_EVENT_ERROR, peerId, "Сначала подключите сигналинг"); return; }
-        commands.execute(() -> {
-            try {
-                String id = peerId == null ? "" : peerId.trim().toUpperCase();
-                if (!id.matches("[0-9A-F]{32}") || id.equals(ownId)) throw new IllegalArgumentException("неверный Peer ID");
-                Session session = new Session(id, true);
-                sessions.put(id, session);
-                session.localHello = createHello(id, session);
-                JSONObject payload = new JSONObject();
-                payload.put("hello", session.localHello);
-                signal.send(id, "offer", payload);
-                emit(PND_EVENT_STATUS, id, "Запрос отправлен; ждём принятия и прямого UDP-соединения…");
-            } catch (Exception e) { emit(PND_EVENT_ERROR, peerId, safeMessage(e)); }
+        commands.execute(new Runnable() {
+            @Override public void run() {
+                try {
+                    String id = peerId == null ? "" : peerId.trim().toUpperCase();
+                    if (!id.matches("[0-9A-F]{32}") || id.equals(ownId)) throw new IllegalArgumentException("неверный Peer ID");
+                    Session session = new Session(id, true);
+                    sessions.put(id, session);
+                    session.localHello = createHello(id, session);
+                    JSONObject payload = new JSONObject();
+                    payload.put("hello", session.localHello);
+                    signal.send(id, "offer", payload);
+                    emit(PND_EVENT_STATUS, id, "Запрос отправлен; ждём принятия и прямого UDP-соединения…");
+                } catch (Exception e) { emit(PND_EVENT_ERROR, peerId, safeMessage(e)); }
+            }
         });
     }
 
     void accept(String peerId) {
         if (commands == null) return;
-        commands.execute(() -> {
-            try {
-                Session session = sessions.get(peerId);
-                if (session == null || session.remoteHello == null || session.outgoing)
-                    throw new IllegalStateException("запрос уже истёк");
-                session.localHello = createHello(peerId, session);
-                JSONObject payload = new JSONObject();
-                payload.put("hello", session.localHello);
-                signal.send(peerId, "answer", payload);
-                prepareSession(session);
-                emit(PND_EVENT_PEER_INFO, peerId, peerInfo(session.remoteHello));
-            } catch (Exception e) { emit(PND_EVENT_ERROR, peerId, safeMessage(e)); }
+        commands.execute(new Runnable() {
+            @Override public void run() {
+                try {
+                    Session session = sessions.get(peerId);
+                    if (session == null || session.remoteHello == null || session.outgoing)
+                        throw new IllegalStateException("запрос уже истёк");
+                    session.localHello = createHello(peerId, session);
+                    JSONObject payload = new JSONObject();
+                    payload.put("hello", session.localHello);
+                    signal.send(peerId, "answer", payload);
+                    prepareSession(session);
+                    emit(PND_EVENT_PEER_INFO, peerId, peerInfo(session.remoteHello));
+                } catch (Exception e) { emit(PND_EVENT_ERROR, peerId, safeMessage(e)); }
+            }
         });
     }
 
@@ -321,15 +329,17 @@ final class P2pMessenger {
     }
 
     private void punch(Session session) {
-        Thread thread = new Thread(() -> {
-            long end = System.currentTimeMillis() + PUNCH_MS;
-            byte[] hello = ("PH1\n" + session.localHello.toString()).getBytes(StandardCharsets.UTF_8);
-            while (running && !session.connected && System.currentTimeMillis() < end) {
-                for (InetSocketAddress candidate : session.remoteCandidates) sendPacket(hello, candidate);
-                sleep(250);
+        Thread thread = new Thread(new Runnable() {
+            @Override public void run() {
+                long end = System.currentTimeMillis() + PUNCH_MS;
+                byte[] hello = ("PH1\n" + session.localHello.toString()).getBytes(StandardCharsets.UTF_8);
+                while (running && !session.connected && System.currentTimeMillis() < end) {
+                    for (InetSocketAddress candidate : session.remoteCandidates) sendPacket(hello, candidate);
+                    sleep(250);
+                }
+                if (running && !session.connected) emit(PND_EVENT_STATUS, session.peerId,
+                        "Прямой маршрут не найден. Эта NAT-сеть может не поддерживать P2P без relay.");
             }
-            if (running && !session.connected) emit(PND_EVENT_STATUS, session.peerId,
-                    "Прямой маршрут не найден. Эта NAT-сеть может не поддерживать P2P без relay.");
         }, "pnd-punch-" + session.peerId);
         thread.setDaemon(true);
         thread.start();
