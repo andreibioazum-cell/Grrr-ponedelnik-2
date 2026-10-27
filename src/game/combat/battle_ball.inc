@@ -1,10 +1,5 @@
-/* Ebuc (буК) has two ults, picked by the small button above the pad: dispenser
- * and magic blue projectile (renamed from brick). The projectile is aimed by
- * hand - the tap starts a 3-2-1 countdown over the cube, a dragged finger
- * points the throw (only when touching near the cube), and the projectile
- * leaves that way when the count hits zero and bounces off the walls (ten
- * bounces, then it just bursts). Lifting the finger early keeps the aim. Ebuc
- * only, and nothing in the game charges by holding. */
+/* Ebuc's projectile ult is aimed with a 3-2-1 countdown; it bounces at most
+ * ten times, then bursts. */
 
 #define BALL_COUNT_FROM 3.0      /* countdown digits: 3, 2, 1 */
 #define BALL_COUNT_STEP 0.7      /* seconds per digit */
@@ -26,10 +21,7 @@ typedef struct {
 
 static UltBall ball;
 
-/* The ult mode of a class that has two of them. Ebuc (the cube called "буК",
- * genitive "буКа") can throw either his dispenser or this magic blue projectile,
- * and the small button above the pad switches between them: 0 - dispenser (blue),
- * 1 - projectile (yellow indicator). */
+/* Ebuc switches between dispenser and projectile modes with the small pad button. */
 static double ball_mode;
 
 static double ult_mode_r(void) { return 26; }
@@ -47,9 +39,7 @@ static void ult_mode_toggle(void) {
     play_button_click();
 }
 
-/* Shown only where both modes exist, so the pad keeps its meaning everywhere
- * else. No text – just color: yellow = magic blue projectile (former brick),
- * blue = dispenser. Only black outline, no white. */
+/* Color indicates the selected mode; shown only for Ebuc in a battle. */
 static void draw_ult_mode(void) {
     double x = ult_mode_x();
     double y = ult_mode_y();
