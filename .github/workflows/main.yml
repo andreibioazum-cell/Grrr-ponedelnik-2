@@ -87,8 +87,21 @@ jobs:
               armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
               x86_64) TRIPLE=x86_64-linux-android26;;
             esac
-            "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" \
-              -o "staging/lib/$ABI/libponedelnik_messenger.so"
+            LOG="$(mktemp)"
+            if ! "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" \
+              -o "staging/lib/$ABI/libponedelnik_messenger.so" >"$LOG" 2>&1; then
+              cat "$LOG" >&2
+              python3 - "$LOG" <<'PY'
+          from pathlib import Path
+          import sys
+          details = Path(sys.argv[1]).read_text(errors="replace").strip()
+          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Native C/Vulkan compiler diagnostics::{escaped}")
+          PY
+              rm -f "$LOG"
+              exit 1
+            fi
+            rm -f "$LOG"
           done
 
       - name: Package and align APK
