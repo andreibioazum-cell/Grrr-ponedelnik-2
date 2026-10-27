@@ -78,7 +78,7 @@ jobs:
           GLUE="$NDK_ROOT/sources/android/native_app_glue"
           C_SOURCES=(src/messenger/app.c src/platform/android/messenger_bridge.c \
             src/engine/runtime.c src/platform/android/android_main.c "$GLUE/android_native_app_glue.c")
-          C_OPTS=(-std=c99 -Wall -Wextra -Werror -pedantic -O3 -s -fPIC -shared \
+          C_OPTS=(-std=c99 -Wall -Wextra -Werror -Wno-missing-field-initializers -pedantic -O3 -s -fPIC -shared \
             -Wl,--no-undefined -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
           mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
           for ABI in arm64-v8a armeabi-v7a x86_64; do
