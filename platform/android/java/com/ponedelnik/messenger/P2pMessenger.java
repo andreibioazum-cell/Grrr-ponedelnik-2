@@ -73,7 +73,9 @@ final class P2pMessenger {
         serverUrl = url.trim().replaceAll("/+$", "");
         nickname = cleanNickname(nick);
         commands = Executors.newSingleThreadExecutor();
-        commands.execute(() -> initialize());
+        commands.execute(new Runnable() {
+            @Override public void run() { P2pMessenger.this.initialize(); }
+        });
     }
 
     private void initialize() {
