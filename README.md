@@ -1,66 +1,74 @@
-# Ponedelnik Messenger
+# Ponedelnik 2D Engine
 
-Нативный Android-мессенджер с интерфейсом на **C + Vulkan**. Текст передаётся напрямую между устройствами по UDP. Небольшой Python-сервис нужен только для временного обмена приглашением и ответом; STUN используется для обнаружения адресов и попытки UDP hole punching. Firebase, TURN и серверный relay не используются.
+Ponedelnik 2D is a native C/Vulkan base for small 2D games and interactive projects. Its example gameplay is written in **Pona**, a statically typed, Lua-style language. Pona is compiled ahead of time to ordinary C as part of the native build; the shipped runtime has **no interpreter and no bytecode VM**.
 
-## Состояние прототипа
+## Current scope
 
-- Android 8+ (API 26), target API 35, Vulkan 1.0;
-- C/Vulkan UI и launcher-иконка PNG;
-- Java/JCA для Android networking и криптографии;
-- 128-битный случайный Peer ID (32 hex-символа);
-- signaling-сервис на Python stdlib, временные offer/answer хранятся только в RAM до 120 секунд;
-- сообщение отправляется напрямую и не отправляется signaling-серверу;
-- нет офлайн-доставки, push-уведомлений, синхронизации/резервной копии чатов или сохранённой истории; оба устройства должны быть онлайн.
+- Android 8+ (API 26), Vulkan 1.0, native `NativeActivity` host;
+- Vulkan renderer and drawing primitives reused from the C engine;
+- Pona AOT compiler with `global`, typed functions, `local`, `if`/`else`, `while`, numeric `for`, `break`, returns, arithmetic, comparisons, boolean operators, strings and colors;
+- 2D primitives, text, PNG sprites, screen/time/random helpers, keyboard/touch input, numeric/string arrays and basic math helpers;
+- incremental, non-moving mark-and-sweep GC with a bounded per-frame work budget, explicit roots and write barriers;
+- sample project in `examples/pond2d/main.pona`.
 
-Это ранний прототип прямого обмена короткими текстовыми сообщениями, а не готовый публичный сервис. UDP не гарантирует доставку/порядок пакетов; подтверждений доставки и автоматической повторной отправки пока нет.
+This is an early engine foundation, not a feature-complete editor or general-purpose cross-platform release. The initial host is Android/Vulkan. Scripts are type-checked and compiled during the build, then linked into the native app.
 
-## Безопасность — важно
+## Pona quick start
 
-В текущем Android-коде применяются подпись ECDSA P-256 с ключом в Android Keystore, эфемерный ECDH P-256, HKDF-SHA-256 и AES-GCM для сообщений. Перед отправкой первого сообщения пользователь должен сверить полный fingerprint ключа по независимому доверенному каналу и закрепить его в приложении.
+```pona
+@export global speed: f32 = 220.0
+global x: f32 = 100.0
 
-Это **не Signal Protocol и не прошедшая независимый аудит система**. Не называйте её «суперзащищённой» и не используйте для критически важных или секретных переписок до независимого криптографического аудита. Signaling видит Peer ID, выбранное имя, IP-кандидаты и параметры установления соединения, но не получает текст сообщений. STUN-сервис видит внешний IP. Без relay прямой UDP-маршрут может не установиться в некоторых NAT/операторских сетях; в этом случае доставка не состоится. Сервер сигналинга и локальные регистрации существуют только в памяти процесса и исчезают при его перезапуске.
+function update(dt: f32)
+    if key_down("right") or key_down("d") then
+        x = x + speed * dt
+    end
+end
 
-Локальный HTTP разрешён для loopback/частной сети разработки. Публичный signaling endpoint в репозитории не развёрнут: для внешнего использования нужен HTTPS с доверенным сертификатом. Публичный сервер, TURN, relay и хранение сообщений не включены.
-
-## Запуск локального signaling-сервиса
-
-По умолчанию сервис слушает только loopback:
-
-```sh
-python3 server/signaling.py --host 127.0.0.1 --port 8765
+function draw()
+    clear(#101827)
+    circle(x, 120.0, 24.0, #55D8C2)
+    text("Hello, Pona", 24.0, 32.0, #FFFFFF)
+end
 ```
 
-Для Android Emulator на той же машине:
+Pona blocks close with `end`. Variables use the types `f32`, `i32`, `bool`, `color`, `str` and `array`; `@export` marks a global for native tooling. `draw()` and `update([dt: f32])` are optional lifecycle hooks. `init()` and `stop()` may also be provided.
+
+Supported drawing calls include `clear`, `rect`, `roundrect`, `circle`, `line`, `sprite`, `text` and `text_scaled`. Input helpers include `key_down`, `key_pressed`, `key_released`, `pointer_x`, `pointer_y`, `pointer_down`, `pointer_pressed` and `pointer_released`. Math/time helpers include `sin`, `cos`, `sqrt`, `abs`, `min`, `max`, `clamp`, `lerp`, `time`, `random`, `screen_width` and `screen_height`. Arrays use `array_new`, `array_push_num`, `array_push_str`, `array_get_num`, `array_get_str`, `array_len` and `array_clear`.
+
+Colors are `#RRGGBB` (opaque) or `#AARRGGBB`. Screen coordinates are in pixels. Sprite paths refer to staged APK assets, for example `sprite("textures/hero.png", x, y, 1.0)`.
+
+## Build and test
+
+Run compiler, generated-C, GC, input, Android-host syntax and asset-staging tests on a host with Python 3 and Clang or GCC:
 
 ```sh
-python3 server/signaling.py --host 0.0.0.0 --port 8765 --dev-http
+python3 tools/test_pona.py
+python3 tools/test_stage_assets.py
 ```
 
-В приложении укажи `http://10.0.2.2:8765`. Для физического телефона укажи частный LAN-IP компьютера, например `http://192.168.1.20:8765`; не открывай порт в публичный интернет. `--dev-http` предназначен только для изолированной сети разработки. Для внешнего сервера сначала настрой HTTPS reverse proxy/сертификат и введи HTTPS URL в приложении.
-
-## Начало чата
-
-1. Запусти signaling-сервис и укажи его URL и имя в приложении.
-2. Пользователи обмениваются 32-символьным Peer ID. Сервис передаёт приглашение/ответ с адресами-кандидатами для прямого соединения.
-3. Получатель принимает запрос; приложения показывают fingerprint друг друга.
-4. Сравните fingerprint по независимому каналу. Введите fingerprint собеседника точно и подтвердите; без подтверждения отправка заблокирована.
-5. Если прямой UDP-маршрут найден, сообщения передаются peer-to-peer. Если NAT/сеть не пропускает такой маршрут, соединение не установится — relay fallback намеренно отсутствует.
-
-## Сборка и проверки
-
-GitHub Actions собирает APK для `arm64-v8a`, `armeabi-v7a` и `x86_64`, создаёт временный debug signing key и публикует артефакт `Ponedelnik-Messenger-Android`. Этот APK предназначен для разработки/тестирования, а не для публикации в магазине.
-
-Для локальных Python-проверок:
+Check or generate native C directly:
 
 ```sh
-python3 tools/test_signaling.py
-python3 tools/test_messenger_assets.py
-python3 tools/test_messenger_layout.py
-python3 tools/check_source_file_size.py
+python3 tools/ponac.py examples/pond2d/main.pona --check
+python3 tools/ponac.py examples/pond2d/main.pona -o /tmp/pona_script.c
 ```
 
-Android NDK-сборка выполняется в GitHub Actions. Для неё настроены Android SDK API 35, build-tools 34.0.0, NDK r25c и Java 17.
+Build the Android native library with the NDK (example for arm64):
 
-## Ресурсы
+```sh
+cmake -S . -B build/android-arm64 \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a \
+  -DANDROID_PLATFORM=android-26 \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build/android-arm64 --parallel
+```
 
-`assets/icons/ponedelnik_messenger.png` используется приложением и Android launcher; размерные launcher-варианты находятся в `platform/android/res/mipmap-*`. В APK попадают только необходимые ресурсы мессенджера: PNG-иконка, шрифт DejaVu Sans и его лицензия (`assets/fonts/DejaVu-LICENSE.txt`).
+Choose a different Pona entry script with `-DPONA_SOURCE=/path/to/project/main.pona`. Stage the project's asset directory with `python3 stage_assets.py assets staging/assets`; relative asset paths are preserved. The GitHub Actions workflow builds and packages a signed **debug** APK for `arm64-v8a`, `armeabi-v7a` and `x86_64`; its signing key is temporary and the APK is for development/testing, not store release.
+
+## Runtime design notes
+
+- Pona source is parsed and statically checked at build time, emitted as C, and compiled by Clang/NDK. No script parsing, bytecode decoding or interpretation occurs in the app.
+- The GC is incremental and non-moving. `pond_app_end_frame()` advances it by at most 64 units of work, so the amount of collector work per frame is bounded. Globals containing managed objects and interned source literals are roots; array writes and root writes use barriers.
+- The example is intentionally small and serves as an executable reference project. The compiler and built-in API are still evolving; see `tools/ponac.py` and `src/engine2d/api.h` for the current surface.

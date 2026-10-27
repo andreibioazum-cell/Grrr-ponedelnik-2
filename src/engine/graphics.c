@@ -1,4 +1,7 @@
-/* Shared C renderer and Vulkan backend for the native Android messenger. */
+/* Shared C renderer and Vulkan backend for the native Android 2D engine. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include "engine/graphics/types.inc"
 #include "engine/graphics/geometry.inc"
 #include "engine/graphics/text.inc"

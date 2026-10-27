@@ -1,0 +1,60 @@
+-- Pona: Lua-like blocks, static types, compiled ahead of time to native C.
+@export global move_speed: f32 = 210.0
+global actor_x: f32 = 250.0
+global actor_y: f32 = 220.0
+global elapsed: f32 = 0.0
+global trail: array = array_new()
+global title: str = "PONDELINIK 2D"
+
+function update(dt: f32)
+    elapsed = elapsed + dt
+    if key_down("left") or key_down("a") then
+        actor_x = actor_x - move_speed * dt
+    end
+    if key_down("right") or key_down("d") then
+        actor_x = actor_x + move_speed * dt
+    end
+    if key_down("up") or key_down("w") then
+        actor_y = actor_y - move_speed * dt
+    end
+    if key_down("down") or key_down("s") then
+        actor_y = actor_y + move_speed * dt
+    end
+    actor_x = clamp(actor_x, 28.0, screen_width() - 28.0)
+    actor_y = clamp(actor_y, 112.0, screen_height() - 56.0)
+    if pointer_pressed() then
+        array_push_num(trail, pointer_x())
+        array_push_num(trail, pointer_y())
+    end
+    if array_len(trail) > 192 then
+        array_clear(trail)
+    end
+end
+
+function draw()
+    clear(#0A1020)
+    for i = 0, 18 do
+        local x: f32 = (screen_width() / 18.0) * i
+        line(x, 82.0, x, screen_height(), 1.0, #18243A)
+    end
+    for i = 0, 12 do
+        local y: f32 = 82.0 + (screen_height() - 82.0) / 12.0 * i
+        line(0.0, y, screen_width(), y, 1.0, #18243A)
+    end
+
+    local pulse: f32 = 1.0 + sin(elapsed * 2.2) * 0.12
+    for i = 0, array_len(trail) - 1, 2 do
+        local mark_x: f32 = array_get_num(trail, i)
+        local mark_y: f32 = array_get_num(trail, i + 1)
+        circle(mark_x, mark_y, 3.0, #55D8C2)
+    end
+    circle(actor_x, actor_y, 30.0 * pulse, #55D8C2)
+    circle(actor_x, actor_y, 18.0, #0A1020)
+    circle(actor_x, actor_y, 8.0, #F5C16C)
+
+    roundrect(16.0, 16.0, screen_width() - 32.0, 54.0, 18.0, #151E32)
+    text_scaled(title, 30.0, 27.0, #FFFFFF, 0.52)
+    text_scaled("PONA  ·  AOT NATIVE C  ·  NO VM", 30.0, 51.0, #55D8C2, 0.29)
+    text("WASD / arrows to move  ·  tap to paint", 24.0, screen_height() - 48.0, #CFD7E7)
+    text("incremental GC  " .. to_string(gc_bytes()) .. " B", 24.0, screen_height() - 24.0, #8F9BB4)
+end

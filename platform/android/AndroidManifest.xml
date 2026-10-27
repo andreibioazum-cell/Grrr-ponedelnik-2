@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ponedelnik.messenger"
+    package="com.ponedelnik.engine2d"
     android:versionCode="1"
-    android:versionName="0.1.0">
+    android:versionName="0.2.0">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-feature
         android:name="android.hardware.vulkan.version"
         android:required="true"
@@ -16,22 +14,21 @@
         android:required="false" />
 
     <application
-        android:label="Ponedelnik Messenger"
+        android:label="Ponedelnik 2D"
         android:icon="@mipmap/ic_launcher"
-        android:hasCode="true"
+        android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
+        android:hasCode="false"
         android:extractNativeLibs="true"
         android:allowBackup="false"
-        android:usesCleartextTraffic="true"
         android:supportsRtl="true">
         <activity
-            android:name="com.ponedelnik.messenger.MessengerActivity"
+            android:name="android.app.NativeActivity"
             android:configChanges="orientation|keyboard|keyboardHidden|screenSize|smallestScreenSize|screenLayout|navigation|uiMode|density|fontScale|layoutDirection|locale"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="sensorLandscape"
             android:exported="true">
             <meta-data
                 android:name="android.app.lib_name"
-                android:value="ponedelnik_messenger" />
+                android:value="ponedelnik_2d" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

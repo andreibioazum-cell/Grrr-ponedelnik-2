@@ -1,4 +1,4 @@
-name: Build Ponedelnik Messenger
+name: Build Ponedelnik 2D Engine
 
 on:
   push:
@@ -12,12 +12,28 @@ defaults:
     shell: bash
 
 jobs:
-  android:
-    name: Build Android Vulkan APK (Android 8-15)
+  host-tests:
+    name: Pona compiler, runtime and GC tests
     runs-on: ubuntu-latest
     env:
       CC: clang
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run compiler and host runtime tests
+        run: |
+          set -euo pipefail
+          python3 -m py_compile tools/ponac.py tools/test_pona.py stage_assets.py tools/test_stage_assets.py
+          python3 tools/test_pona.py
+          python3 tools/test_stage_assets.py
+          python3 tools/check_source_file_size.py
 
+  android-apk:
+    name: Build native Vulkan APK (Android 8+)
+    runs-on: ubuntu-latest
+    needs: host-tests
     steps:
       - uses: actions/checkout@v4
 
@@ -52,67 +68,26 @@ jobs:
         with:
           ndk-version: r25c
 
-      - name: Check messenger sources and local tests
-        run: |
-          set -euo pipefail
-          test -f src/messenger/app.c
-          test -f platform/android/java/com/ponedelnik/messenger/P2pMessenger.java
-          test -f assets/icons/ponedelnik_messenger.png
-          clang -std=c99 -Wall -Wextra -Werror -pedantic \
-            -Isrc -I. -Itools/host_test/stub -fsyntax-only src/messenger/app.c
-          python3 tools/check_source_file_size.py
-          python3 tools/test_messenger_layout.py
-          python3 tools/test_messenger_assets.py
-          python3 tools/test_signaling.py
-          python3 -m py_compile server/signaling.py tools/test_signaling.py stage_assets.py
-
-      - name: Stage messenger assets and compile Java bridge
+      - name: Stage generic project assets
         run: python3 stage_assets.py assets staging/assets
 
-      - name: Build native C and Vulkan libraries
+      - name: Configure and build each Android ABI
         env:
           NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
           set -euo pipefail
-          TOOLCHAIN="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          GLUE="$NDK_ROOT/sources/android/native_app_glue"
-          C_SOURCES=(src/messenger/app.c src/platform/android/messenger_bridge.c \
-            src/engine/runtime.c src/platform/android/android_main.c)
-          C_OPTS=(-std=c99 -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-unused-function -pedantic -O3 -s -fPIC -shared \
-            -Wl,--no-undefined -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
-          report_compile_failure() {
-            local log="$1"
-            cat "$log" >&2
-            python3 - "$log" <<'PY'
-          from pathlib import Path
-          import sys
-          details = Path(sys.argv[1]).read_text(errors="replace").strip()
-          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::error title=Native C/Vulkan compiler diagnostics::{escaped}")
-          PY
-            rm -f "$log"
-            exit 1
-          }
+          TOOLCHAIN="$NDK_ROOT/build/cmake/android.toolchain.cmake"
           mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
           for ABI in arm64-v8a armeabi-v7a x86_64; do
-            case "$ABI" in
-              arm64-v8a) TRIPLE=aarch64-linux-android26;;
-              armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
-              x86_64) TRIPLE=x86_64-linux-android26;;
-            esac
-            GLUE_OBJECT="$(mktemp)"
-            LOG="$(mktemp)"
-            if ! "$TOOLCHAIN/$TRIPLE-clang" -std=c99 -O3 -fPIC -I"$GLUE" \
-              -c "$GLUE/android_native_app_glue.c" -o "$GLUE_OBJECT" >"$LOG" 2>&1; then
-              report_compile_failure "$LOG"
-            fi
-            rm -f "$LOG"
-            LOG="$(mktemp)"
-            if ! "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" "$GLUE_OBJECT" \
-              -o "staging/lib/$ABI/libponedelnik_messenger.so" >"$LOG" 2>&1; then
-              report_compile_failure "$LOG"
-            fi
-            rm -f "$LOG" "$GLUE_OBJECT"
+            BUILD_DIR="build/android-$ABI"
+            cmake -S . -B "$BUILD_DIR" \
+              -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+              -DANDROID_ABI="$ABI" \
+              -DANDROID_PLATFORM=android-26 \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DPython3_EXECUTABLE="$(command -v python3)"
+            cmake --build "$BUILD_DIR" --parallel 2
+            install -m 0644 "$BUILD_DIR/libponedelnik_2d.so" "staging/lib/$ABI/libponedelnik_2d.so"
           done
 
       - name: Package and align APK
@@ -126,7 +101,7 @@ jobs:
             -F unsigned.apk ./staging/
           "$BT/zipalign" -v 4 unsigned.apk aligned.apk
 
-      - name: Create an ephemeral debug key, sign and verify APK
+      - name: Create debug signature and verify APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
@@ -136,13 +111,13 @@ jobs:
           "$BT/apksigner" sign \
             --ks staging/debug.keystore --ks-type PKCS12 \
             --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android \
-            --out Ponedelnik-Messenger.apk aligned.apk
-          "$BT/aapt" dump badging Ponedelnik-Messenger.apk > staging/badging.txt
+            --out Ponedelnik-2D-Android.apk aligned.apk
+          "$BT/aapt" dump badging Ponedelnik-2D-Android.apk > staging/badging.txt
           head -n 5 staging/badging.txt
-          "$BT/apksigner" verify --verbose --print-certs Ponedelnik-Messenger.apk
+          "$BT/apksigner" verify --verbose --print-certs Ponedelnik-2D-Android.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Ponedelnik-Messenger-Android
-          path: Ponedelnik-Messenger.apk
+          name: Ponedelnik-2D-Android
+          path: Ponedelnik-2D-Android.apk
           if-no-files-found: error

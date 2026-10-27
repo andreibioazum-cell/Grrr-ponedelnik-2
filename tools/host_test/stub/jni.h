@@ -24,8 +24,6 @@ struct JNINativeInterface;
 struct JNIInvokeInterface;
 typedef const struct JNINativeInterface *JNIEnv;
 typedef const struct JNIInvokeInterface *JavaVM;
-typedef const struct JNINativeInterface *JNIEnv;
-typedef const struct JNIInvokeInterface *JavaVM;
 struct JNINativeInterface {
     void *reserved0;
     void *reserved1;
@@ -72,6 +70,4 @@ struct JNIInvokeInterface {
     jint (*GetEnv)(JavaVM *, void **, jint);
     jint (*AttachCurrentThreadAsDaemon)(JavaVM *, JNIEnv **, void *);
 };
-typedef const struct JNINativeInterface *JNIEnv;
-typedef const struct JNIInvokeInterface *JavaVM;
 #endif
