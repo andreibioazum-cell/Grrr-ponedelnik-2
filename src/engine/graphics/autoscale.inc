@@ -1,9 +1,9 @@
-/* Internal resolution is fixed at 1/1: the game is drawn at the panel's own
+/* Internal resolution is fixed at 1/1: the app is drawn at the panel's own
  * size, always.
  *
  * There used to be a dynamic scaler here that dropped the render target to as
  * little as 1/6 of the screen whenever frames ran long. It kept the frame
- * time up, but the picture broke into fat blocks - the game then looked
+ * time up, but the picture broke into fat blocks - the app then looked
  * broken rather than fast, and once it had coarsened it often stayed coarse
  * for the rest of the session. Budgeting belongs in the draw calls, not in
  * the resolution, so the scaler is gone and only the frame-time report stays:

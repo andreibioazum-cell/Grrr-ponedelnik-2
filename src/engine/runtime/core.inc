@@ -69,13 +69,9 @@ const char *console_line(int index) {
     console_unlock();
     return slot;
 }
-Joy joy = {0};
 int screen_w = 0;
 int screen_h = 0;
 double dt = 0.0;
-int mouse_clicked = 0;
-double ds_mouse_x = 0.0;
-double ds_mouse_y = 0.0;
 static jmp_buf ds_error_jump;
 static int ds_error_handler_active = 0;
 static int ds_has_error = 0;
@@ -92,7 +88,7 @@ static DSStringNode *ds_strings = NULL;
  * freed. */
 static unsigned long ds_string_gen = 0;
 static void platform_log(int is_error, const char *format, va_list args) {
-    __android_log_vprint(is_error ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, "CubicBattle", format, args);
+    __android_log_vprint(is_error ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, "Ponedelnik", format, args);
 }
 void ds_log(const char *format, ...) {
     char tmp[DS_CONSOLE_LINE_MAX];
@@ -148,9 +144,9 @@ int ds_call_protected(DSProtectedFunction function, void *userdata, const char *
     int jumped;
     if (!function) {
         if (label && *label)
-            ds_runtime_error("cannot call an empty game hook '%s'", label);
+            ds_runtime_error("cannot call an empty app hook '%s'", label);
         else
-            ds_runtime_error("cannot call an empty game hook");
+            ds_runtime_error("cannot call an empty app hook");
         return 0;
     }
     if (ds_error_handler_active) {
@@ -160,9 +156,8 @@ int ds_call_protected(DSProtectedFunction function, void *userdata, const char *
     ds_error_handler_active = 1;
     jumped = setjmp(ds_error_jump);
     if (jumped == 0) {
-                /* Every hook starts from a clean slate: an error raised outside it (in a
-                 * background thread, say) must not kill a healthy frame and send the
-                 * player from the fight back to the lobby. */
+                /* Every app hook starts from a clean slate: an error raised outside it (in a
+                 * background thread, for example) must not kill a healthy frame. */
         ds_clear_runtime_error();
         function(userdata);
         ds_error_handler_active = 0;
@@ -170,27 +165,27 @@ int ds_call_protected(DSProtectedFunction function, void *userdata, const char *
     }
     ds_error_handler_active = 0;
     if (label && *label && ds_last_error[0] == '\0') {
-        snprintf(ds_last_error, sizeof(ds_last_error), "game hook '%s' failed", label);
+        snprintf(ds_last_error, sizeof(ds_last_error), "app hook '%s' failed", label);
     }
     return 0;
 }
 const char *ds_runtime_error_message(void) {
-    return ds_last_error[0] ? ds_last_error : "unknown CubicBattle runtime error";
+    return ds_last_error[0] ? ds_last_error : "unknown application runtime error";
 }
-int ds_game_has_error(void) {
+int ds_runtime_has_error(void) {
     return ds_has_error;
 }
 void ds_clear_runtime_error(void) {
     ds_has_error = 0;
     ds_last_error[0] = '\0';
 }
-void ds_request_game_restart(void) {
+void ds_request_app_restart(void) {
     ds_restart_requested = 1;
 }
-int ds_game_restart_requested(void) {
+int ds_app_restart_requested(void) {
     return ds_restart_requested;
 }
-void ds_clear_game_restart(void) {
+void ds_clear_app_restart(void) {
     ds_restart_requested = 0;
 }
 static char *ds_strdup(const char *s) {
@@ -202,8 +197,7 @@ static char *ds_strdup(const char *s) {
         memcpy(c, s, n);
     return c;
 }
-/* Empty string for the case when a string found no memory: one missing digit in
- * the HUD has no right to bring the whole fight down. */
+/* Keep allocation failures local instead of taking down the entire UI. */
 static char ds_empty_string[1] = {0};
 static char *ds_track_string(char *s) {
     DSStringNode *node;
@@ -223,12 +217,9 @@ static char *ds_track_string(char *s) {
     ds_strings = node;
     return s;
 }
-/* Called once a frame, before the game hooks. Every string built in a frame is
- * needed only inside it: text is copied into the command buffer and network
- * calls take theirs at once. The history is kept for one frame so nothing hangs,
- * and everything older is freed - otherwise the pool grows for the whole session
- * and memory runs out during a fight, which restarts the game and drops the
- * player to the lobby. */
+/* Called once a frame, before the app hooks. Every temporary string built in a
+ * frame is needed only inside it: text is copied into the command buffer and
+ * calls take theirs at once. Older allocations are freed so the pool stays bounded. */
 void ds_string_pool_tick(void) {
     DSStringNode **link = &ds_strings;
     ds_string_gen = ds_string_gen + 1;

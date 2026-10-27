@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Готовит ресурсы и платформенный код Android для упаковки в APK."""
+"""Stages Ponedelnik Messenger assets and compiles its Android Java bridge."""
 
 from __future__ import annotations
 
@@ -12,9 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 ASSET_GROUPS = (
-    ("textures", Path()),
     ("fonts", Path("fonts")),
-    ("audio", Path("sounds")),
+    ("icons", Path("icons")),
 )
 
 
@@ -121,7 +120,7 @@ def build_android_activity(source: Path, apk_root: Path) -> Path | None:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Подготовить ресурсы игры для APK.")
+    parser = argparse.ArgumentParser(description="Подготовить ресурсы мессенджера для APK.")
     parser.add_argument("source", nargs="?", default="assets")
     parser.add_argument("destination", nargs="?", default="staging/assets")
     return parser.parse_args(argv)

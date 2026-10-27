@@ -20,8 +20,7 @@ int ds_graphics_begin_frame(Buffer *b) {
         oh = 1;
     if (!ds_vk_begin_frame_backend((uint32_t)b->width, (uint32_t)b->height, ow, oh))
         return 0;
-    /* Screen shake decays with the game clock and picks a fresh random offset
-     * every frame while it lasts, easing out to a standstill. */
+    /* Optional screen shake decays with the application frame clock. */
     if (gfx_shake_left > 0) {
         gfx_shake_left -= (float)dt;
         if (gfx_shake_left < 0)
@@ -34,9 +33,7 @@ int ds_graphics_begin_frame(Buffer *b) {
         gfx_shake_dx = 0;
         gfx_shake_dy = 0;
     }
-    /* Upload assets queued by the update step before game code resolves
-     * fighter appearances. Delaying this until geometry construction caused
-     * one-frame fallback cubes and pose/skin flicker. */
+    /* Finish queued GPU uploads before recording this frame. */
     ds_vk_process_pending_uploads();
     discard_commands();
     cur_buf = b;
@@ -68,7 +65,7 @@ void ds_graphics_error_screen(const char *m) {
     if (!ensure_font())
         return;
     int y = 12;
-    text_scaled("=== CUBIC BATTLE ERROR ===", 16, (float)y, pack_c(0xffe6e6e6), 0.7f);
+    text_scaled("=== PONEDELNIK MESSENGER ERROR ===", 16, (float)y, pack_c(0xffe6e6e6), 0.7f);
     y += 30;
     if (m && *m) {
         text_scaled(m, 16, (float)y, pack_c(0xffc98f8f), 0.6f);

@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
-project(CubicBattle4 LANGUAGES C CXX)
+project(PonedelnikMessenger LANGUAGES C)
 
 if(NOT CMAKE_C_COMPILER_ID MATCHES "^(Apple)?Clang$")
     message(FATAL_ERROR
-        "Cubic Battle 4 supports Clang only. Reconfigure with CC=clang (or use "
-        "the Android NDK toolchain, which provides Clang).")
+        "Ponedelnik Messenger requires Clang. Reconfigure with CC=clang or use the Android NDK toolchain.")
 endif()
 
 set(CMAKE_C_STANDARD 99)
@@ -13,26 +12,26 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 if(NOT ANDROID)
     message(FATAL_ERROR
-        "Cubic Battle 4 builds for Android only. Configure CMake with the Android "
-        "NDK toolchain, for example: cmake -B build "
-        "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake "
-        "-DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26")
+        "Ponedelnik Messenger currently targets Android. Configure with the Android NDK toolchain, "
+        "for example -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26.")
 endif()
 
-set(CB_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/src")
-set(CB_ANDROID_GLUE "${ANDROID_NDK}/sources/android/native_app_glue")
+set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(ANDROID_GLUE "${ANDROID_NDK}/sources/android/native_app_glue")
 
-add_library(cb_game SHARED
-    "${CB_SOURCE_ROOT}/game/game.c"
-    "${CB_SOURCE_ROOT}/cpp/ui_fx.cpp"
-    "${CB_SOURCE_ROOT}/engine/runtime.c"
-    "${CB_SOURCE_ROOT}/platform/android/android_main.c"
-    "${CB_ANDROID_GLUE}/android_native_app_glue.c"
+add_library(ponedelnik_messenger SHARED
+    "${SOURCE_ROOT}/messenger/app.c"
+    "${SOURCE_ROOT}/platform/android/messenger_bridge.c"
+    "${SOURCE_ROOT}/engine/runtime.c"
+    "${SOURCE_ROOT}/platform/android/android_main.c"
+    "${ANDROID_GLUE}/android_native_app_glue.c"
 )
 
-target_include_directories(cb_game PRIVATE
-    "${CB_SOURCE_ROOT}"
+target_include_directories(ponedelnik_messenger PRIVATE
+    "${SOURCE_ROOT}"
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CB_ANDROID_GLUE}"
+    "${ANDROID_GLUE}"
 )
-target_link_libraries(cb_game PRIVATE android log dl m vulkan)
+target_compile_options(ponedelnik_messenger PRIVATE -Wall -Wextra -Werror -pedantic)
+target_link_options(ponedelnik_messenger PRIVATE -Wl,--no-undefined)
+target_link_libraries(ponedelnik_messenger PRIVATE android log dl m vulkan)

@@ -1,113 +1,66 @@
-## RU
+# Ponedelnik Messenger
 
-Полная версия Cubic Battle 4 для Android. Игра написана на C, и немного на Java.
+Нативный Android-мессенджер с интерфейсом на **C + Vulkan**. Текст передаётся напрямую между устройствами по UDP. Небольшой Python-сервис нужен только для временного обмена приглашением и ответом; STUN используется для обнаружения адресов и попытки UDP hole punching. Firebase, TURN и серверный relay не используются.
 
-- Минимум: Android 8
-- Цель: Android 15
-- Требуется: Vulkan 1.0
+## Состояние прототипа
 
-## ПК-версия (Windows .exe)
+- Android 8+ (API 26), target API 35, Vulkan 1.0;
+- C/Vulkan UI и launcher-иконка PNG;
+- Java/JCA для Android networking и криптографии;
+- 128-битный случайный Peer ID (32 hex-символа);
+- signaling-сервис на Python stdlib, временные offer/answer хранятся только в RAM до 120 секунд;
+- сообщение отправляется напрямую и не отправляется signaling-серверу;
+- нет офлайн-доставки, push-уведомлений, синхронизации/резервной копии чатов или сохранённой истории; оба устройства должны быть онлайн.
 
-Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
+Это ранний прототип прямого обмена короткими текстовыми сообщениями, а не готовый публичный сервис. UDP не гарантирует доставку/порядок пакетов; подтверждений доставки и автоматической повторной отправки пока нет.
 
-* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions -
-  `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
-* **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig собирает exe и на Linux, MSVC не нужен).
-* **Управление:** `WASD`/стрелки - движение, `ЛКМ` - удар, `E` - блок
-  (удерживать), `Q` - суперудар, мышь - меню и чат, `Esc` - назад, `F12` -
-  скриншот.
+## Безопасность — важно
 
-Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой - окно,
-программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
-клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
+В текущем Android-коде применяются подпись ECDSA P-256 с ключом в Android Keystore, эфемерный ECDH P-256, HKDF-SHA-256 и AES-GCM для сообщений. Перед отправкой первого сообщения пользователь должен сверить полный fingerprint ключа по независимому доверенному каналу и закрепить его в приложении.
 
-## Веб-панель админа
+Это **не Signal Protocol и не прошедшая независимый аудит система**. Не называйте её «суперзащищённой» и не используйте для критически важных или секретных переписок до независимого криптографического аудита. Signaling видит Peer ID, выбранное имя, IP-кандидаты и параметры установления соединения, но не получает текст сообщений. STUN-сервис видит внешний IP. Без relay прямой UDP-маршрут может не установиться в некоторых NAT/операторских сетях; в этом случае доставка не состоится. Сервер сигналинга и локальные регистрации существуют только в памяти процесса и исчезают при его перезапуске.
 
-Кроме APK в репозитории есть веб-версия - [index.html](index.html): панель
-админа для базы Firebase (вход по нику и паролю от игры, снимок базы, поиск и
-удаление мусора, ивенты 0..4, баннер, флаги магазина, шедевро-режим, баны, чистка чата и
-слотов, резервная копия). Сборка не нужна: открой файл в браузере.
+Локальный HTTP разрешён для loopback/частной сети разработки. Публичный signaling endpoint в репозитории не развёрнут: для внешнего использования нужен HTTPS с доверенным сертификатом. Публичный сервер, TURN, relay и хранение сообщений не включены.
 
-Потренироваться без боевой базы можно так:
+## Запуск локального signaling-сервиса
 
-```
-python3 test/fake_firebase.py 8080
+По умолчанию сервис слушает только loopback:
+
+```sh
+python3 server/signaling.py --host 127.0.0.1 --port 8765
 ```
 
-затем открой <http://localhost:8080/>, нажми «Тестовый режим» и войди как
-`Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
-проверки - в [docs/admin-panel.md](docs/admin-panel.md).
+Для Android Emulator на той же машине:
 
-## Правовая информация
-
-Возрастная категория 12+. Пользовательское соглашение, политика обработки
-персональных данных и согласие на обработку лежат в [docs/legal](docs/legal);
-там же список того, что владелец должен сделать вне кода (уведомление
-Роскомнадзора, локализация данных и т. д.).
-
-## Лицензия
-
-Copyright (C) 2026 Дима Густенёв
-
-Все права защищены. Код и материалы проекта нельзя копировать, использовать,
-изменять или распространять без письменного разрешения правообладателя.
-Полные условия - в файле [LICENSE](LICENSE).
-
-SPDX-License-Identifier: LicenseRef-Proprietary
-
-## EN
-
-Full version of Cubic Battle 4 for Android. The game is written in C, with a bit of Java.
-
-- Minimum: Android 8
-- Target: Android 15
-- Requires: Vulkan 1.0
-
-## PC version (Windows .exe)
-
-The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
-
-* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions -
-  `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
-* **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig cross-builds the exe on Linux too; MSVC is not needed).
-* **Controls:** `WASD`/arrows to move, `LMB` to punch, `E` to block (hold),
-  `Q` for the class super, mouse for menus and chat, `Esc` back, `F12`
-  screenshot.
-
-The game logic is shared with Android (`src/game`, `src/engine`); the PC layer
-is the window, a software rasterizer instead of Vulkan, WinHTTP instead of JNI
-and a keyboard-to-touch bridge. Details: [docs/pc-version.md](docs/pc-version.md).
-
-## Web admin panel
-
-Besides the APK the repository contains a web version - [index.html](index.html):
-the Firebase admin panel (sign in with the game nick and password, database
-snapshot, junk search and cleanup, events 0..4, banner, shop flags, bans, chat
-and slot cleanup, backup copy). No build step: open the file in a browser.
-
-To practise without touching the live database run
-
-```
-python3 test/fake_firebase.py 8080
+```sh
+python3 server/signaling.py --host 0.0.0.0 --port 8765 --dev-http
 ```
 
-then open <http://localhost:8080/>, press the test-mode button and sign in as
-`Dimasi4ek229` with the password `admin`. Details in
-[docs/admin-panel.md](docs/admin-panel.md).
+В приложении укажи `http://10.0.2.2:8765`. Для физического телефона укажи частный LAN-IP компьютера, например `http://192.168.1.20:8765`; не открывай порт в публичный интернет. `--dev-http` предназначен только для изолированной сети разработки. Для внешнего сервера сначала настрой HTTPS reverse proxy/сертификат и введи HTTPS URL в приложении.
 
-## Legal
+## Начало чата
 
-Age rating 12+. The Terms of Use, the personal data policy and the consent
-form (in Russian) are in [docs/legal](docs/legal).
+1. Запусти signaling-сервис и укажи его URL и имя в приложении.
+2. Пользователи обмениваются 32-символьным Peer ID. Сервис передаёт приглашение/ответ с адресами-кандидатами для прямого соединения.
+3. Получатель принимает запрос; приложения показывают fingerprint друг друга.
+4. Сравните fingerprint по независимому каналу. Введите fingerprint собеседника точно и подтвердите; без подтверждения отправка заблокирована.
+5. Если прямой UDP-маршрут найден, сообщения передаются peer-to-peer. Если NAT/сеть не пропускает такой маршрут, соединение не установится — relay fallback намеренно отсутствует.
 
-## License
+## Сборка и проверки
 
-Copyright (C) 2026 Дима Густенёв
+GitHub Actions собирает APK для `arm64-v8a`, `armeabi-v7a` и `x86_64`, создаёт временный debug signing key и публикует артефакт `Ponedelnik-Messenger-Android`. Этот APK предназначен для разработки/тестирования, а не для публикации в магазине.
 
-All rights reserved. The code and materials of this project may not be
-copied, used, modified or distributed without the copyright holder's written
-permission. Full terms in the [LICENSE](LICENSE) file.
+Для локальных Python-проверок:
 
-SPDX-License-Identifier: LicenseRef-Proprietary
+```sh
+python3 tools/test_signaling.py
+python3 tools/test_messenger_assets.py
+python3 tools/test_messenger_layout.py
+python3 tools/check_source_file_size.py
+```
+
+Android NDK-сборка выполняется в GitHub Actions. Для неё настроены Android SDK API 35, build-tools 34.0.0, NDK r25c и Java 17.
+
+## Ресурсы
+
+`assets/icons/ponedelnik_messenger.png` используется приложением и Android launcher; размерные launcher-варианты находятся в `platform/android/res/mipmap-*`. В APK попадают только необходимые ресурсы мессенджера: PNG-иконка, шрифт DejaVu Sans и его лицензия (`assets/fonts/DejaVu-LICENSE.txt`).
