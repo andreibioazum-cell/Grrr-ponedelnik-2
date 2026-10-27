@@ -77,16 +77,39 @@ jobs:
         run: |
           set -euo pipefail
           TOOLCHAIN="$NDK_ROOT/build/cmake/android.toolchain.cmake"
+          report_cmake_failure() {
+            local log="$1"
+            cat "$log" >&2
+            python3 - "$log" <<'PY'
+          from pathlib import Path
+          import sys
+          details = Path(sys.argv[1]).read_text(errors="replace")[-30000:].strip()
+          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Android CMake diagnostics::{escaped}")
+          PY
+            rm -f "$log"
+            exit 1
+          }
+          run_cmake() {
+            local log
+            log="$(mktemp)"
+            if "$@" >"$log" 2>&1; then
+              cat "$log"
+              rm -f "$log"
+            else
+              report_cmake_failure "$log"
+            fi
+          }
           mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
           for ABI in arm64-v8a armeabi-v7a x86_64; do
             BUILD_DIR="build/android-$ABI"
-            cmake -S . -B "$BUILD_DIR" \
+            run_cmake cmake -S . -B "$BUILD_DIR" \
               -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
               -DANDROID_ABI="$ABI" \
               -DANDROID_PLATFORM=android-26 \
               -DCMAKE_BUILD_TYPE=Release \
               -DPython3_EXECUTABLE="$(command -v python3)"
-            cmake --build "$BUILD_DIR" --parallel 2
+            run_cmake cmake --build "$BUILD_DIR" --parallel 2
             install -m 0644 "$BUILD_DIR/libponedelnik_2d.so" "staging/lib/$ABI/libponedelnik_2d.so"
           done
 

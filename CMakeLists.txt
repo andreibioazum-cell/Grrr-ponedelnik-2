@@ -43,6 +43,15 @@ add_custom_command(
 )
 
 set(SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/src")
+# Keep the NDK glue outside the project's strict warning policy. NDK revisions
+# can add warnings to this upstream source that are unrelated to the engine.
+add_library(pona_android_glue OBJECT
+    "${PONA_ANDROID_GLUE}/android_native_app_glue.c"
+)
+set_target_properties(pona_android_glue PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(pona_android_glue PRIVATE "${PONA_ANDROID_GLUE}")
+target_compile_options(pona_android_glue PRIVATE -O3)
+
 add_library(ponedelnik_2d SHARED
     "${PONA_GENERATED_C}"
     "${SOURCE_ROOT}/engine2d/api.c"
@@ -52,7 +61,7 @@ add_library(ponedelnik_2d SHARED
     "${SOURCE_ROOT}/engine/runtime.c"
     "${SOURCE_ROOT}/engine/graphics.c"
     "${SOURCE_ROOT}/platform/android/pona_main.c"
-    "${PONA_ANDROID_GLUE}/android_native_app_glue.c"
+    $<TARGET_OBJECTS:pona_android_glue>
 )
 
 target_include_directories(ponedelnik_2d PRIVATE
