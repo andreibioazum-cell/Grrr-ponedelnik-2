@@ -1,4 +1,4 @@
-name: Build Cubic Battle 4 (Pure C)
+name: Build Ponedelnik Messenger
 
 on:
   push:
@@ -12,10 +12,42 @@ defaults:
     shell: bash
 
 jobs:
-  build-pc:
-    name: Build Windows .exe (PC version)
+  host-tests:
+    name: P2P, signaling, audio codec and engine tests
     runs-on: ubuntu-latest
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run host tests
+        run: |
+          set -euo pipefail
+          javac -version
+          java -version
+          python3 -m py_compile tools/ponac.py tools/test_pona.py stage_assets.py \
+            tools/test_stage_assets.py server/signaling.py tools/test_signaling.py \
+            tools/test_messenger_layout.py tools/test_messenger_assets.py \
+            tools/test_messenger_native.py tools/test_voice_codec.py
+          python3 tools/test_messenger_layout.py
+          python3 tools/test_messenger_assets.py
+          python3 tools/test_messenger_native.py
+          python3 tools/test_signaling.py
+          python3 tools/test_voice_codec.py
+          python3 tools/test_pona.py
+          python3 tools/test_stage_assets.py
+          python3 tools/check_source_file_size.py
 
+  android-apk:
+    name: Build native Vulkan messenger APK (Android 8+)
+    runs-on: ubuntu-latest
+    needs: host-tests
     steps:
       - uses: actions/checkout@v4
 
@@ -23,117 +55,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Zig ships its own Win32 headers and C runtime glue: no MSVC, no
-      # Windows SDK, and the exe builds on Linux.
-      - name: Install Zig
-        run: pip install ziglang
-
-      - name: Build CubeBattle4.exe
-        run: python3 tools/build_pc.py --windows
-
-      - name: Stage assets next to the exe
-        run: |
-          set -euo pipefail
-          mkdir -p build/pc/dist
-          cp build/pc/CubicBattle4.exe build/pc/dist/
-          cp -r build/pc/assets build/pc/dist/assets
-          test -f build/pc/dist/assets/grass.png
-          test -f build/pc/dist/assets/fonts/ComicRelief-Regular.ttf
-          test -f build/pc/dist/assets/sounds/lobbymusic.wav
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Cubic-Battle-4-PC-Windows
-          path: build/pc/dist/
-          if-no-files-found: error
-
-  build-android:
-    name: Build Android APK (Android 8-15)
-    runs-on: ubuntu-latest
-    env:
-      CC: clang
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify pure-C project layout
-        run: |
-          set -euo pipefail
-          test -f src/game/game.c
-          test -d src/engine
-          test -d src/platform/android
-          test -d assets/textures
-          test -d assets/audio
-          test -d platform/android
-          test ! -e game
-          test ! -e native
-          grep -q 'android:name="com.cb4.GameActivity"' platform/android/AndroidManifest.xml
-          grep -q 'android:value="cb_game"' platform/android/AndroidManifest.xml
-          grep -q 'android:versionCode="[0-9]\+"' platform/android/AndroidManifest.xml
-          grep -q '^package com.cb4;' platform/android/java/com/cb4/GameActivity.java
-          grep -q 'Java_com_cb4_GameActivity_nativeReplaceText' src/platform/android/keyboard.inc
-          grep -q 'Java_com_cb4_PresenceJobService_nativePresence' src/platform/android/presence_job.inc
-          grep -q 'android:name="com.cb4.PresenceJobService"' platform/android/AndroidManifest.xml
-          if find . -type f -name '*.ds' -print -quit | grep -q .; then
-            echo "::error::The C port must not contain script sources"
-            exit 1
-          fi
-
-      - name: Check native game sources
-        run: |
-          clang -std=c99 -Wall -Wextra -Werror -pedantic \
-            -Isrc -I. -Itools/host_test/stub -fsyntax-only src/game/game.c
-          python3 tools/check_game_file_size.py
-          python3 tools/test_resources.py
-          python3 tools/test_game_state.py
-          python3 tools/test_live_flags.py
-          python3 tools/test_string_pool.py
-          python3 tools/test_settings_storage.py
-          python3 tools/test_cloud_progress.py
-          python3 tools/test_promo.py
-          python3 tools/test_presence.py
-          python3 tools/test_network_memory.py
-          python3 tools/test_font_memory.py
-          python3 tools/test_db_rules.py
-          python3 tools/test_engine_formats.py
-
-      # ПК-версия (src/platform/pc): собирается теми же game.c/рантаймом, что
-      # и APK, и прогоняется без окна: меню, бой, удар, вход в аккаунт через
-      # подставную базу по настоящему HTTP.
-      - name: Build and play the PC build headless
-        run: python3 tools/test_pc.py
-
-      # Веб-панель админа (index.html): синтаксис скриптов, наличие всех
-      # кнопок и обработчиков, схема базы против firebase.rules.json.
-      - name: Check the web admin panel
-        run: |
-          python3 tools/test_admin_panel.py
-
-      # То же, но в настоящей DOM: jsdom открывает панель против подставной
-      # базы (test/fake_firebase.py) и нажимает каждую кнопку. Именно этот
-      # прогон ловит «страница выглядит живой, но ничего не нажимается».
-      - name: Click through the web admin panel in a real DOM
-        run: |
-          cd test
-          npm ci --no-audit --no-fund
-          node test_admin_panel_dom.mjs
-
-      - name: Setup Java for Android build tools
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
-      # One permanent debug key for every build: it is committed at
-      # platform/android/debug.keystore (alias androiddebugkey, password
-      # "android" - a public debug credential, never use it for releases).
-      # Signing every APK with the same key lets new versions install over
-      # old ones instead of failing with a package conflict.
-      - name: Check debug signing key
-        run: |
-          set -euo pipefail
-          test -f platform/android/debug.keystore
-          echo "Using the permanent debug signing key from the repository"
 
       - name: Install Android SDK packages
         run: |
@@ -152,69 +77,103 @@ jobs:
           yes | "$SDKM" --licenses > /dev/null || true
           "$SDKM" "platforms;android-35" "build-tools;34.0.0"
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
+      - uses: nttld/setup-ndk@v1
         id: ndk
         with:
           ndk-version: r25c
 
-      - name: Stage assets
+      - name: Check messenger and compile Java sources
+        run: |
+          set -euo pipefail
+          test -f src/messenger/app.c
+          test -f platform/android/java/com/ponedelnik/messenger/P2pAudio.java
+          test -f platform/android/java/com/ponedelnik/messenger/P2pCall.java
+          python3 tools/check_source_file_size.py
+          python3 tools/test_messenger_layout.py
+          python3 tools/test_messenger_assets.py
+          python3 tools/test_messenger_native.py
+          python3 tools/test_signaling.py
+          python3 tools/test_voice_codec.py
+          JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          mkdir -p staging/classes staging/dex
+          mapfile -t JAVA_SOURCES < <(find platform/android/java -type f -name '*.java' | sort)
+          javac -source 8 -target 8 -bootclasspath "$JAR" -d staging/classes "${JAVA_SOURCES[@]}"
+          mapfile -t CLASS_FILES < <(find staging/classes -type f -name '*.class' | sort)
+          "$ANDROID_HOME/build-tools/34.0.0/d8" --min-api 26 --lib "$JAR" \
+            --output staging/dex "${CLASS_FILES[@]}"
+          cp staging/dex/classes.dex staging/classes.dex
+
+      - name: Stage messenger assets
         run: python3 stage_assets.py assets staging/assets
 
-      - name: Build native libraries
+      - name: Configure and build each Android ABI
         env:
           NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
           set -euo pipefail
-          TOOLCHAIN="$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          GLUE="$NDK_ROOT/sources/android/native_app_glue"
-          C_SOURCES=(src/game/game.c src/engine/runtime.c src/platform/android/android_main.c "$GLUE/android_native_app_glue.c")
-          CPP_SOURCE=src/game/cpp/ui_fx.cpp
-          # C and C++ need different -std flags; the C++ unit is compiled once
-          # per ABI and linked into the same .so as the C99 game sources.
-          C_OPTS=(-std=c99 -O3 -s -fPIC -shared -Isrc -I. -I"$GLUE" -landroid -llog -ldl -lm -lvulkan)
-          CPP_OPTS=(-std=c++17 -fno-exceptions -fno-rtti -O3 -s -fPIC -Isrc)
+          TOOLCHAIN="$NDK_ROOT/build/cmake/android.toolchain.cmake"
+          report_cmake_failure() {
+            local log="$1"
+            cat "$log" >&2
+            python3 - "$log" <<'PY'
+          from pathlib import Path
+          import sys
+          details = Path(sys.argv[1]).read_text(errors="replace")[-30000:].strip()
+          escaped = details.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Android CMake diagnostics::{escaped}")
+          PY
+            rm -f "$log"
+            exit 1
+          }
+          run_cmake() {
+            local log
+            log="$(mktemp)"
+            if "$@" >"$log" 2>&1; then
+              cat "$log"
+              rm -f "$log"
+            else
+              report_cmake_failure "$log"
+            fi
+          }
           mkdir -p staging/lib/arm64-v8a staging/lib/armeabi-v7a staging/lib/x86_64
           for ABI in arm64-v8a armeabi-v7a x86_64; do
-            case "$ABI" in
-              arm64-v8a) TRIPLE=aarch64-linux-android26;;
-              armeabi-v7a) TRIPLE=armv7a-linux-androideabi26;;
-              x86_64) TRIPLE=x86_64-linux-android26;;
-            esac
-            "$TOOLCHAIN/$TRIPLE-clang++" "${CPP_OPTS[@]}" -c "$CPP_SOURCE" -o "staging/ui_fx_$ABI.o"
-            "$TOOLCHAIN/$TRIPLE-clang" "${C_OPTS[@]}" "${C_SOURCES[@]}" "staging/ui_fx_$ABI.o" \
-              -o "staging/lib/$ABI/libcb_game.so"
+            BUILD_DIR="build/android-$ABI"
+            run_cmake cmake -S . -B "$BUILD_DIR" \
+              -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+              -DANDROID_ABI="$ABI" \
+              -DANDROID_PLATFORM=android-26 \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DPython3_EXECUTABLE="$(command -v python3)"
+            run_cmake cmake --build "$BUILD_DIR" --parallel 2
+            install -m 0644 "$BUILD_DIR/libponedelnik_messenger.so" "staging/lib/$ABI/libponedelnik_messenger.so"
           done
 
-      - name: Package and align APK
+      - name: Package, align and sign APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
+          JAR="$ANDROID_HOME/platforms/android-35/android.jar"
           "$BT/aapt" package -f \
             -M platform/android/AndroidManifest.xml \
             -S platform/android/res \
-            -I "$ANDROID_HOME/platforms/android-35/android.jar" \
-            -F unsigned.apk ./staging/
+            -I "$JAR" \
+            -A staging/assets \
+            -F unsigned.apk
+          (cd staging && zip -q -0 -r ../unsigned.apk classes.dex lib)
           "$BT/zipalign" -v 4 unsigned.apk aligned.apk
-
-      - name: Sign APK with debug key
-        run: |
-          set -euo pipefail
-          BT="$ANDROID_HOME/build-tools/34.0.0"
+          keytool -genkeypair -noprompt -keystore staging/debug.keystore -storetype PKCS12 \
+            -storepass android -keypass android -alias androiddebugkey \
+            -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
           "$BT/apksigner" sign \
-            --ks platform/android/debug.keystore --ks-type PKCS12 \
+            --ks staging/debug.keystore --ks-type PKCS12 \
             --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android \
-            --out Game.apk aligned.apk
-
-      - name: Verify APK
-        run: |
-          set -euo pipefail
-          BT="$ANDROID_HOME/build-tools/34.0.0"
-          "$BT/aapt" dump badging Game.apk | head -n 5
-          "$BT/apksigner" verify --verbose --print-certs Game.apk
+            --out Ponedelnik-Messenger.apk aligned.apk
+          "$BT/aapt" dump badging Ponedelnik-Messenger.apk > staging/badging.txt
+          head -n 5 staging/badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Ponedelnik-Messenger.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Cubic-Battle-4-Full-C-APK
-          path: Game.apk
+          name: Ponedelnik-Messenger-Android
+          path: Ponedelnik-Messenger.apk
           if-no-files-found: error

@@ -4,21 +4,16 @@
 #endif
 #include <android_native_app_glue.h>
 #include "engine/runtime.h"
-#include "engine/network.h"
-#include "game/game.h"
-#include <stdarg.h>
-#include <stdio.h>
+#include "messenger/app.h"
 #include <time.h>
-#include <android/configuration.h>
 #include <android/input.h>
 #include <android/keycodes.h>
 #include <android/native_activity.h>
-#include <unistd.h>
 static int init_done = 0;
-static int game_active = 0;
+static int app_active = 0;
 
-static int game_started_once = 0;
-static AAssetManager *game_assets = NULL;
+static int app_started_once = 0;
+static AAssetManager *app_assets = NULL;
 static uint64_t restart_after_ns = 0;
 static unsigned int restart_failures = 0;
 static uint64_t prev_frame_ns = 0;
@@ -42,19 +37,19 @@ static void apply_screen_size(void) {
     screen_w = phys_w;
     screen_h = phys_h;
 }
-static void protected_game_init(void *userdata) {
-    game_init((AAssetManager *)userdata);
+static void protected_app_init(void *userdata) {
+    messenger_app_init((AAssetManager *)userdata);
 }
-static void protected_game_reset(void *userdata) {
+static void protected_app_reset(void *userdata) {
     (void)userdata;
-    game_reset();
+    messenger_app_stop();
 }
-static void protected_game_update(void *userdata) {
+static void protected_app_update(void *userdata) {
     (void)userdata;
-    game_update();
+    messenger_app_update();
 }
-static void protected_game_draw(void *userdata) {
-    game_draw((Buffer *)userdata);
+static void protected_app_draw(void *userdata) {
+    messenger_app_draw((Buffer *)userdata);
 }
 typedef struct {
     float x;
@@ -62,77 +57,62 @@ typedef struct {
     int action;
     int id;
 } TouchCall;
-static void protected_game_touch(void *userdata) {
+static void protected_app_touch(void *userdata) {
     TouchCall *call = (TouchCall *)userdata;
-    game_touch(call->x, call->y, call->action, call->id);
+    messenger_app_touch(call->x, call->y, call->action, call->id);
 }
 static int back_consumed = 0;
 typedef struct {
     int handled;
 } BackCall;
-static void protected_game_bye(void *userdata) {
-    (void)userdata;
-    game_bye();
-}
-/* Farewell on exit. Hooked to activity stop only: one trip to the background
- * gives Android exactly one stop (a pause before it, a destroy after), so no
- * guard flag is needed and the farewell cannot get stuck and stop coming. The
- * swipe up, the back button and unloading from recents all go through that same
- * stop. */
-static void say_goodbye(void) {
-    if (!game_active) {
-        return;
-    }
-    (void)ds_call_protected(protected_game_bye, NULL, "goodbye");
-}
-static void protected_game_back(void *userdata) {
+static void protected_app_back(void *userdata) {
     BackCall *call = (BackCall *)userdata;
-    call->handled = game_back();
+    call->handled = messenger_app_back();
 }
-static void mark_game_failed(const char *hook) {
+static void mark_app_failed(const char *hook) {
     const char *message = ds_runtime_error_message();
-    __android_log_print(ANDROID_LOG_ERROR, "CubicBattle", "game hook '%s' stopped: %s; scheduling a restart",
+    __android_log_print(ANDROID_LOG_ERROR, "Ponedelnik", "app hook '%s' stopped: %s; scheduling a restart",
                         hook ? hook : "unknown", message);
-    ds_console_log(1, "game error: hook '%s' stopped: %s; restarting", hook ? hook : "unknown", message);
+    ds_console_log(1, "app error: hook '%s' stopped: %s; restarting", hook ? hook : "unknown", message);
     unsigned int shift = restart_failures < 5 ? restart_failures : 5;
     uint64_t delay = 1000000000ull << shift;
-    game_active = 0;
-    ds_request_game_restart();
+    app_active = 0;
+    ds_request_app_restart();
     restart_after_ns = monotonic_ns() + delay;
     ++restart_failures;
 }
-static int start_game(int reset_state) {
+static int start_app(int reset_state) {
     int ok;
     ds_clear_runtime_error();
-    ds_clear_game_restart();
+    ds_clear_app_restart();
     ds_string_pool_reset();
     if (reset_state) {
-        ok = ds_call_protected(protected_game_reset, NULL, "reset");
+        ok = ds_call_protected(protected_app_reset, NULL, "reset");
         if (!ok) {
-            mark_game_failed("reset");
+            mark_app_failed("reset");
             return 0;
         }
     }
     ds_clear_runtime_error();
-    ok = ds_call_protected(protected_game_init, game_assets, "init");
+    ok = ds_call_protected(protected_app_init, app_assets, "init");
     if (!ok) {
-        mark_game_failed("init");
+        mark_app_failed("init");
         return 0;
     }
     ds_clear_runtime_error();
     restart_failures = 0;
-    game_active = 1;
-    game_started_once = 1;
+    app_active = 1;
+    app_started_once = 1;
     return 1;
 }
-static void restart_game_if_due(void) {
+static void restart_app_if_due(void) {
     uint64_t now;
-    if (game_active || !ds_game_restart_requested())
+    if (app_active || !ds_app_restart_requested())
         return;
     now = monotonic_ns();
     if (now < restart_after_ns)
         return;
-    (void)start_game(1);
+    (void)start_app(1);
 }
 
 #define GFX_START_TRIES 4
@@ -165,10 +145,11 @@ static void start_window(struct android_app *app) {
         return;
     }
     apply_screen_size();
-    game_assets = app->activity ? app->activity->assetManager : NULL;
+    app_assets = app->activity ? app->activity->assetManager : NULL;
     ds_set_activity(app->activity);
+    messenger_app_set_activity(app->activity);
 
-    if (!ds_graphics_init(game_assets, app->window)) {
+    if (!ds_graphics_init(app_assets, app->window)) {
         gfx_start_failed(app, ds_graphics_failure());
         return;
     }
@@ -178,22 +159,20 @@ static void start_window(struct android_app *app) {
     gfx_retry_at_ns = 0;
     gfx_failure_shown = 0;
 
-    ds_sound_init(game_assets);
-    ds_sound_resume();
     init_done = 1;
 
     prev_frame_ns = 0;
     prev_loop_ns = 0;
         /* The frame before minimising says nothing about the new window. */
     frame_seconds = 0.0;
-    if (game_active) {
+    if (app_active) {
 
-        ds_log("window is back (%dx%d): the game continues", phys_w, phys_h);
+        ds_log("window is back (%dx%d): the app continues", phys_w, phys_h);
         return;
     }
     restart_failures = 0;
-    ds_clear_game_restart();
-    (void)start_game(game_started_once);
+    ds_clear_app_restart();
+    (void)start_app(app_started_once);
 }
 static void handle_cmd(struct android_app *app, int32_t command) {
     if (!app) {
@@ -229,7 +208,6 @@ static void handle_cmd(struct android_app *app, int32_t command) {
         gfx_retry_at_ns = 0;
         gfx_failure_shown = 0;
         ds_graphics_window_lost();
-        ds_sound_suspend();
         break;
     case APP_CMD_WINDOW_REDRAW_NEEDED:
 
@@ -237,13 +215,8 @@ static void handle_cmd(struct android_app *app, int32_t command) {
             (void)ds_graphics_show_failure(app->window, gfx_start_tries);
         break;
     case APP_CMD_GAINED_FOCUS:
-        ds_sound_resume();
         break;
     case APP_CMD_LOST_FOCUS:
-        ds_sound_pause();
-        break;
-    case APP_CMD_STOP:
-        say_goodbye();
         break;
     default:
         break;
@@ -255,7 +228,7 @@ static int32_t handle_input(struct android_app *app, AInputEvent *event) {
         return 0;
     int32_t type = AInputEvent_getType(event);
     if (type == AINPUT_EVENT_TYPE_MOTION) {
-        if (!game_active)
+        if (!app_active)
             return 0;
         TouchCall call;
         size_t count, index, i;
@@ -293,8 +266,8 @@ static int32_t handle_input(struct android_app *app, AInputEvent *event) {
             }
             call.action = action;
             call.id = AMotionEvent_getPointerId(event, i);
-            if (!ds_call_protected(protected_game_touch, &call, "touch")) {
-                mark_game_failed("touch");
+            if (!ds_call_protected(protected_app_touch, &call, "touch")) {
+                mark_app_failed("touch");
                 break;
             }
         }
@@ -317,10 +290,10 @@ static int32_t handle_input(struct android_app *app, AInputEvent *event) {
             if (action == AKEY_EVENT_ACTION_DOWN) {
                 BackCall call = {0};
                 back_consumed = 0;
-                if (!game_active)
+                if (!app_active)
                     return 0;
-                if (!ds_call_protected(protected_game_back, &call, "back_pressed")) {
-                    mark_game_failed("back_pressed");
+                if (!ds_call_protected(protected_app_back, &call, "back_pressed")) {
+                    mark_app_failed("back_pressed");
                     return 1;
                 }
                 back_consumed = call.handled ? 1 : 0;
@@ -345,37 +318,27 @@ void android_main(struct android_app *app) {
     if (!app)
         return;
 
-    srand((unsigned)(time(NULL) * 2654435761u) ^ ((unsigned)getpid() * 0x9E3779B9u));
     app->onAppCmd = handle_cmd;
     app->onInputEvent = handle_input;
-    net_set_java_vm(app->activity->vm);
-    ds_sound_set_java_vm((void *)app->activity->vm);
-    net_set_data_path(app->activity->internalDataPath);
-    {
-        char lang[3] = {0};
-        if (app->config)
-            AConfiguration_getLanguage(app->config, lang);
-        net_set_system_language(lang);
-    }
     ds_set_activity(app->activity);
-    ds_log("Cubic Battle 4: C + Vulkan");
+    messenger_app_set_activity(app->activity);
+    ds_log("Ponedelnik Messenger: C + Vulkan");
     for (;;) {
         struct android_poll_source *source = NULL;
         int ident;
 
         int drawing = app->window && init_done;
-        int timeout = drawing ? (game_active ? 0 : 10) : (gfx_retry_at_ns ? 50 : 250);
+        int timeout = drawing ? (app_active ? 0 : 10) : (gfx_retry_at_ns ? 50 : 250);
         while ((ident = ALooper_pollOnce(timeout, NULL, NULL, (void **)&source)) >= 0) {
             if (source && source->process)
                 source->process(app, source);
             if (app->destroyRequested) {
 
                 init_done = 0;
-                game_active = 0;
+                app_active = 0;
                 keyboard_hide();
-                net_disconnect();
+                messenger_app_stop();
                 ds_graphics_shutdown();
-                ds_sound_shutdown();
                 return;
             }
             timeout = 0;
@@ -387,10 +350,9 @@ void android_main(struct android_app *app) {
         }
         if (!app->window || !init_done || app->destroyRequested)
             continue;
-        restart_game_if_due();
+        restart_app_if_due();
         uint64_t frame_start = monotonic_ns();
-                /* The string pool lives one frame: clean it before the game hooks so it
-                 * does not grow to an out-of-memory in the middle of a fight. */
+        /* The per-frame string pool is reset before app hooks to bound memory use. */
         ds_string_pool_tick();
 
         if (prev_loop_ns && frame_start >= prev_loop_ns) {
@@ -399,7 +361,7 @@ void android_main(struct android_app *app) {
         }
         prev_loop_ns = frame_start;
         apply_screen_size();
-        if (game_active) {
+        if (app_active) {
             uint64_t now = frame_start;
             dt = prev_frame_ns ? (double)(now - prev_frame_ns) / 1000000000.0 : 0.0;
             if (dt < 0.0)
@@ -407,10 +369,10 @@ void android_main(struct android_app *app) {
             if (dt > 0.1)
                 dt = 0.1;
             prev_frame_ns = now;
-            if (!ds_call_protected(protected_game_update, NULL, "update"))
-                mark_game_failed("update");
-            else if (ds_game_restart_requested()) {
-                game_active = 0;
+            if (!ds_call_protected(protected_app_update, NULL, "update"))
+                mark_app_failed("update");
+            else if (ds_app_restart_requested()) {
+                app_active = 0;
                 restart_after_ns = monotonic_ns();
             }
         }
@@ -421,17 +383,17 @@ void android_main(struct android_app *app) {
         frame.stride = screen_w;
         if (frame.width > 0 && frame.height > 0 && ds_graphics_begin_frame(&frame)) {
             int draw_failed = 0;
-            if (game_active) {
-                if (!ds_call_protected(protected_game_draw, &frame, "draw")) {
-                    mark_game_failed("draw");
+            if (app_active) {
+                if (!ds_call_protected(protected_app_draw, &frame, "draw")) {
+                    mark_app_failed("draw");
                     draw_failed = 1;
-                } else if (ds_game_restart_requested()) {
-                    game_active = 0;
+                } else if (ds_app_restart_requested()) {
+                    app_active = 0;
                     restart_after_ns = monotonic_ns();
                 }
             }
-            if (!game_active) {
-                if (draw_failed || ds_game_has_error()) {
+            if (!app_active) {
+                if (draw_failed || ds_runtime_has_error()) {
 
                     ds_graphics_error_screen(ds_runtime_error_message());
                     ds_graphics_end_frame();
@@ -443,6 +405,3 @@ void android_main(struct android_app *app) {
     }
 }
 #include "engine/graphics.c"
-#include "engine/network.c"
-#include "platform/android/presence_job.inc"
-#include "engine/audio.c"

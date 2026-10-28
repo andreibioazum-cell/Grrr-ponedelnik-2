@@ -25,9 +25,9 @@ static int ds_vk_init_backend(ANativeWindow *window) {
     }
 
     VkApplicationInfo app = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "Cubic Battle";
+    app.pApplicationName = "Ponedelnik 2D Engine";
     app.applicationVersion = 1;
-    app.pEngineName = "Cubic Battle Vulkan";
+    app.pEngineName = "Ponedelnik Vulkan";
     app.engineVersion = 1;
     app.apiVersion = VK_API_VERSION_1_0;
     const char *inst_exts[] = {"VK_KHR_surface", "VK_KHR_android_surface"};

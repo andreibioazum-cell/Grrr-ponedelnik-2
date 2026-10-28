@@ -8,13 +8,7 @@ static const char *norm_name(const char *n) {
     if (!n)
         return NULL;
     while (strncmp(n, "./", 2) == 0) n += 2;
-    if (strncmp(n, "assets/textures/", 16) == 0)
-        n += 16;
-    else if (strncmp(n, "textures/", 9) == 0)
-        n += 9;
-    else if (strncmp(n, "game/assets/", 12) == 0)
-        n += 12;
-    else if (strncmp(n, "assets/", 7) == 0)
+    if (strncmp(n, "assets/", 7) == 0)
         n += 7;
     if (!*n || *n == '/' || strchr(n, '\\'))
         return NULL;
@@ -243,9 +237,7 @@ int tex_ready(const char *name) {
     if (t->gpu.uploaded)
         return 1;
     ds_vk_pending_texture(t);
-    /* Pending is not drawable yet. Returning ready here allowed a fighter to
-     * select a texture whose Vulkan descriptor did not exist, making the cube
-     * disappear for one or more frames during upload/recreation. */
+    /* Pending textures are not drawable until their Vulkan descriptors exist. */
     return 0;
 }
 
@@ -344,15 +336,6 @@ void tex_tint(float x, float y, const char *name, float a, float s, uint32_t c) 
     p->v.tx2.c = pack_c(c);
 }
 
-static uint32_t text_force_white(uint32_t c) {
-
-    if (c == 0xFFFF4444u || c == 0xFF4FC3F7u || c == 0xFFFF3333u || c == 0xFF33A8FFu)
-        return c;
-
-    if ((c & 0x00ffffffu) == 0x00202020u)
-        return c;
-    return (c & 0xff000000u) | 0x00ffffffu;
-}
 void text_scaled(const char *s, float x, float y, uint32_t c, float sc) {
     if (!frame_open || !s || !ensure_font())
         return;
@@ -362,8 +345,7 @@ void text_scaled(const char *s, float x, float y, uint32_t c, float sc) {
 
     p->v.tt.s = strdup_safe(s);
     if (!p->v.tt.s) {
-                /* A half-written label is not worth restarting the game: take the command
-                 * back and draw the frame without it. */
+                /* A missing label is not worth restarting the app; skip this command. */
         ds_log_err("renderer: no memory to copy text");
         cmd_n = cmd_n - 1;
         return;
@@ -371,7 +353,7 @@ void text_scaled(const char *s, float x, float y, uint32_t c, float sc) {
     p->v.tt.x = x;
     p->v.tt.y = y;
     p->v.tt.sc = sc;
-    p->v.tt.c = pack_c(text_force_white(c));
+    p->v.tt.c = pack_c(c);
 }
 void text(const char *s, float x, float y, uint32_t c) {
     text_scaled(s, x, y, c, 1.0f);

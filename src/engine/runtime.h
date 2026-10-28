@@ -17,12 +17,6 @@ typedef struct Buffer {
 } Buffer;
 extern int screen_w, screen_h;
 extern double dt;
-extern int mouse_clicked;
-extern double ds_mouse_x, ds_mouse_y;
-typedef struct {
-    float x, y, dx, dy, ox, oy, r;
-} Joy;
-extern Joy joy;
 void ds_log(const char *format, ...);
 void ds_log_err(const char *format, ...);
 void ds_console_log(int is_error, const char *format, ...);
@@ -30,11 +24,11 @@ typedef void (*DSProtectedFunction)(void *userdata);
 int ds_call_protected(DSProtectedFunction function, void *userdata, const char *label);
 void ds_runtime_error(const char *format, ...);
 const char *ds_runtime_error_message(void);
-int ds_game_has_error(void);
+int ds_runtime_has_error(void);
 void ds_clear_runtime_error(void);
-void ds_request_game_restart(void);
-int ds_game_restart_requested(void);
-void ds_clear_game_restart(void);
+void ds_request_app_restart(void);
+int ds_app_restart_requested(void);
+void ds_clear_app_restart(void);
 char *ds_concat(const char *left, const char *right);
 char *ds_num_to_string(double number);
 void ds_string_pool_reset(void);
@@ -61,9 +55,7 @@ double str_index_of(const char *hay, const char *needle);
 int str_starts_with(const char *s, const char *pref);
 const char *str_sub(const char *s, double start, double len);
 const char *str_trim(const char *s);
-const char *str_upper(const char *s);
 void ds_set_activity(void *activity);
-void bye_notice_show(const char *text);
 void keyboard_show(void);
 void keyboard_hide(void);
 void keyboard_get_text_to(char *dst, size_t cap);
@@ -74,12 +66,9 @@ int keyboard_handle_key(int keycode, int action, int meta);
 int keyboard_uses_editor(void);
 void keyboard_type(const char *text);
 void keyboard_backspace(void);
+const char *str_upper(const char *s);
 void rect(float x, float y, float w, float h, uint32_t color);
 void roundrect(float x, float y, float w, float h, float r, uint32_t color);
-/* C++-implemented glossy vertical gradient drawn as per-scanline strips
- * clipped to the rounded silhouette (src/game/cpp/ui_fx.cpp). */
-void cb_button_gradient(float x, float y, float w, float h, float r, uint32_t color);
-
 void rect_rot(float x, float y, float w, float h, float angle, uint32_t color);
 void circle(float x, float y, float r, uint32_t color);
 void ring(float x, float y, float r, float t, uint32_t color);
@@ -98,22 +87,7 @@ void tex_round(float x, float y, const char *name, float scale, float radius);
 void ds_gfx_gray(double on);
 void ds_gfx_shake(double amp, double seconds);
 
-int snd_load(const char *name);
-int snd_play(const char *name);
-
-int snd_loop(const char *name);
-void snd_stop(const char *name);
-int snd_playing(const char *name);
-void snd_volume(const char *name, double volume);
-int ds_sound_init(AAssetManager *assets);
-void ds_sound_shutdown(void);
-
-void ds_sound_suspend(void);
-void ds_sound_pause(void);
-void ds_sound_resume(void);
-void ds_sound_set_java_vm(void *vm);
-
-#define DS_FONT_ASSET "fonts/ComicRelief-Regular.ttf"
+#define DS_FONT_ASSET "fonts/DejaVuSans.ttf"
 #define DS_FONT_PIXEL_HEIGHT 32
 void text(const char *string, float x, float y, uint32_t color);
 void text_scaled(const char *string, float x, float y, uint32_t color, float scale);
@@ -128,7 +102,7 @@ int text_ink_top(const char *string);
 void ds_graphics_report_frame_interval(double seconds);
 /* How long the last real frame took, in seconds: from the start of the previous
  * loop iteration to the start of this one, including the present wait. Nothing is
- * clamped, unlike the game dt (which is capped at 0.1 s). 0 means the frame is not
+ * clamped, unlike the app dt (which is capped at 0.1 s). 0 means the frame is not
  * measured yet, the window was just restored or the clock did not answer. */
 double ds_frame_seconds(void);
 int ds_graphics_pixel_scale(void);

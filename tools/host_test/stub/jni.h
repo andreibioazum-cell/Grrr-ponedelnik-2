@@ -6,6 +6,13 @@ typedef int32_t jint;
 typedef int32_t jsize;
 typedef int8_t jbyte;
 typedef uint16_t jchar;
+typedef uint8_t jboolean;
+#ifndef JNIEXPORT
+#define JNIEXPORT __attribute__((visibility("default")))
+#endif
+#ifndef JNICALL
+#define JNICALL
+#endif
 typedef void *jobject;
 typedef jobject jclass;
 typedef jobject jstring;
@@ -22,8 +29,6 @@ typedef jobject jmethodID;
 #define JNI_CHECK(...) 0
 struct JNINativeInterface;
 struct JNIInvokeInterface;
-typedef const struct JNINativeInterface *JNIEnv;
-typedef const struct JNIInvokeInterface *JavaVM;
 typedef const struct JNINativeInterface *JNIEnv;
 typedef const struct JNIInvokeInterface *JavaVM;
 struct JNINativeInterface {
@@ -43,9 +48,14 @@ struct JNINativeInterface {
     jmethodID (*GetStaticMethodID)(JNIEnv *, jclass, const char *, const char *);
     jobject (*CallObjectMethod)(JNIEnv *, jobject, jmethodID, ...);
     jint (*CallIntMethod)(JNIEnv *, jobject, jmethodID, ...);
+    jboolean (*CallBooleanMethod)(JNIEnv *, jobject, jmethodID, ...);
     void (*CallVoidMethod)(JNIEnv *, jobject, jmethodID, ...);
     jint (*CallStaticIntMethod)(JNIEnv *, jclass, jmethodID, ...);
     jstring (*NewStringUTF)(JNIEnv *, const char *);
+    jsize (*GetStringLength)(JNIEnv *, jstring);
+    const jchar *(*GetStringChars)(JNIEnv *, jstring, jboolean *);
+    void (*ReleaseStringChars)(JNIEnv *, jstring, const jchar *);
+    jstring (*NewString)(JNIEnv *, const jchar *, jsize);
     const char *(*GetStringUTFChars)(JNIEnv *, jstring, unsigned char *);
     void (*ReleaseStringUTFChars)(JNIEnv *, jstring, const char *);
     jsize (*GetArrayLength)(JNIEnv *, jarray);
@@ -72,6 +82,4 @@ struct JNIInvokeInterface {
     jint (*GetEnv)(JavaVM *, void **, jint);
     jint (*AttachCurrentThreadAsDaemon)(JavaVM *, JNIEnv **, void *);
 };
-typedef const struct JNINativeInterface *JNIEnv;
-typedef const struct JNIInvokeInterface *JavaVM;
 #endif

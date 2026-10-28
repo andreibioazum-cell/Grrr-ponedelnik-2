@@ -1,9 +1,11 @@
-/* Base functions of the game runtime. */
+/* Application runtime and Android keyboard integration. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#include <pthread.h>
+#include <time.h>
+/* Shared C runtime services used by the native 2D engine. */
 #include "engine/runtime/core.inc"
 #include "engine/runtime/values.inc"
-#ifdef CB_PC
-#include "platform/pc/keyboard_pc.inc"
-#else
+
 #include "platform/android/keyboard.inc"
-#endif
-#include "platform/android/bye_notice.inc"

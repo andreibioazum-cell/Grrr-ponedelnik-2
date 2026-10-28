@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compiles the game GLSL shaders into SPIR-V arrays for Vulkan."""
+"""Compiles the renderer GLSL shaders into SPIR-V arrays for Vulkan."""
 
 import os
 import shutil

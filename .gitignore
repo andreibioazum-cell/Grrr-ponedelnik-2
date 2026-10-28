@@ -1,4 +1,4 @@
-# Результаты сборки
+# Generated build artifacts and local signing material
 __pycache__/
 *.py[cod]
 build/
@@ -8,23 +8,7 @@ staging/
 *.o
 aligned.apk
 unsigned.apk
-debug.keystore
-!platform/android/debug.keystore
+*.keystore
 
-# Локальные сохранения игры
-auth.dat
-progress.dat
-achievements.dat
-bans.dat
-settings.dat
-
-## Веб-панель: зависимости jsdom-проверок (test/package.json)
+# Local JavaScript dependency directories
 node_modules/
-package-lock.json
-!test/package-lock.json
-
-## ПК-версия: собранные бинарники и скриншоты харнесса
-*.exe
-cb4_shot.bmp
-cb4.log
-cb4_data/

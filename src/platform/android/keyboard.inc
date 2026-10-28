@@ -144,10 +144,10 @@ static void kb_sync_editor(void) {
     pthread_mutex_lock(&kb_mutex);
     snprintf(copy, sizeof(copy), "%s", kb_text);
     pthread_mutex_unlock(&kb_mutex);
-    (void)kb_call_text_method("setGameKeyboardText", copy);
+    (void)kb_call_text_method("setMessengerKeyboardText", copy);
 }
 
-int keyboard_uses_editor(void) { return kb_call_bool_method("gameKeyboardActive"); }
+int keyboard_uses_editor(void) { return kb_call_bool_method("messengerKeyboardActive"); }
 
 void keyboard_show(void) {
     char current[KB_BUF];
@@ -155,7 +155,7 @@ void keyboard_show(void) {
     snprintf(current, sizeof(current), "%s", kb_text);
     kb_show = 1;
     pthread_mutex_unlock(&kb_mutex);
-    if (!kb_call_text_method("showGameKeyboard", current) && kb_activity)
+    if (!kb_call_text_method("showMessengerKeyboard", current) && kb_activity)
         ANativeActivity_showSoftInput(kb_activity, ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED);
 }
 
@@ -163,7 +163,7 @@ void keyboard_hide(void) {
     pthread_mutex_lock(&kb_mutex);
     kb_show = 0;
     pthread_mutex_unlock(&kb_mutex);
-    if (!kb_call_void_method("hideGameKeyboard") && kb_activity)
+    if (!kb_call_void_method("hideMessengerKeyboard") && kb_activity)
         ANativeActivity_hideSoftInput(kb_activity, ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY);
 }
 
@@ -186,7 +186,7 @@ void keyboard_clear(void) {
     kb_len = 0;
     kb_enter = 0;
     pthread_mutex_unlock(&kb_mutex);
-    (void)kb_call_text_method("setGameKeyboardText", "");
+    (void)kb_call_text_method("setMessengerKeyboardText", "");
 }
 
 int keyboard_visible(void) {
@@ -396,7 +396,7 @@ int keyboard_handle_key(int keycode, int action, int meta) {
     return 0;
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeReplaceText(JNIEnv *env, jobject self, jstring value) {
+JNIEXPORT void JNICALL Java_com_ponedelnik_messenger_MessengerActivity_nativeReplaceText(JNIEnv *env, jobject self, jstring value) {
     (void)self;
     pthread_mutex_lock(&kb_mutex);
     kb_text[0] = '\0';
@@ -419,7 +419,7 @@ JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeReplaceText(JNIEnv *env, 
     pthread_mutex_unlock(&kb_mutex);
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeSubmitText(JNIEnv *env, jobject self) {
+JNIEXPORT void JNICALL Java_com_ponedelnik_messenger_MessengerActivity_nativeSubmitText(JNIEnv *env, jobject self) {
     (void)env;
     (void)self;
     pthread_mutex_lock(&kb_mutex);
@@ -427,7 +427,7 @@ JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeSubmitText(JNIEnv *env, j
     pthread_mutex_unlock(&kb_mutex);
 }
 
-JNIEXPORT void JNICALL Java_com_cb4_GameActivity_nativeKeyboardHidden(JNIEnv *env, jobject self) {
+JNIEXPORT void JNICALL Java_com_ponedelnik_messenger_MessengerActivity_nativeKeyboardHidden(JNIEnv *env, jobject self) {
     (void)env;
     (void)self;
     pthread_mutex_lock(&kb_mutex);

@@ -1,113 +1,59 @@
-## RU
+# Ponedelnik Messenger
 
-Полная версия Cubic Battle 4 для Android. Игра написана на C, и немного на Java.
+Ponedelnik Messenger is a native Android peer-to-peer messenger with a C/Vulkan interface. The Android entry point runs as a `NativeActivity`; Java is limited to Android platform services such as networking, cryptography, runtime microphone permission, and audio input/output. The Android APK links the messenger and shared Vulkan renderer only; it does not compile or package any game target, Firebase, or a web UI.
 
-- Минимум: Android 8
-- Цель: Android 15
-- Требуется: Vulkan 1.0
+## What is implemented
 
-## ПК-версия (Windows .exe)
+- End-to-end encrypted text over direct UDP using authenticated AES-GCM packets and per-session keys.
+- Signed peer handshakes, ephemeral key agreement, device key fingerprints, and optional locally pinned contacts.
+- Direct voice calls over the same peer-to-peer UDP session. Call control and G.711 μ-law voice frames use separate authenticated packet channels; audio uses 8 kHz mono, 20 ms frames.
+- A small rendezvous/signaling service that stores peer registrations and queued signed setup invitations in memory only. It never accepts chat text or voice. STUN is used for address discovery and UDP hole punching; there is deliberately no TURN/media relay.
+- Native C/Vulkan screens for connecting, exchanging peer IDs, verifying fingerprints, chatting, and controlling calls.
 
-Та же игра, что в APK, но для компьютера: окно, мышь и клавиатура.
+P2P is best-effort: restrictive or symmetric NATs, carrier firewalls, and networks that block UDP can prevent a direct connection. Those cases are not relayed. The signaling service can see registration and setup metadata, including peer IDs and network candidates, but it does not receive E2EE chat messages or audio. Restarting the sample service clears its in-memory registrations and pending invitations.
 
-* **Скачать:** артефакт `Cubic-Battle-4-PC-Windows` из GitHub Actions -
-  `CubicBattle4.exe` плюс папка `assets/` рядом. Установка не нужна.
-* **Собрать:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig собирает exe и на Linux, MSVC не нужен).
-* **Управление:** `WASD`/стрелки - движение, `ЛКМ` - удар, `E` - блок
-  (удерживать), `Q` - суперудар, мышь - меню и чат, `Esc` - назад, `F12` -
-  скриншот.
+## Android APK build
 
-Логика игры общая с Android (`src/game`, `src/engine`); ПК-слой - окно,
-программный растеризатор вместо Vulkan, WinHTTP вместо JNI и перевод
-клавиатуры в касания. Подробности: [docs/pc-version.md](docs/pc-version.md).
+The GitHub Actions workflow installs the Android SDK/NDK, compiles all Android Java sources and DEX, builds the native Vulkan library for `arm64-v8a`, `armeabi-v7a`, and `x86_64`, and packages a signed **debug** APK. Download the `Ponedelnik-Messenger-Android` workflow artifact to install it for testing. The workflow signing key is temporary; this is not a Play Store release key.
 
-## Веб-панель админа
+The native library can be built locally with CMake and the Android NDK. For example:
 
-Кроме APK в репозитории есть веб-версия - [index.html](index.html): панель
-админа для базы Firebase (вход по нику и паролю от игры, снимок базы, поиск и
-удаление мусора, ивенты 0..4, баннер, флаги магазина, шедевро-режим, баны, чистка чата и
-слотов, резервная копия). Сборка не нужна: открой файл в браузере.
-
-Потренироваться без боевой базы можно так:
-
-```
-python3 test/fake_firebase.py 8080
+```sh
+cmake -S . -B build/android-arm64 \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a \
+  -DANDROID_PLATFORM=android-26 \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build/android-arm64 --parallel
 ```
 
-затем открой <http://localhost:8080/>, нажми «Тестовый режим» и войди как
-`Dimasi4ek229` с паролем `admin`. Подробности, список починенных поломок и
-проверки - в [docs/admin-panel.md](docs/admin-panel.md).
+This produces `build/android-arm64/libponedelnik_messenger.so`. Packaging the full APK additionally requires the Android SDK platform 35, Build Tools 34.0.0, Java 17, and D8; the workflow is the reference end-to-end APK build.
 
-## Правовая информация
+## Signaling setup
 
-Возрастная категория 12+. Пользовательское соглашение, политика обработки
-персональных данных и согласие на обработку лежат в [docs/legal](docs/legal);
-там же список того, что владелец должен сделать вне кода (уведомление
-Роскомнадзора, локализация данных и т. д.).
+For two real devices, enter the HTTPS URL of a publicly reachable signaling service in the app. The included Python service can be run on a private LAN for development:
 
-## Лицензия
-
-Copyright (C) 2026 Дима Густенёв
-
-Все права защищены. Код и материалы проекта нельзя копировать, использовать,
-изменять или распространять без письменного разрешения правообладателя.
-Полные условия - в файле [LICENSE](LICENSE).
-
-SPDX-License-Identifier: LicenseRef-Proprietary
-
-## EN
-
-Full version of Cubic Battle 4 for Android. The game is written in C, with a bit of Java.
-
-- Minimum: Android 8
-- Target: Android 15
-- Requires: Vulkan 1.0
-
-## PC version (Windows .exe)
-
-The same game as in the APK, on a desktop: a window, the mouse and the keyboard.
-
-* **Download:** the `Cubic-Battle-4-PC-Windows` artifact from GitHub Actions -
-  `CubicBattle4.exe` with the `assets/` folder next to it. No installer.
-* **Build:** `pip install ziglang && python3 tools/build_pc.py --windows`
-  (Zig cross-builds the exe on Linux too; MSVC is not needed).
-* **Controls:** `WASD`/arrows to move, `LMB` to punch, `E` to block (hold),
-  `Q` for the class super, mouse for menus and chat, `Esc` back, `F12`
-  screenshot.
-
-The game logic is shared with Android (`src/game`, `src/engine`); the PC layer
-is the window, a software rasterizer instead of Vulkan, WinHTTP instead of JNI
-and a keyboard-to-touch bridge. Details: [docs/pc-version.md](docs/pc-version.md).
-
-## Web admin panel
-
-Besides the APK the repository contains a web version - [index.html](index.html):
-the Firebase admin panel (sign in with the game nick and password, database
-snapshot, junk search and cleanup, events 0..4, banner, shop flags, bans, chat
-and slot cleanup, backup copy). No build step: open the file in a browser.
-
-To practise without touching the live database run
-
-```
-python3 test/fake_firebase.py 8080
+```sh
+python3 server/signaling.py --host 0.0.0.0 --port 8765 --dev-http
 ```
 
-then open <http://localhost:8080/>, press the test-mode button and sign in as
-`Dimasi4ek229` with the password `admin`. Details in
-[docs/admin-panel.md](docs/admin-panel.md).
+Do not expose cleartext HTTP on the public Internet. For a public deployment, supply a TLS certificate and key to the service (or terminate HTTPS in a correctly configured reverse proxy). The app accepts cleartext only for emulator/local-network development and requires HTTPS for external signaling URLs. The default `http://10.0.2.2:8765` address is for the Android emulator, not physical phones.
 
-## Legal
+The signaling process is a minimal, in-memory rendezvous example and is not intended as a hardened or highly available public service. Keep the TLS private key, deployment logs, and operational controls outside the repository.
 
-Age rating 12+. The Terms of Use, the personal data policy and the consent
-form (in Russian) are in [docs/legal](docs/legal).
+## Tests
 
-## License
+Run the host-side checks with Python 3; Java 17 is needed for the G.711 codec test:
 
-Copyright (C) 2026 Дима Густенёв
+```sh
+python3 tools/test_messenger_layout.py
+python3 tools/test_messenger_assets.py
+python3 tools/test_messenger_native.py
+python3 tools/test_signaling.py
+python3 tools/test_voice_codec.py
+python3 tools/test_pona.py
+python3 tools/test_stage_assets.py
+python3 tools/check_source_file_size.py
+```
 
-All rights reserved. The code and materials of this project may not be
-copied, used, modified or distributed without the copyright holder's written
-permission. Full terms in the [LICENSE](LICENSE) file.
-
-SPDX-License-Identifier: LicenseRef-Proprietary
+The CI pipeline also compiles every Android Java source against the Android SDK, converts the classes to DEX, and builds/packages all three Android ABIs. Microphone, speaker routing, NAT traversal, and real device-to-device call quality still require on-device testing.
