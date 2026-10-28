@@ -93,7 +93,7 @@ def main() -> int:
     ]
     run(compiler + platform_flags + ["-fsyntax-only",
         "src/engine2d/api.c", "src/engine2d/app.c", "src/engine2d/gc.c",
-        "src/engine2d/input.c", "src/engine/runtime.c", "src/platform/android/pona_main.c",
+        "src/engine2d/input.c", "src/engine/runtime.c",
     ])
 
     with tempfile.TemporaryDirectory(prefix="pona-host-test-") as temporary:

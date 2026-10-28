@@ -1,4 +1,4 @@
-name: Build Ponedelnik 2D Engine
+name: Build Ponedelnik Messenger
 
 on:
   push:
@@ -13,7 +13,7 @@ defaults:
 
 jobs:
   host-tests:
-    name: Pona compiler, runtime and GC tests
+    name: P2P, signaling, audio codec and engine tests
     runs-on: ubuntu-latest
     env:
       CC: clang
@@ -22,16 +22,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Run compiler and host runtime tests
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run host tests
         run: |
           set -euo pipefail
-          python3 -m py_compile tools/ponac.py tools/test_pona.py stage_assets.py tools/test_stage_assets.py
+          javac -version
+          java -version
+          python3 -m py_compile tools/ponac.py tools/test_pona.py stage_assets.py \
+            tools/test_stage_assets.py server/signaling.py tools/test_signaling.py \
+            tools/test_messenger_layout.py tools/test_messenger_assets.py \
+            tools/test_messenger_native.py tools/test_voice_codec.py
+          python3 tools/test_messenger_layout.py
+          python3 tools/test_messenger_assets.py
+          python3 tools/test_messenger_native.py
+          python3 tools/test_signaling.py
+          python3 tools/test_voice_codec.py
           python3 tools/test_pona.py
           python3 tools/test_stage_assets.py
           python3 tools/check_source_file_size.py
 
   android-apk:
-    name: Build native Vulkan APK (Android 8+)
+    name: Build native Vulkan messenger APK (Android 8+)
     runs-on: ubuntu-latest
     needs: host-tests
     steps:
@@ -68,7 +82,28 @@ jobs:
         with:
           ndk-version: r25c
 
-      - name: Stage generic project assets
+      - name: Check messenger and compile Java sources
+        run: |
+          set -euo pipefail
+          test -f src/messenger/app.c
+          test -f platform/android/java/com/ponedelnik/messenger/P2pAudio.java
+          test -f platform/android/java/com/ponedelnik/messenger/P2pCall.java
+          python3 tools/check_source_file_size.py
+          python3 tools/test_messenger_layout.py
+          python3 tools/test_messenger_assets.py
+          python3 tools/test_messenger_native.py
+          python3 tools/test_signaling.py
+          python3 tools/test_voice_codec.py
+          JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          mkdir -p staging/classes staging/dex
+          mapfile -t JAVA_SOURCES < <(find platform/android/java -type f -name '*.java' | sort)
+          javac -source 8 -target 8 -bootclasspath "$JAR" -d staging/classes "${JAVA_SOURCES[@]}"
+          mapfile -t CLASS_FILES < <(find staging/classes -type f -name '*.class' | sort)
+          "$ANDROID_HOME/build-tools/34.0.0/d8" --min-api 26 --lib "$JAR" \
+            --output staging/dex "${CLASS_FILES[@]}"
+          cp staging/dex/classes.dex staging/classes.dex
+
+      - name: Stage messenger assets
         run: python3 stage_assets.py assets staging/assets
 
       - name: Configure and build each Android ABI
@@ -110,37 +145,35 @@ jobs:
               -DCMAKE_BUILD_TYPE=Release \
               -DPython3_EXECUTABLE="$(command -v python3)"
             run_cmake cmake --build "$BUILD_DIR" --parallel 2
-            install -m 0644 "$BUILD_DIR/libponedelnik_2d.so" "staging/lib/$ABI/libponedelnik_2d.so"
+            install -m 0644 "$BUILD_DIR/libponedelnik_messenger.so" "staging/lib/$ABI/libponedelnik_messenger.so"
           done
 
-      - name: Package and align APK
+      - name: Package, align and sign APK
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/34.0.0"
+          JAR="$ANDROID_HOME/platforms/android-35/android.jar"
           "$BT/aapt" package -f \
             -M platform/android/AndroidManifest.xml \
             -S platform/android/res \
-            -I "$ANDROID_HOME/platforms/android-35/android.jar" \
-            -F unsigned.apk ./staging/
+            -I "$JAR" \
+            -A staging/assets \
+            -F unsigned.apk
+          (cd staging && zip -q -0 -r ../unsigned.apk classes.dex lib)
           "$BT/zipalign" -v 4 unsigned.apk aligned.apk
-
-      - name: Create debug signature and verify APK
-        run: |
-          set -euo pipefail
-          BT="$ANDROID_HOME/build-tools/34.0.0"
           keytool -genkeypair -noprompt -keystore staging/debug.keystore -storetype PKCS12 \
             -storepass android -keypass android -alias androiddebugkey \
             -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
           "$BT/apksigner" sign \
             --ks staging/debug.keystore --ks-type PKCS12 \
             --ks-pass pass:android --ks-key-alias androiddebugkey --key-pass pass:android \
-            --out Ponedelnik-2D-Android.apk aligned.apk
-          "$BT/aapt" dump badging Ponedelnik-2D-Android.apk > staging/badging.txt
+            --out Ponedelnik-Messenger.apk aligned.apk
+          "$BT/aapt" dump badging Ponedelnik-Messenger.apk > staging/badging.txt
           head -n 5 staging/badging.txt
-          "$BT/apksigner" verify --verbose --print-certs Ponedelnik-2D-Android.apk
+          "$BT/apksigner" verify --verbose --print-certs Ponedelnik-Messenger.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Ponedelnik-2D-Android
-          path: Ponedelnik-2D-Android.apk
+          name: Ponedelnik-Messenger-Android
+          path: Ponedelnik-Messenger.apk
           if-no-files-found: error
